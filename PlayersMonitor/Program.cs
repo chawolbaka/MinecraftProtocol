@@ -25,13 +25,13 @@ namespace PlayersMonitor
             #region 一堆很想删除的代码
 
 #if (DEBUG == true)
-            //            Settings.IPAddress.Destination = "120.41.42.92";
-            //            Settings.Port = 23533;
-            Settings.IPAddress.Destination = "e1.kaifuxia.com";
-            Settings.Port = 35140;
+            //Settings.IPAddress.Destination = "120.41.42.92";
+            //Settings.Port = 23533;
+            //Settings.IPAddress.Destination = "e1.kaifuxia.com";
+            //Settings.Port = 35140;
             //Configure.IP = "120.77.58.174";
             //Configure.Port = 25567;
-            Settings.AutoSetBlood = true;
+            //Settings.AutoSetBlood = true;
 #endif
             Settings.Initialization(args);
 
@@ -211,11 +211,7 @@ namespace PlayersMonitor
                 Console.WriteLine($"在线人数:{p.CurrentPlayerCount}/{p.MaxPlayerCount}");
                 foreach (var player in Players)
                 {
-#if (DEBUG == true)
-                   PrintPlayerName(player, "Ashleyz", "Seven_chad", "beliefbaka");
-#else
                     PrintPlayerName(player);
-#endif
                     PlayerIndex++;
                 }
                 if (Settings.ShowPing == true)
