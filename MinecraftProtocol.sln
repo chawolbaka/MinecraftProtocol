@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2000
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinecraftProtocol", "MinecraftProtocol\MinecraftProtocol.csproj", "{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Test", "Test\Test.csproj", "{A444D6A1-4685-4E70-A073-5D9CCB4DC0D0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PlayersMonitor", "PlayersMonitor\PlayersMonitor.csproj", "{BE988D0F-325B-4A04-8BFE-E383F235E0DA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SlowCheckServerStates", "SlowCheckServerStates\SlowCheckServerStates.csproj", "{11FA6FB4-C4C3-42DC-B401-E2100E76ACA1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A444D6A1-4685-4E70-A073-5D9CCB4DC0D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A444D6A1-4685-4E70-A073-5D9CCB4DC0D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A444D6A1-4685-4E70-A073-5D9CCB4DC0D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A444D6A1-4685-4E70-A073-5D9CCB4DC0D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE988D0F-325B-4A04-8BFE-E383F235E0DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE988D0F-325B-4A04-8BFE-E383F235E0DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE988D0F-325B-4A04-8BFE-E383F235E0DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE988D0F-325B-4A04-8BFE-E383F235E0DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11FA6FB4-C4C3-42DC-B401-E2100E76ACA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11FA6FB4-C4C3-42DC-B401-E2100E76ACA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11FA6FB4-C4C3-42DC-B401-E2100E76ACA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11FA6FB4-C4C3-42DC-B401-E2100E76ACA1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DA359EFD-7FDD-4442-8BC9-F8513B9DD394}
+	EndGlobalSection
+EndGlobal
