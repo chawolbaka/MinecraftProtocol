@@ -9,11 +9,18 @@ namespace MinecraftProtocol.Protocol
 {
     public class Packet
     {
-        private List<byte> packetData;
+        private List<byte> Data = new List<byte>();
         public int? PacketID { get; set; }
         public Packet()
         {
-            packetData = new List<byte>();
+        }
+        public Packet(int packetID,params byte[] packetData)
+        {
+            this.PacketID = packetID;
+            foreach (var data in packetData)
+            {
+                this.Data.Add(data);
+            }
         }
         public void WriteBoolean(bool value)
         {
@@ -24,11 +31,11 @@ namespace MinecraftProtocol.Protocol
         }
         public void WriteByte(sbyte value)
         {
-            packetData.Add((byte)value);
+            Data.Add((byte)value);
         }
         public void WriteUnsignedByte(byte value)
         {
-            packetData.Add(value);
+            Data.Add(value);
         }
         public void WriteString(string value)
         {
@@ -91,15 +98,15 @@ namespace MinecraftProtocol.Protocol
         {
             foreach (var item in value)
             {
-                packetData.Add(item);
+                Data.Add(item);
             }
         }
         public byte[] GetPacket(int compress=-1)
         {
-            byte[] tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(PacketID), this.packetData.ToArray());
+            byte[] tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(PacketID), this.Data.ToArray());
             if (compress > 0)
             {
-                if (this.packetData.Count >= compress)
+                if (this.Data.Count >= compress)
                     tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(tmp_packet.Length), ZlibUtils.Compress(tmp_packet));
                 else
                     tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(0), tmp_packet);
@@ -108,6 +115,10 @@ namespace MinecraftProtocol.Protocol
             else
                 return ProtocolHandler.ConcatBytes(VarInt.Convert(tmp_packet.Length),tmp_packet);
             
+        }
+        public byte[] GetData()
+        {
+            return Data.ToArray();
         }
         
     }
