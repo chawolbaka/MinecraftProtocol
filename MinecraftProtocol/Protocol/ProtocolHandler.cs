@@ -192,7 +192,7 @@ namespace MinecraftProtocol.Protocol
         }
         private static void GetProtocolVersionNubers()
         {
-            throw new NotImplementedException("这是一次性的东西,我用来把表格转成常量的.");
+            throw new NotImplementedException("这是一次性的东西,我用来把表格转成常量的...");
             WebClient tmp = new WebClient();
             byte[] pageData = tmp.DownloadData(@"http://wiki.vg/Protocol_version_numbers");
             string html = Encoding.UTF8.GetString(pageData);
@@ -226,6 +226,12 @@ namespace MinecraftProtocol.Protocol
             foreach (var item in VersionNumbers)
             {
                 // public const int V17w45a = 343;
+                /// <summary>
+                /// 1.12.2
+                /// </summary>
+                Console.WriteLine("/// <summary>");
+                Console.WriteLine($"/// {item.Key}");
+                Console.WriteLine("/// </summary>");
                 Console.WriteLine($"public const int V{item.Key.Replace('.', '_').Replace('-', '_')} = {item.Value};");
             }
         }

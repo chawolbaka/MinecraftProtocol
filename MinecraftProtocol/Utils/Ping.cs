@@ -69,33 +69,35 @@ namespace MinecraftProtocol.Utils
         private long? GetTime()
         {
             long? Time = 0;
-
-            //http://wiki.vg/Server_List_Ping#Ping
-            int code = new Random().Next(1, 25565);
-            Packet RequestPacket = new Packet();
-            RequestPacket.PacketID = 0x01;
-            RequestPacket.WriteLong(code);
-            DateTime TmpTime = DateTime.Now;
-            ConnectInfo.Session.Client.Send(RequestPacket.GetPacket());
-
-            //http://wiki.vg/Server_List_Ping#Pong
-            int PacketLenght = ProtocolHandler.GetPacketLength(ConnectInfo.Session);
-            Time = DateTime.Now.Ticks - TmpTime.Ticks;
-            List<byte> ResponesPacket = new List<byte>(
-                ProtocolHandler.ReceiveData(0, PacketLenght, ConnectInfo.Session));
-            //校验
-            try
+            if (ConnectInfo != null)
             {
-                if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
+                //http://wiki.vg/Server_List_Ping#Ping
+                int code = new Random().Next(1, 25565);
+                Packet RequestPacket = new Packet();
+                RequestPacket.PacketID = 0x01;
+                RequestPacket.WriteLong(code);
+                DateTime TmpTime = DateTime.Now;
+                ConnectInfo.Session.Client.Send(RequestPacket.GetPacket());
+
+                //http://wiki.vg/Server_List_Ping#Pong
+                int PacketLenght = ProtocolHandler.GetPacketLength(ConnectInfo.Session);
+                Time = DateTime.Now.Ticks - TmpTime.Ticks;
+                List<byte> ResponesPacket = new List<byte>(
+                    ProtocolHandler.ReceiveData(0, PacketLenght, ConnectInfo.Session));
+
+                //校验
+                try
+                {
+                    if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
+                        return null;
+                    if (ResponesPacket.Count != 8 && ProtocolHandler.ReadNextLong(ResponesPacket) != code)
+                        return null;
+                }
+                catch {
                     return null;
-                if (ResponesPacket.Count != 8 && ProtocolHandler.ReadNextLong(ResponesPacket) != code)
-                    return null;
+                } //因为这个不是关键参数,读不到就读不到吧.不能因为拿不到延迟就导致拿不到其它数据了
             }
-            catch
-            {
-                return null;
-            }//因为这个不是关键参数,读不到就读不到吧.不能因为拿不到延迟就导致拿不到其它数据了
-
+            else throw new NullReferenceException("Do You Used Method \"Send\"?");
             return Time;
         }
         public override string ToString()
