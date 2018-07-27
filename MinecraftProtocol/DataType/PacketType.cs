@@ -7,25 +7,41 @@ namespace MinecraftProtocol.DataType
 {
     public static class PacketType
     {
+        /// <summary>
+        /// 从服务端发送的包
+        /// </summary>
         public enum Server
         {
             KeepAlive,
             LoginSuccess,
             Unknown
         }
+        /// <summary>
+        /// 从客户端发送的包
+        /// </summary>
         public enum Client
         {
             KeepAlive,
             ChatMessage,
             Unknown
         }
+
         public static int GetPacketID(Client type, int protocolVersion)
         {
-            if (type == Client.ChatMessage)
+            if (type == Client.KeepAlive)
+            {
+                /*
+                 * 1.13-pre7(389)
+                 * Changed ID of Keep Alive (clientbound) from 0x20 to 0x21
+                 * 17w46a(345)
+                 * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
+                 */
+            }
+            else if (type == Client.ChatMessage)
             {
                 /*
                  * 17w45a(343)
-                 *Changed ID of Chat Message (serverbound) from 0x02 to 0x01
+                 * Changed ID of Chat Message (serverbound) from 0x02 to 0x01
                  * 17w31a(336)
                  * Changed ID of Chat Message (serverbound) from 0x03 to 0x02
                  * 1.12-pre5(332)
@@ -45,16 +61,43 @@ namespace MinecraftProtocol.DataType
                 else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x02;
                 else return 0x01;
             }
+
             throw new Exception("Can not Get PacketID");
         }
-        public static void GetPacketID(Server type, int protocolVersion)
+        public static int GetPacketID(Server type, int protocolVersion)
         {
+            if (type == Server.KeepAlive)
+            {
+                /*
+                 * 1.13-pre7(389)
+                 * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0E
+                 * 1.13-pre4(386)
+                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+                 * 17w45a(343)
+                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0A
+                 * 17w31a(336)
+                 * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0B
+                 * 1.12-pre5(332)
+                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+                 * 17w13a(318)
+                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+                 * 15w43a(80)
+                 * Changed ID of Keep Alive (serverbound) from 0x0A to 0x0B
+                 * 15w36a(67)
+                 * Changed ID of Keep Alive (serverbound) from 0x00 to 0x0A
+                 */
 
+                if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x0B;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x0A;
+                else return 0x00;
+            }
+            throw new Exception("Can not Get PacketID");
         }
 
-        public static void GetType(int packetID,int protocolVersion)
+
+        public static void GetType(Packet packet,int protocolVersion)
         {
-            //我要怎么返回???
+            //这我要怎么返回???
         }
     }
 }

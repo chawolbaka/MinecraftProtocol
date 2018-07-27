@@ -33,7 +33,7 @@ namespace PlayersMonitor
                     IPAddress.Source = Regex.Replace(args[i + 1], @"\s", "");
                 if (args[i] == "-p" || args[i] == "-port" && i != args.Length)
                 {
-                    if (ushort.TryParse(args[i + 1], out _port) == false)
+                    if (ushort.TryParse(args[i + 1], out _Port) == false)
                     {
                         Console.WriteLine($"参数错误{Environment.NewLine}Use:-p (0-65535)");
                         System.Environment.Exit(0);
@@ -43,7 +43,7 @@ namespace PlayersMonitor
                 {
                     if (args[i + 1] == "auto")
                         AutoSetBlood = true;
-                    else if (int.TryParse(args[i + 1], out _blood) == false)
+                    else if (int.TryParse(args[i + 1], out _Blood) == false)
                     {
                         Console.WriteLine($"参数错误{Environment.NewLine}Use:-b ({int.MinValue}-{int.MaxValue})");
                         System.Environment.Exit(0);
@@ -51,7 +51,7 @@ namespace PlayersMonitor
                 }
                 if (args[i] == "-s"|| args[i] == "-sleeptime" && i != args.Length)
                 {
-                    if (uint.TryParse(args[i + 1], out _sleep) == false)
+                    if (uint.TryParse(args[i + 1], out _Sleep) == false)
                     {
                         Console.WriteLine($"参数错误{Environment.NewLine}Use:-s (0-{uint.MaxValue})");
                         System.Environment.Exit(0);
@@ -61,12 +61,12 @@ namespace PlayersMonitor
             return false;
         }
         public static (string Source, string Destination) IPAddress = (Source:null,Destination:null);
-        public static ushort Port { get { return _port ; } set { _port= value; } }
-        private static ushort _port = 25565;
-        public static int Blood { get { return _blood; } set { _blood = value; } }
-        private static int _blood = 10;
-        public static uint Sleep { get { return _sleep; } set { _sleep = value; } }
-        private static uint _sleep = 1000;
+        public static ushort Port { get { return _Port ; } set { _Port= value; } }
+        private static ushort _Port = 25565;
+        public static int Blood { get { return _Blood; } set { _Blood = value; } }
+        private static int _Blood = 10;
+        public static uint Sleep { get { return _Sleep; } set { _Sleep = value; } }
+        private static uint _Sleep = 1000;
 
         public static bool ShowPing { get; set; } = true;
         public static bool AutoSetBlood { get; set; } = false;

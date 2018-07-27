@@ -19,7 +19,7 @@ namespace MinecraftProtocol.Utils
          * https://gist.github.com/csh/2480d14fbbb33b4bbae3
         */
         private string JsonResult;
-        private ConnectPayload ConnectInfo = new ConnectPayload();
+        private ConnectionPayload ConnectInfo = new ConnectionPayload();
         public Ping(string serverIP, ushort port)
         {
             if (string.IsNullOrWhiteSpace(serverIP))

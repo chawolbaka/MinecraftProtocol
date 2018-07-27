@@ -10,12 +10,12 @@ namespace MinecraftProtocol
 {
     public class ListenDataPacket
     {
-        public delegate void EventPacketReceived(int packetID, List<byte> data, ConnectPayload info);
+        public delegate void EventPacketReceived(Packet packet, ConnectionPayload info);
         public event EventPacketReceived PacketReceived;
-        public ConnectPayload CommunicationInfo { get; set; } = new ConnectPayload();
+        public ConnectionPayload CommunicationInfo { get; set; } = new ConnectionPayload();
         public int Times { get; set; } = -1;
         private bool StopListen = false;
-        public ListenDataPacket(ConnectPayload info)
+        public ListenDataPacket(ConnectionPayload info)
         {
             if (info.Session != null)
                 this.CommunicationInfo.Session = info.Session;
@@ -45,7 +45,7 @@ namespace MinecraftProtocol
                         Console.WriteLine("数据包压缩已启动:" + this.CommunicationInfo.CompressionThreshold);
                         #endif
                     }
-                    PacketReceived(PacketID, data,CommunicationInfo);
+                    PacketReceived(new Packet(PacketID, data),CommunicationInfo);
                 }
                 else
                 {
@@ -55,14 +55,14 @@ namespace MinecraftProtocol
                     {
                         int PacketID = VarInt.Read(data.ToArray(), 0, out end);
                         data.RemoveRange(0, end);
-                        PacketReceived(PacketID, data,CommunicationInfo);
+                        PacketReceived(new Packet(PacketID, data), CommunicationInfo);
                     }
                     else
                     {
                         data = new List<byte>(ZlibUtils.Decompress(data.ToArray(),DataLength));
                         int PacketID = VarInt.Read(data.ToArray(), 0, out end);
                         data.RemoveRange(0, end);
-                        PacketReceived(PacketID, data,CommunicationInfo);
+                        PacketReceived(new Packet(PacketID, data), CommunicationInfo);
                     }
 
                 }
