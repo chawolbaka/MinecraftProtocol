@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Protocol
 {
     public class Packet
     {
-        public List<byte> Data { get; } = new List<byte>();
+        public List<byte> Data { get; private set; } = new List<byte>();
         public int PacketID
         {
             //解释一下为什么要这样子写

@@ -87,15 +87,21 @@ namespace MinecraftProtocol.DataType
                  * Changed ID of Keep Alive (serverbound) from 0x00 to 0x0A
                  */
 
-                if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x0B;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x0A;
+                if      (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x0E;
+                else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre4) return 0x0C;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w45a)    return 0x0A;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w31a)    return 0x0B;
+                else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x0C;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)    return 0x0C;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)    return 0x0B;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a)    return 0x0A;
                 else return 0x00;
             }
             throw new Exception("Can not Get PacketID");
         }
+        
 
-
-        public static void GetType(Packet packet,int protocolVersion)
+        public static void GetPacketType(Packet packet,int protocolVersion)
         {
             //这我要怎么返回???
         }

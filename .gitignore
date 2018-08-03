@@ -1,0 +1,6 @@
+bin
+Test
+obj
+SlowCheckServerStates
+*.exe
+/.vs/

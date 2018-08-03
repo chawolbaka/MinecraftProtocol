@@ -27,8 +27,9 @@ namespace PlayersMonitor
 #if (DEBUG == true)
             //Settings.IPAddress.Destination = "120.41.42.92";
             //Settings.Port = 23533;
-            //Settings.IPAddress.Destination = "e1.kaifuxia.com";
-            //Settings.Port = 35140;
+            Settings.IPAddress.Destination = "mc-sm.com";
+            Settings.Port = 23533;
+            Settings.Sleep = 0;
             //Configure.IP = "120.77.58.174";
             //Configure.Port = 25567;
             //Settings.AutoSetBlood = true;

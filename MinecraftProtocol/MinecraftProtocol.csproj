@@ -3,7 +3,13 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
   </PropertyGroup>
-
+  
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+	<DebugType>embedded</DebugType>
+	<DebugSymbols>false</DebugSymbols>
+	<CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+  
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>

@@ -160,28 +160,7 @@ namespace MinecraftProtocol.Protocol
             int read = 0;
             while (read < offset)
             {
-                //我看不懂这个.这是在读取所以数据吗
-                try
-                {
                     read += tcp.Client.Receive(buffer, start + read, offset - read, flags);
-                }
-                catch (SocketException se)
-                {
-//                    //有毒呀,linux的timeout居然是110,然后不是硬编码呀, .net core在linux那边不改的吗
-//                    if (se.ErrorCode == (int)SocketError.TimedOut || se.ErrorCode == 110)
-//                    {
-//#if (DEBUG == true)//以后改！
-                        
-//                        Debug.Print("SocketException:Receive Time out");
-//                        //Debug.Print("Please Restart or Wait.");
-//#endif
-//                        Console.WriteLine("SocketException:Receive Time out");
-//                        Console.WriteLine("Please Restart or Wait.");
-//                        return -1;
-//                    }
-//                    else
-                        throw se;
-                }
             }
         }
         public static byte[] ReceiveData(int start, int offset,TcpClient session)

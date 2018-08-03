@@ -50,6 +50,8 @@ namespace MinecraftProtocol.Utils
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
                 PingReply tmp =  ResolveJson(this.JsonResult);
                 tmp.Time = GetTime();
+                ConnectInfo.Session.Dispose();
+                ConnectInfo.Session.Close();
                 return tmp;
             }
             else
