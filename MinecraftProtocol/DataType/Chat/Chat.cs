@@ -6,24 +6,19 @@ using MinecraftProtocol;
 using Newtonsoft.Json;
 
 
-namespace MinecraftProtocol.DataType
+namespace MinecraftProtocol.DataType.Chat
 {
-    public class Chat
+    public class Chat:ChatPayLoad
     {
-        public string Translate { get; set; }
-        public string Text { get; set; }
-        public ChatColors? Color { get; set; }
-        
-        public ChatStyles styles { get; set; } = new ChatStyles();
-        public ClickEvet clickEvet { get; set; } = new ClickEvet();
 
-        public class ClickEvet
-        {
-            public string open_url;
-            public string open_file;
-            public string run_commmand;
-        }
-            
+        [JsonProperty(PropertyName = "translate")]
+        public string Translate { get; set; }
+
+        [JsonProperty(PropertyName = "with")]
+        List<ChatPayLoad> With { get; set; }
+
+        [JsonProperty(PropertyName = "extra")]
+        List<ChatPayLoad> Extra { get; set; }
 
         public enum ChatColors
         {
@@ -49,63 +44,32 @@ namespace MinecraftProtocol.DataType
             White = 0xF,
             Unknown = -0xFFFFFF
         }
-        public class ChatStyles
-        {
-            /// <summary>
-            /// 随机字符
-            /// </summary>
-            public bool Random { get; set; } = false;
-            /// <summary>
-            /// 加粗
-            /// </summary>
-            public bool Bold { get; set; } = false;
-            /// <summary>
-            /// 删除线
-            /// </summary>
-            public bool Strikethrough { get; set; } = false;
-            /// <summary>
-            /// 下划线
-            /// </summary>
-            public bool Underlined { get; set; } = false;
-            /// <summary>
-            /// 斜体
-            /// </summary>
-            public bool Italic { get; set; } = false;
-            /// <summary>
-            /// 重置文字样式
-            /// </summary>
-            public bool PlainWhite { get; set; } = false;
-        }
         public Chat()
         {
 
         }
-        public Chat(List<byte> json)
+        public Chat(string json)
         {
-            string FileName = $"{DateTime.Now.ToString("yyyy-MM-dd.hhmmssfff")}.json";
-            StreamWriter sw = File.AppendText(FileName);
-            sw.WriteLine(Encoding.UTF8.GetString(json.ToArray()));
-            sw.Flush();
-            sw.Close();
+            //string FileName = $"{DateTime.Now.ToString("yyyy-MM-dd.hhmmssfff")}.json";
+            //StreamWriter sw = File.AppendText(FileName);
+            //sw.WriteLine(Encoding.UTF8.GetString(json.ToArray()));
+            //sw.Flush();
+            //sw.Close();
 
-            //if (!string.IsNullOrWhiteSpace(jsonText) && jsonText.StartsWith("{") && jsonText.EndsWith("}"))
-            //{
-            //    Json.JsonData jsonData = Json.ParseJson(jsonText);
-            //    if (jsonData.Properties.ContainsKey("extra"))
-            //    {
-            //        foreach (var extra in jsonData.Properties["extra"].DataArray)
-            //        {
-            //            Chat tmp = new Chat();
-            //            if (extra.Properties.ContainsKey("text"))
-            //                tmp.Text = extra.Properties["text"].StringValue;
-            //            if (extra.Properties.ContainsKey("color"))
-            //                tmp.Color = GetChatColor(extra.Properties["color"].StringValue);
-            //            Message.Add(tmp);
-            //        }
-            //    }
 
-            //}
         }
+        public static Chat ResolveJson(string json)
+        {
+            //啊啊啊,我放弃啦 我不序列化啦(╯°Д°)╯︵┻━┻
+            //我要把Text全塞一个集合里面去
+            Chat result = JsonConvert.DeserializeObject<Chat>(json);
+            //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
+
+            return result;
+        }
+
+        
+
         public static ChatColors GetChatColor(string value)
         {
             switch (value)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using MinecraftProtocol.Protocol;
 using MinecraftProtocol.DataType;
+using MinecraftProtocol.DataType.Chat;
 
 namespace MinecraftProtocol
 {
@@ -10,8 +11,9 @@ namespace MinecraftProtocol
     {
         public static (Chat Chat,byte Position) ChatMessage(List<byte> data)
         {
+            throw new NotImplementedException("改烂了");
             int length =  ProtocolHandler.ReadNextVarInt(data);
-            Chat chat = new Chat(new List<byte>(ProtocolHandler.ReadData(length, data)));
+            Chat chat = new Chat("");
             return (chat,data[0]);
         }
         public static (string PlayerName,string UUID) LoginSuccess(List<Byte> data)

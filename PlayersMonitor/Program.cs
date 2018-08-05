@@ -17,7 +17,7 @@ namespace PlayersMonitor
     {
         public static string QAQ = 
             "这个程序抄袭了这个项目的大部分代码(无脑Ctrl C/V):http://www.mcbbs.net/thread-723161-1-1.html";
-        private static List<Player> Players = new List<Player>();
+        private static List<PlayerInfo> Players = new List<PlayerInfo>();
         private static int PlayerIndex = 0;
         private static int BanTime { get; set; } = 18200;
         static void Main(string[] args)
@@ -183,16 +183,16 @@ namespace PlayersMonitor
                 {
                     foreach (var player in p.OnlinePlayers)
                     {
-                        var result = Players.Find(delegate (Player PF) { return player.uuid == PF.uuid; });
+                        var result = Players.Find(delegate (PlayerInfo PF) { return player.UUID == PF.UUID; });
                         if (result == null)
                         {
-                            Players.Add(new Player()
+                            Players.Add(new PlayerInfo()
                             {
-                                uuid = player.uuid,
+                                UUID = player.UUID,
                                 Name = player.Name,
                                 Blood = GetBloodValue(p, Settings.AutoSetBlood)
                             });
-                            PlayerJoin(new Player() { uuid = player.uuid, Name = player.Name });
+                            PlayerJoin(new PlayerInfo() { UUID = player.UUID, Name = player.Name });
                         }
                         else if (result != null)
                             result.Blood = GetBloodValue(p, Settings.AutoSetBlood);
@@ -236,21 +236,21 @@ namespace PlayersMonitor
                     return info.CurrentPlayerCount <= 12 ? 2 : info.CurrentPlayerCount - 12;
             }
         }
-        static void PlayerJoin(Player player)
+        static void PlayerJoin(PlayerInfo player)
         {
             StreamWriter sw = File.AppendText("Player.log");
             sw.WriteLine($"[{DateTime.Now.ToString("yyyy/MM/dd hh:mm:ss")}]玩家：{player.Name} 上线");
             sw.Flush();
             sw.Close();
         }
-        static void PlayerDownLine(Player player)
+        static void PlayerDownLine(PlayerInfo player)
         {
             StreamWriter sw = File.AppendText("Player.log");
             sw.WriteLine($"[{DateTime.Now.ToString("yyyy/MM/dd hh:mm:ss")}]玩家：{player.Name} 下线");
             sw.Flush();
             sw.Close();
         }
-        static void PrintPlayerName(Player player, params string[] hightLight)
+        static void PrintPlayerName(PlayerInfo player, params string[] hightLight)
         {
             if (hightLight.Length > 0)
             {
@@ -262,20 +262,20 @@ namespace PlayersMonitor
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.Write($"{ player.Name}");
                         Console.ForegroundColor = ConsoleColor.Gray;
-                        Console.WriteLine($"({player.uuid})");
+                        Console.WriteLine($"({player.UUID})");
                         return;
                     }
                 }
             }
-            Console.WriteLine($"[{PlayerIndex.ToString("D2")}/{player.Blood}]Name:{player.Name}({player.uuid})");
+            Console.WriteLine($"[{PlayerIndex.ToString("D2")}/{player.Blood}]Name:{player.Name}({player.UUID})");
         }
         static void ReName(string oldName ,string newName)
         {
-            var destPlayer = Players.Find(delegate (Player PF) { return PF.Name == oldName; });
+            var destPlayer = Players.Find(delegate (PlayerInfo PF) { return PF.Name == oldName; });
             if (destPlayer != null)
                 destPlayer.Name = newName;
         }
-        static void LifeTime(List<Player> players)
+        static void LifeTime(List<PlayerInfo> players)
         {
             for (int i = 0; i < players.Count; i++)
             {

@@ -15,7 +15,7 @@ namespace MinecraftProtocol.DataType
         [JsonProperty(PropertyName = "players")]
         public PlayersPayload Players { get; set; }
 
-        //[JsonProperty(PropertyName = "description")]
+        [JsonIgnore]
         public string Motd { get; set; }
 
         [JsonProperty(PropertyName = "modinfo")]
