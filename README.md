@@ -18,9 +18,9 @@ https://docs.microsoft.com/en-us/dotnet/core/rid-catalog
 https://github.com/Nsiso/MinecraftOutClient  
 https://github.com/ORelio/Minecraft-Console-Client  
 ### 引用的开源库
-https://www.newtonsoft.com
+https://www.newtonsoft.com  
 http://dotnetzip.codeplex.com  
-(数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个里面的,不知道是不是这个)
+(数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个项目里面的代码,不知道是不是上面那个)
 ### 参考资料
 https://wiki.vg/Protocol  
 https://github.com/bangbang93/minecraft-protocol  
