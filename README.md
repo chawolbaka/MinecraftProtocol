@@ -1,6 +1,6 @@
 # PlayersMonitor
 QAQ不要看这个项目的代码,写的太辣鸡了。 
-这是我为了学习一下怎么使用git所以丢github上来试试看的(不过应该不会删除,感觉git好好用的呀,可以随便删代码啦qwq)
+这是我为了学习一下怎么使用git所以丢github上来试试看的(不过应该不会删除,感觉git好好用呀,可以随便删代码啦qwq)
 
 ### Building
 [安装.Net Core SDK 2.1](https://www.microsoft.com/net/download/dotnet-core/2.1 "安装.Net Core SDK 2.1")
@@ -16,6 +16,7 @@ https://docs.microsoft.com/en-us/dotnet/core/rid-catalog
 
 ## 抄袭项目
 https://github.com/Nsiso/MinecraftOutClient  
+https://gist.github.com/csh/2480d14fbbb33b4bbae3  
 https://github.com/ORelio/Minecraft-Console-Client  
 ### 引用的开源库
 https://www.newtonsoft.com  

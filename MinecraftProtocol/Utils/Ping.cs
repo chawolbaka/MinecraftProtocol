@@ -20,17 +20,21 @@ namespace MinecraftProtocol.Utils
         */
         private string JsonResult;
         private ConnectionPayload ConnectInfo = new ConnectionPayload();
-        public Ping(string serverIP, ushort port)
+        /// <summary>
+        /// Not Support Legacy Ping(https://wiki.vg/Server_List_Ping#1.6)
+        /// </summary>
+        /// <param name="host">Server IP Address or Domain Name</param>
+        public Ping(string host, ushort port)
         {
-            if (string.IsNullOrWhiteSpace(serverIP))
+            if (string.IsNullOrWhiteSpace(host))
                 throw new ArgumentNullException("Parameter \"serverIP\" is null or WhiteSpace");
-            if (Regex.Match(serverIP, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)//域名的正则我写不出来...(这个都是抄来的)
+            if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)//域名的正则我写不出来...(这个都是抄来的)
             {
-                IPHostEntry hostInfo = Dns.GetHostEntry(serverIP);
+                IPHostEntry hostInfo = Dns.GetHostEntry(host);
                 this.ServerIPAddress = hostInfo.AddressList[0].ToString();//为什么有不止一条的记录?
             }
             else
-                this.ServerIPAddress = serverIP;
+                this.ServerIPAddress = host;
             this.ServerPort = port;
         }
         public PingReply Send()

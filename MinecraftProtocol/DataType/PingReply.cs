@@ -13,7 +13,7 @@ namespace MinecraftProtocol.DataType
         public VersionPayload Version { get; set; }
 
         [JsonProperty(PropertyName = "players")]
-        public PlayersPayload Players { get; set; }
+        public PlayersPayload Player { get; set; }
 
         [JsonIgnore]
         public string Motd { get; set; }
@@ -59,9 +59,9 @@ namespace MinecraftProtocol.DataType
             /// 玩家列表的样品,最大数量是12(随机12个)
             /// </summary>
             [JsonProperty(PropertyName = "sample")]
-            public List<MinecraftProtocol.DataType.PingReply.Player> Sample { get; set; }
+            public List<PlayerSamplePayload> Samples { get; set; }
         }
-        public class Player
+        public class PlayerSamplePayload
         {
             [JsonProperty(PropertyName = "name")]
             public string Name { get; set; }
