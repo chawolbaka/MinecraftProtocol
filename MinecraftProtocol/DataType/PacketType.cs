@@ -12,21 +12,26 @@ namespace MinecraftProtocol.DataType
         /// </summary>
         public enum Server
         {
-            Unknown,
+            UnknownPacket,
             KeepAlive,
-            LoginSuccess
+            LoginSuccess,
+            SetCompression
         }
         /// <summary>
         /// 从客户端发送的包
         /// </summary>
         public enum Client
         {
-            Unknown,
+            UnknownPacket,
             LoginStart,
             KeepAlive,
             ChatMessage
         }
 
+        /// <summary>
+        /// 通过包的类型来获取包的ID
+        /// </summary>
+        /// <returns>如果这个类型的包在这个版本中不存在的话会返回int.MinValue</returns>
         public static int GetPacketID(Client type, int protocolVersion)
         {
             if (type==Client.LoginStart)
@@ -94,6 +99,10 @@ namespace MinecraftProtocol.DataType
 
             throw new Exception("Can not Get PacketID");
         }
+        /// <summary>
+        /// 通过包的类型来获取包的ID
+        /// </summary>
+        /// <returns>如果这个类型的包在这个版本中不存在的话会返回int.MinValue</returns>
         public static int GetPacketID(Server type, int protocolVersion)
         {
             if (type == Server.LoginSuccess)
@@ -108,6 +117,32 @@ namespace MinecraftProtocol.DataType
                 if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9) return 0x02;
                 else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3) return 0x03;
                 else return 0x02;
+            }
+            if (type == Server.SetCompression)
+            {
+                /*
+                 * 1.13-pre9(391)
+                 * Set Compression is again 0x03
+                 * 1.13-pre3(385)
+                 * Changed the ID of Set Compression from 0x03 to 0x04
+                 * 15w43a(80)
+                 * Changed ID of Set Compression from 0x1D to 0x1E
+                 * 15w36a(67)
+                 * Changed ID of Set Compression from 0x46 to 0x1D
+                 */
+
+                if (protocolVersion >= ProtocolVersionNumbers.V14w28a)
+                {
+                    if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9) return 0x03;
+                    else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3) return 0x04;
+                    //这边因为wiki上搜不到包ID从0x1E变成0x03的记录,所以我直接wiki最会一次提到0x1E后就返回0x03吧(出事了我再来修把
+                    else if (protocolVersion > ProtocolVersionNumbers.V15w46a) return 0x03;
+                    else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x1E;
+                    else return 0x46;
+                }
+                else //数据包压缩是1.8开始才有的东西,所以我取了wiki上第一次提到数据包压缩的协议号
+                    return int.MinValue; //如果小于这个协议号就返回一个不存在的协议号
+
             }
             if (type == Server.KeepAlive)
             {
@@ -142,8 +177,12 @@ namespace MinecraftProtocol.DataType
             }
             throw new Exception("Can not Get PacketID");
         }
-        
 
+        /// <summary>
+        /// 通过对包的id&data 协议号来分析出是什么类型的包(这是一个低效率的方法,不推荐使用这个方法)
+        /// 如果无法分析出是什么类型的话会返回null
+        /// </summary>
+        /// <returns>PacketType.Client or PacketType.Server or null</returns>
         public static object GetPacketType(Packet packet,int protocolVersion)
         {
 
@@ -162,6 +201,12 @@ namespace MinecraftProtocol.DataType
                 }
                 catch { }
 
+            }
+            if (packet.PacketID == GetPacketID(Server.SetCompression,protocolVersion))
+            {
+                if (packet.Data.Count > 0 && packet.Data.Count <=5)
+                    return Server.SetCompression;
+                
             }
             #region Keep Alive
             /*
