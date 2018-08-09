@@ -197,7 +197,7 @@ namespace MinecraftProtocol.DataType
             {
                 if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
                     return Client.KeepAlive;
-                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count > 1 && packet.Data.Count <= 5)
+                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
                     return Client.KeepAlive;
                 else if (packet.Data.Count == 4)
                     return Client.KeepAlive;
@@ -207,7 +207,7 @@ namespace MinecraftProtocol.DataType
 
                 if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
                     return Server.KeepAlive;
-                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count > 1 && packet.Data.Count <= 5)
+                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
                     return Server.KeepAlive;
                 else if (packet.Data.Count == 4)
                     return Server.KeepAlive;
@@ -216,7 +216,7 @@ namespace MinecraftProtocol.DataType
 
             if (packet.PacketID == GetPacketID(Server.SetCompression, protocolVersion))
             {
-                if (packet.Data.Count > 0 && packet.Data.Count <= 5)
+                if (packet.Data.Count <= 5&& packet.Data.Count > 0)
                     return Server.SetCompression;
 
             }
