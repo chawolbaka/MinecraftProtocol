@@ -49,29 +49,33 @@ namespace MinecraftProtocol.DataType
             }
             else if (type == Client.KeepAlive)
             {
-                /*
-                 * 1.13-pre7(389)
-                 * Changed ID of Keep Alive (clientbound) from 0x20 to 0x21
-                 * 17w46a(345)
-                 * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
-                 * 1.12-pre5(332)
-                 * Changed ID of Keep Alive (clientbound) from 0x20 to 0x1F
-                 * 17w13a(318)
-                 * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
-                 * 15w46a(86)
-                 * Changed ID of Keep Alive from 0x20 to 0x1F
-                 * 15w43a(80)
-                 * Changed ID of Keep Alive from 0x1F to 0x20
-                 * 15w36a(67)
-                 * Changed ID of Keep Alive from 0x00 to 0x1F
-                 */
-                if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)      return 0x21;
-                else if (protocolVersion >= ProtocolVersionNumbers.V17w46a)    return 0x20;
-                else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x1F;
-                else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)    return 0x20;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w46a)    return 0x1F;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)    return 0x20;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a)    return 0x1F;
+               /*
+                * 1.13-pre7(389)
+                * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0E
+                * 1.13-pre4(386)
+                * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+                * 17w45a(343)
+                * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0A
+                * 17w31a(336)
+                * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0B
+                * 1.12-pre5(332)
+                * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+                * 17w13a(318)
+                * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+                * 15w43a(80)
+                * Changed ID of Keep Alive (serverbound) from 0x0A to 0x0B
+                * 15w36a(67)
+                * Changed ID of Keep Alive (serverbound) from 0x00 to 0x0A
+                */
+
+                if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x0E;
+                else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre4) return 0x0C;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w45a) return 0x0A;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w31a) return 0x0B;
+                else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x0C;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x0C;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x0B;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x0A;
                 else return 0x00;
             }
             else if (type == Client.ChatMessage)
@@ -146,33 +150,29 @@ namespace MinecraftProtocol.DataType
             }
             if (type == Server.KeepAlive)
             {
-                /*
-                 * 1.13-pre7(389)
-                 * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0E
-                 * 1.13-pre4(386)
-                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
-                 * 17w45a(343)
-                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0A
-                 * 17w31a(336)
-                 * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0B
-                 * 1.12-pre5(332)
-                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
-                 * 17w13a(318)
-                 * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
-                 * 15w43a(80)
-                 * Changed ID of Keep Alive (serverbound) from 0x0A to 0x0B
-                 * 15w36a(67)
-                 * Changed ID of Keep Alive (serverbound) from 0x00 to 0x0A
-                 */
-
-                if      (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x0E;
-                else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre4) return 0x0C;
-                else if (protocolVersion >= ProtocolVersionNumbers.V17w45a)    return 0x0A;
-                else if (protocolVersion >= ProtocolVersionNumbers.V17w31a)    return 0x0B;
-                else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x0C;
-                else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)    return 0x0C;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)    return 0x0B;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a)    return 0x0A;
+               /*
+                * 1.13-pre7(389)
+                * Changed ID of Keep Alive (clientbound) from 0x20 to 0x21
+                * 17w46a(345)
+                * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
+                * 1.12-pre5(332)
+                * Changed ID of Keep Alive (clientbound) from 0x20 to 0x1F
+                * 17w13a(318)
+                * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
+                * 15w46a(86)
+                * Changed ID of Keep Alive from 0x20 to 0x1F
+                * 15w43a(80)
+                * Changed ID of Keep Alive from 0x1F to 0x20
+                * 15w36a(67)
+                * Changed ID of Keep Alive from 0x00 to 0x1F
+                */
+                if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x21;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w46a) return 0x20;
+                else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x1F;
+                else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x20;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w46a) return 0x1F;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x20;
+                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x1F;
                 else return 0x00;
             }
             throw new Exception("Can not Get PacketID");
@@ -185,29 +185,7 @@ namespace MinecraftProtocol.DataType
         /// <returns>PacketType.Client or PacketType.Server or null</returns>
         public static object GetPacketType(Packet packet,int protocolVersion)
         {
-
-            if (packet.PacketID == GetPacketID(Server.LoginSuccess, protocolVersion))
-            {
-                //如果不是这个包的话,我这样读取会报错的,但是我还需要继续检测下去,所以直接这样做啦.
-                try
-                {
-                    //UUID:String(36)
-                    //PlayerName:String(16)
-                    Packet tmp = new Packet(packet.PacketID, packet.Data);
-                    string UUID = ProtocolHandler.ReadNextString(tmp.Data);
-                    string PlayerName = ProtocolHandler.ReadNextString(tmp.Data);
-                    if (UUID.Length == 36 && PlayerName.Length > 0 && PlayerName.Length <= 16)
-                        return Server.LoginSuccess;
-                }
-                catch { }
-
-            }
-            if (packet.PacketID == GetPacketID(Server.SetCompression,protocolVersion))
-            {
-                if (packet.Data.Count > 0 && packet.Data.Count <=5)
-                    return Server.SetCompression;
-                
-            }
+            //按照包的重复量或者重要性来排序(比如KeepAlive的优先级是最高的,登陆成功的信息这种放很后面都可以
             #region Keep Alive
             /*
             * 1.12.2-pre1, -pre2(339)
@@ -235,6 +213,30 @@ namespace MinecraftProtocol.DataType
                     return Server.KeepAlive;
             }
             #endregion
+
+            if (packet.PacketID == GetPacketID(Server.SetCompression, protocolVersion))
+            {
+                if (packet.Data.Count > 0 && packet.Data.Count <= 5)
+                    return Server.SetCompression;
+
+            }
+            if (packet.PacketID == GetPacketID(Server.LoginSuccess, protocolVersion))
+            {
+                //如果不是这个包的话,我这样读取会报错的,但是我还需要继续检测下去,所以直接这样做啦.
+                try
+                {
+                    //UUID:String(36)
+                    //PlayerName:String(16)
+                    Packet tmp = new Packet(packet.PacketID, packet.Data);
+                    string UUID = ProtocolHandler.ReadNextString(tmp.Data);
+                    string PlayerName = ProtocolHandler.ReadNextString(tmp.Data);
+                    if (UUID.Length == 36 && PlayerName.Length > 0 && PlayerName.Length <= 16)
+                        return Server.LoginSuccess;
+                }
+                catch { }
+
+            }
+
 
             return null;
         }

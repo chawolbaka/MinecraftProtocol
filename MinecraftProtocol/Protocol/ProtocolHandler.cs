@@ -214,7 +214,26 @@ namespace MinecraftProtocol.Protocol
                 Console.WriteLine($"public const int V{item.Key.Replace('.', '_').Replace('-', '_')} = {item.Value};");
             }
         }
-
+        public static Packet ReceivePacket(ConnectionPayload connectInfo)
+        {
+            //写这个方法的时候Data属性暂时改成了可写的,我当初是为了什么设置成只读的?
+            //先去睡觉了,醒来后想想看要不要改回去,为什么要只读这两个问题
+            Packet Packet_tmp = new Packet();
+            int PacketLength = ProtocolHandler.GetPacketLength(connectInfo.Session);
+            Packet_tmp.WriteBytes(ReceiveData(0, PacketLength, connectInfo.Session));
+            if (connectInfo.CompressionThreshold > 0)
+            {
+                int DataLength = ReadNextVarInt(Packet_tmp.Data);
+                if (DataLength != 0) //如果是0的话就代表这个数据包没有被压缩
+                {
+                    byte[] uncompressed = ZlibUtils.Decompress(Packet_tmp.Data.ToArray(), DataLength);
+                    Packet_tmp.Data.Clear();
+                    Packet_tmp.Data.AddRange(uncompressed);
+                }
+            }
+            Packet_tmp.PacketID = ReadNextVarInt(Packet_tmp.Data);
+            return Packet_tmp;
+        }
 
         #region ReadNext(DataType)
         /// <summary>

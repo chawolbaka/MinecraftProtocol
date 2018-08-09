@@ -41,7 +41,14 @@ namespace MinecraftProtocol.Protocol
             packet.PacketID = 0x00;
             info.Session.Client.Send(packet.GetPacket(info.CompressionThreshold));
         }
-
+        public static void LoginStart(string playerName,ConnectionPayload connect)
+        {
+            Packet LoginStartPacket = new Packet();
+            LoginStartPacket.PacketID = PacketType.GetPacketID(
+                PacketType.Client.LoginStart, connect.ProtocolVersion);
+            LoginStartPacket.WriteString(playerName);
+            connect.Session.Client.Send(LoginStartPacket.GetPacket(connect.CompressionThreshold));
+        }
 
         //加入游戏后的包
 
@@ -55,7 +62,7 @@ namespace MinecraftProtocol.Protocol
         public static void KeepAlive(List<byte> data, ConnectionPayload connection)
         {
             Packet packet = new Packet();
-            packet.WriteVarInt(ProtocolHandler.GetPacketOutgoingID(ProtocolHandler.PacketOutgoingType.KeepAlive,connection.ProtocolVersion));
+            packet.WriteVarInt(PacketType.GetPacketID(PacketType.Client.KeepAlive,connection.ProtocolVersion));
             packet.WriteBytes(data.ToArray());
             connection.Session.Client.Send(packet.GetPacket(connection.CompressionThreshold));
         }

@@ -21,9 +21,7 @@ namespace MinecraftProtocol.DataType
         /// <param name="password">如果不写的话就使用离线登陆</param>
         public void Join(string password=null)
         {
-            Login login = new Login(Connect.Session,null);
-            login.Handshake();
-            login.LoginStart(Name);
+
         }
     }
 }
