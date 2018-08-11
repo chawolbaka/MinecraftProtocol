@@ -44,20 +44,23 @@ namespace MinecraftProtocol.Utils
                     //我不确定这个会不会有什么严重的bug,所以现在暂时只在这边使用
                     
                     System.Net.NetworkInformation.PingException buff=null;
-                    long? LastTime=null;
+                    long? MinTime=null;
                     foreach (var ip in hostInfo.AddressList)
                     {
                         try
                         {
                             using (System.Net.NetworkInformation.Ping ping = new System.Net.NetworkInformation.Ping())
                             {
-                                var pingResulr = ping.Send(this.ServerIPAddress, 1000 * 10);
+                                var pingResulr = ping.Send(ip, 1000 * 10);
                                 if (pingResulr.Status == System.Net.NetworkInformation.IPStatus.Success)
                                 {
-                                    if (LastTime == null|| pingResulr.RoundtripTime < LastTime)
+                                    if (MinTime == null|| pingResulr.RoundtripTime < MinTime)
                                     {
-                                        LastTime = pingResulr.RoundtripTime;
+                                        MinTime = pingResulr.RoundtripTime;
                                         this.ServerIPAddress = ip.ToString();
+                                        //太多了的话就不一个个来检测了,只要找到一个能使用的就用这个吧
+                                        if (hostInfo.AddressList.Length > 16 && MinTime > 300 || hostInfo.AddressList.Length > 32)
+                                            break;
                                     }
                                     else
                                         continue;
@@ -71,14 +74,11 @@ namespace MinecraftProtocol.Utils
                             buff = e;
                             continue;
                         }
-                        finally
-                        {
-                            if (string.IsNullOrWhiteSpace(ServerIPAddress) && buff != null)
-                                throw buff;
-                            else if (string.IsNullOrWhiteSpace(ServerIPAddress) && buff == null)
-                                throw new Exception("DNS记录中没有可用的IP");
-                        }
                     }
+                    if (string.IsNullOrWhiteSpace(ServerIPAddress) && buff != null)
+                        throw buff;
+                    else if (string.IsNullOrWhiteSpace(ServerIPAddress) && buff == null)
+                        throw new Exception("DNS记录中没有可用的IP");
                 }
                 else
                     this.ServerIPAddress = hostInfo.AddressList[0].ToString();
