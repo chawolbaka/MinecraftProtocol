@@ -14,6 +14,7 @@ namespace MinecraftProtocol.DataType
         /// 把一个int转换成Varint
         /// </summary>
         public static byte[] Convert(int integer) => Write(integer);
+        public static byte[] ToVarInt(this int self) => Write(self);
 
         /// <summary>
         /// 把int转换为VarInt

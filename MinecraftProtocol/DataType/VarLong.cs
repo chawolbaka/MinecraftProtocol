@@ -4,10 +4,12 @@ using System.Text;
 
 namespace MinecraftProtocol.DataType
 {
-    public class VarLong
+    public static class VarLong
     {
+
         public static long Convert(byte[] varLong)=>Read(varLong);
         public static byte[] Convert(long value) => Write(value);
+        public static byte[] ToVarLong(this long self) => Write(self);
 
         public static long Read(List<byte> value) => Read(value.ToArray(), out int refuse);
         public static long Read(byte[] value) => Read(value, out int refuse);
@@ -43,5 +45,6 @@ namespace MinecraftProtocol.DataType
             } while (value != 0);
             return bytes.ToArray();
         }
+
     }
 }
