@@ -6,32 +6,6 @@ namespace MinecraftProtocol.DataType
 {
     public static class VarInt
     {
-        
-    //    private byte[] _data;
-    //    public int Length { get { return _data.Length; } }
-
-    //    /// <summary>
-    //    /// 
-    //    /// </summary>
-    //    /// <param name="integer">这个参数里面的数字会被转换成Varint</param>
-    //    public VarInt(int integer)
-    //    {
-    //        this._data = Write(integer);
-    //    }
-    //    /// <summary>
-    //    /// 把VarInt转换成int32
-    //    /// </summary>
-    //    public int ToInt() => Read(this._data);
-    //    /// <summary>
-    //    /// 获取Varint的字节数组
-    //    /// </summary>
-    //    /// <returns></returns>
-    //    public byte[] GetBytes() => this._data;
-
-    //    /// <summary>
-    //    /// 把一个VarInt转换成int32
-    //    /// </summary>
-    //    public static int Convert(VarInt varInt) => Read(varInt.GetBytes());
         /// <summary>
         /// 把一个VarInt转换成int32
         /// </summary>
