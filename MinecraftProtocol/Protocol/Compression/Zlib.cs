@@ -263,7 +263,7 @@ namespace Ionic.Zlib
     /// A general purpose exception class for exceptions in the Zlib library.
     /// </summary>
     [Interop.GuidAttribute("ebc25cf6-9120-4283-b972-0e5520d0000E")]
-    public class ZlibException : System.Exception
+    internal class ZlibException : System.Exception
     {
         /// <summary>
         /// The ZlibException class captures exception information generated
