@@ -2,8 +2,10 @@
 这个项目是给我的其它软件使用的,所以不会有完整的版本兼容,不会支持所以包。
 我其它的软件用到了什么就去研究那部分要怎么写,如果发现写不出来就暂时放置写点其它的试试看。  
   
-所以不会去实现完整的MC协议,如果需要使用完整的,兼容性好的请去找其它的,这个写的非常辣鸡！！ 
-(QAQ所以如果你不小心搜到了不要来看的代码,写的太辣鸡了)
+所以不会去实现完整的MC协议,如果需要使用完整的,兼容性好的请去找其它的,这个写的非常辣鸡！！  
+(QAQ所以如果你不小心搜到了不要来看的代码,写的太辣鸡了)  
+  
+ps:不会排版，英文完全不会，C#只学了一点点(真的非常少,摸鱼非常严重)
 
 ### Building
 [安装.Net Core SDK 2.1](https://www.microsoft.com/net/download/dotnet-core/2.1 "安装.Net Core SDK 2.1")
@@ -28,5 +30,3 @@ http://dotnetzip.codeplex.com
 ### 参考资料
 https://wiki.vg/Protocol  
 https://github.com/bangbang93/minecraft-protocol   
-  
-在结尾偷偷补充一下 我的英文非常差,C#也是只学了一点点。
