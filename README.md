@@ -1,6 +1,9 @@
-# PlayersMonitor
-QAQ不要看这个项目的代码,写的太辣鸡了。 
-这是我为了学习一下怎么使用git所以丢github上来试试看的(不过应该不会删除,感觉git好好用呀,可以随便删代码啦qwq)
+# Minecraft Protocol
+这个项目是给我的其它软件使用的,所以不会有完整的版本兼容,不会支持所以包。
+我其它的软件用到了什么就去研究那部分要怎么写,如果发现写不出来就暂时放置写点其它的试试看。  
+  
+所以不会去实现完整的MC协议,如果需要使用完整的,兼容性好的请去找其它的,这个写的非常辣鸡！！ 
+(QAQ所以如果你不小心搜到了不要来看的代码,写的太辣鸡了)
 
 ### Building
 [安装.Net Core SDK 2.1](https://www.microsoft.com/net/download/dotnet-core/2.1 "安装.Net Core SDK 2.1")
@@ -24,4 +27,6 @@ http://dotnetzip.codeplex.com
 (数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个项目里面的代码,不知道是不是上面那个)
 ### 参考资料
 https://wiki.vg/Protocol  
-https://github.com/bangbang93/minecraft-protocol  
+https://github.com/bangbang93/minecraft-protocol   
+  
+在结尾偷偷补充一下 我的英文非常差,C#也是只学了一点点。
