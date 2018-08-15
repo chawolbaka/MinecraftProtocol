@@ -6,15 +6,17 @@ namespace MinecraftProtocol.DataType
 {
     public static class VarLong
     {
-
         public static long Convert(byte[] varLong)=>Read(varLong);
         public static byte[] Convert(long value) => Write(value);
         public static byte[] ToVarLong(this long self) => Write(self);
+        public static byte[] ToVarLong(this long? self) => Write(self);
 
         public static long Read(List<byte> value) => Read(value.ToArray(), out int refuse);
         public static long Read(byte[] value) => Read(value, out int refuse);
         public static long Read(byte[] value,out int endIndex)
         {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
             long result = 0;
             byte index = 0;
             do
@@ -45,6 +47,5 @@ namespace MinecraftProtocol.DataType
             } while (value != 0);
             return bytes.ToArray();
         }
-
     }
 }

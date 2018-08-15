@@ -1,9 +1,7 @@
-﻿using MinecraftProtocol.DataType;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
+﻿using System;
 using System.Text;
+using System.Collections.Generic;
+using MinecraftProtocol.DataType;
 
 namespace MinecraftProtocol.Protocol
 {
@@ -46,13 +44,14 @@ namespace MinecraftProtocol.Protocol
         }
 
         /// <summary>
-        /// 获取完整的包
+        /// 获取可以用于发送的完整包
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
         /// <returns></returns>
         public byte[] GetPacket(int compress=-1)
         {
-            byte[] tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(_PacketID), this.Data.ToArray());
+            _PacketID = null;
+            byte[] tmp_packet = ProtocolHandler.ConcatBytes(_PacketID.ToVarInt(), this.Data.ToArray());
             if (compress > 0)
             {
                 if (this.Data.Count >= compress)
@@ -145,6 +144,5 @@ namespace MinecraftProtocol.Protocol
                 Data.Add(item);
             }
         }
-
     }
 }

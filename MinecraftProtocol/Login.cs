@@ -20,7 +20,7 @@ namespace MinecraftProtocol
             PingReply ReplyInfo = new Utils.Ping(IPAndPort).Send();
 
             ConnectionPayload Connect = new ConnectionPayload();
-            Connect.Session = tcpClient;
+            Connect.Session = tcpClient != null ? tcpClient : throw new ArgumentNullException("tcpClient");
             Connect.ProtocolVersion = ReplyInfo.Version.Protocol;
 
             SendPacket.Handshake(IPAndPort.Address.ToString(),(ushort)IPAndPort.Port, ReplyInfo.Version.Protocol,2,Connect);

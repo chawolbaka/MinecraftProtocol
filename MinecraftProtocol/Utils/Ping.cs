@@ -7,10 +7,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol;
+using System.Diagnostics;
 
 namespace MinecraftProtocol.Utils
 {
-    public class Ping:ServerBasePayload
+    public class Ping
     {
         /* 
          * Support Version:1.7 - 1.12.2
@@ -18,8 +19,15 @@ namespace MinecraftProtocol.Utils
          * http://wiki.vg/Server_List_Ping
          * https://gist.github.com/csh/2480d14fbbb33b4bbae3
         */
+
+
+        public string ServerIP { get; set; }
+        
+        public ushort ServerPort { get; set; }
+
         private string JsonResult;
-        private ConnectionPayload ConnectInfo = new ConnectionPayload();
+        private ConnectionPayload Connect = new ConnectionPayload();
+
         /// <summary>
         /// Not Support Legacy Ping(https://wiki.vg/Server_List_Ping#1.6)
         /// </summary>
@@ -33,7 +41,10 @@ namespace MinecraftProtocol.Utils
         public Ping(string host, ushort port,bool UseDnsRoundRobin=true)
         {
             if (string.IsNullOrWhiteSpace(host))
-                throw new ArgumentNullException("Parameter \"host\" is null or WhiteSpace");
+                throw new ArgumentNullException("host");
+            if (port == 0)
+                throw new ArgumentOutOfRangeException("port","0", "port 0 is not allowed");
+
             if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)//域名的正则我写不出来...(这个都是抄来的)
             {
                 IPHostEntry hostInfo = Dns.GetHostEntry(host);
@@ -57,7 +68,7 @@ namespace MinecraftProtocol.Utils
                                     if (MinTime == null|| pingResulr.RoundtripTime < MinTime)
                                     {
                                         MinTime = pingResulr.RoundtripTime;
-                                        this.ServerIPAddress = ip.ToString();
+                                        this.ServerIP = ip.ToString();
                                         //太多了的话就不一个个来检测了,只要找到一个能使用的就用这个吧
                                         if (hostInfo.AddressList.Length > 16 && MinTime > 300 || hostInfo.AddressList.Length > 32)
                                             break;
@@ -75,43 +86,42 @@ namespace MinecraftProtocol.Utils
                             continue;
                         }
                     }
-                    if (string.IsNullOrWhiteSpace(ServerIPAddress) && buff != null)
+                    if (string.IsNullOrWhiteSpace(ServerIP) && buff != null)
                         throw buff;
-                    else if (string.IsNullOrWhiteSpace(ServerIPAddress) && buff == null)
+                    else if (string.IsNullOrWhiteSpace(ServerIP) && buff == null)
                         throw new Exception("DNS记录中没有可用的IP");
                 }
                 else
-                    this.ServerIPAddress = hostInfo.AddressList[0].ToString();
+                    this.ServerIP = hostInfo.AddressList[0].ToString();
             }
             else
-                this.ServerIPAddress = host;
+                this.ServerIP = host;
             this.ServerPort = port;
         }
         public Ping(IPEndPoint IP, bool UseDnsRoundRobin = true) :this(IP.Address.ToString(), (ushort) IP.Port, UseDnsRoundRobin)
         { }
         public PingReply Send()
         {
-            
-            ConnectInfo.Session = new System.Net.Sockets.TcpClient();
-            ConnectInfo.Session.Connect(this.ServerIPAddress, this.ServerPort);
+            Connect.Session = new System.Net.Sockets.TcpClient();
+            Connect.Session.Connect(this.ServerIP, this.ServerPort);
             //Send Ping Packet
-            SendPacket.Handshake(this.ServerIPAddress, this.ServerPort, -1, 1, ConnectInfo);
-            SendPacket.PingRequest(ConnectInfo);
+            SendPacket.Handshake(this.ServerIP, this.ServerPort, -1, 1, Connect);
+            SendPacket.PingRequest(Connect);
             //Receive Packet
-            int PacketLength = ProtocolHandler.GetPacketLength(ConnectInfo.Session);
+            int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
             if (PacketLength > 0)
             {
-                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength,ConnectInfo.Session));
+                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength,Connect.Session));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
                 PingReply tmp =  ResolveJson(this.JsonResult);
                 tmp.Time = GetTime();
-                ConnectInfo.Session.Dispose();
-                ConnectInfo.Session.Close();
+                Connect.Session.Dispose();
+                Connect.Session.Close();
                 return tmp;
             }
             else
-                throw new Exception("Response Packet Length too Small (<=0) ");
+                throw new Exception($"Response Packet Length too Small (PacketLength:{PacketLength})");
         }
         public static PingReply ResolveJson(string json)
         {
@@ -127,7 +137,7 @@ namespace MinecraftProtocol.Utils
         private long? GetTime()
         {
             long? Time = 0;
-            if (ConnectInfo != null)
+            if (Connect != null)
             {
                 //http://wiki.vg/Server_List_Ping#Ping
                 int code = new Random().Next(1, 25565);
@@ -135,29 +145,38 @@ namespace MinecraftProtocol.Utils
                 RequestPacket.PacketID = 0x01;
                 RequestPacket.WriteLong(code);
                 DateTime TmpTime = DateTime.Now;
-                ConnectInfo.Session.Client.Send(RequestPacket.GetPacket());
+                Connect.Session.Client.Send(RequestPacket.GetPacket());
 
                 //http://wiki.vg/Server_List_Ping#Pong
-                int PacketLenght = ProtocolHandler.GetPacketLength(ConnectInfo.Session);
+                int PacketLenght = ProtocolHandler.GetPacketLength(Connect.Session);
                 Time = DateTime.Now.Ticks - TmpTime.Ticks;
                 List<byte> ResponesPacket = new List<byte>(
-                    ProtocolHandler.ReceiveData(0, PacketLenght, ConnectInfo.Session));
+                    ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session));
 
                 //校验
-                try
-                {
+                try {
                     if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
                         return null;
                     if (ResponesPacket.Count != 8 && ProtocolHandler.ReadNextLong(ResponesPacket) != code)
                         return null;
                 }
                 catch {
-                    return null;
-                } //因为这个不是关键参数,读不到就读不到吧.不能因为拿不到延迟就导致拿不到其它数据了
+
+#if DEBUG
+                    throw;
+#else
+                    return null;//在正式发布的时候不能因为获取延迟时发生异常就影响到整个程序的运行
+#endif
+                    
+                } 
             }
             else throw new NullReferenceException("Do You Used Method \"Send\"?");
             return Time;
         }
+
+        /// <summary>
+        /// Return Json(if it exists)
+        /// </summary>
         public override string ToString()
         {
             if (!string.IsNullOrWhiteSpace(JsonResult))

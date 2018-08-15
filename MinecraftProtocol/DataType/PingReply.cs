@@ -19,16 +19,16 @@ namespace MinecraftProtocol.DataType
         public string Motd { get; set; }
 
         [JsonProperty(PropertyName = "modinfo")]
-        public ForgePayLoad ModInfo { get; set; }
+        public ForgePayLoad Forge { get; set; }
 
         [JsonProperty(PropertyName = "favicon")]
         public string Icon { get; set; }
 
         /// <summary>
         /// 单位:微秒(Microsecond)
-        /// 精度:中等?(不是ICMP的Ping,具体的可以看那部分的代码)
-        /// null:校验失败
+        /// null:校验失败or发生了异常(非DEBUG模式下异常会被直接丢弃)
         /// </summary>
+        [JsonIgnore]
         public long? Time { get; set; }
 
         public class ForgePayLoad
@@ -59,9 +59,9 @@ namespace MinecraftProtocol.DataType
             /// 玩家列表的样品,最大数量是12(随机12个)
             /// </summary>
             [JsonProperty(PropertyName = "sample")]
-            public List<PlayerSamplePayload> Samples { get; set; }
+            public List<PlayerSample> Samples { get; set; }
         }
-        public class PlayerSamplePayload
+        public class PlayerSample
         {
             [JsonProperty(PropertyName = "name")]
             public string Name { get; set; }
