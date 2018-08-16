@@ -125,14 +125,25 @@ namespace MinecraftProtocol.Utils
         }
         public static PingReply ResolveJson(string json)
         {
-            PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
-            //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
-            var Description = JObject.Parse(json)["description"];
-            if (Description.HasValues == false)
-                result.Motd = Description.ToString();
-            else
-                result.Motd = Description["text"].ToString();
-            return result;
+            try
+            {
+                PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
+
+                //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
+                var Description = JObject.Parse(json)["description"];
+                if (Description.HasValues == false)
+                    result.Motd = Description.ToString();
+                else
+                    result.Motd = Description["text"].ToString();
+                return result;
+            }
+            catch (Exception)
+            {
+                if (json.Contains("translate"))
+                    throw new JsonReaderException($"The Server did not give a correct json");
+                throw;
+            }
+
         }
         private long? GetTime()
         {

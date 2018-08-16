@@ -50,7 +50,6 @@ namespace MinecraftProtocol.Protocol
         /// <returns></returns>
         public byte[] GetPacket(int compress=-1)
         {
-            _PacketID = null;
             byte[] tmp_packet = ProtocolHandler.ConcatBytes(_PacketID.ToVarInt(), this.Data.ToArray());
             if (compress > 0)
             {
