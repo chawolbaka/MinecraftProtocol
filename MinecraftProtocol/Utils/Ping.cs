@@ -22,8 +22,8 @@ namespace MinecraftProtocol.Utils
 
 
         public string ServerIP { get; set; }
-        
         public ushort ServerPort { get; set; }
+        public int? Timeout { get; set; } = null;
 
         private string JsonResult;
         private ConnectionPayload Connect = new ConnectionPayload();
@@ -108,6 +108,9 @@ namespace MinecraftProtocol.Utils
             SendPacket.Handshake(this.ServerIP, this.ServerPort, -1, 1, Connect);
             SendPacket.PingRequest(Connect);
             //Receive Packet
+            if (Timeout != null)
+                Connect.Session.ReceiveTimeout = (int)Timeout;
+
             int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
             if (PacketLength > 0)
             {
@@ -148,6 +151,8 @@ namespace MinecraftProtocol.Utils
         private long? GetTime()
         {
             long? Time = 0;
+            int tmp = Connect.Session.ReceiveTimeout;
+            Connect.Session.ReceiveTimeout = Timeout==null? 3000 :(int)Timeout;
             if (Connect != null)
             {
                 //http://wiki.vg/Server_List_Ping#Ping
@@ -176,10 +181,11 @@ namespace MinecraftProtocol.Utils
 #if DEBUG
                     throw;
 #else
+                    Connect.Session.ReceiveTimeout = tmp;
                     return null;//在正式发布的时候不能因为获取延迟时发生异常就影响到整个程序的运行
 #endif
-                    
-                } 
+
+                }
             }
             else throw new NullReferenceException("Do You Used Method \"Send\"?");
             return Time;
