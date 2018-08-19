@@ -12,12 +12,8 @@ ps:不会排版，英文完全不会，C#只学了一点点(真的非常少,摸�
 
     git clone https://github.com/chawolbaka/PlayersMonitor.git
     cd MinecraftProtocol\PlayersMonitor
-    sudo dotnet publish -c Release -r win-x86
-编译好后你可以在: bin\Release\netcoreapp2.1\win-x86\publish 里找到"PlayersMonitor.exe"  
-(其它文件无法删除,如果需要单文件编译请使用:https://github.com/dotnet/corert)
-
-其它平台的编译请参考这个文档，将 -r 后面的参数改成对应平台的id.  
-https://docs.microsoft.com/en-us/dotnet/core/rid-catalog  
+    sudo dotnet publish -c Release
+编译好后你可以在: bin\Release\netcoreapp2.1\publish 里面找到文件
 
 ## 抄袭项目
 https://github.com/Nsiso/MinecraftOutClient  

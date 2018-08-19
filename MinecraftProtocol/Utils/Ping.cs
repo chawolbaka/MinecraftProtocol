@@ -25,6 +25,8 @@ namespace MinecraftProtocol.Utils
         public ushort ServerPort { get; set; }
         public int? Timeout { get; set; } = null;
 
+        //time out tick for GetTime();
+        private int TIMEOUT_TICK_GET_TIME = 0;
         private string JsonResult;
         private ConnectionPayload Connect = new ConnectionPayload();
 
@@ -151,26 +153,34 @@ namespace MinecraftProtocol.Utils
         private long? GetTime()
         {
             long? Time = 0;
-            int tmp = Connect.Session.ReceiveTimeout;
-            Connect.Session.ReceiveTimeout = Timeout==null? 3000 :(int)Timeout;
+            //QAQ do not look this
+            if (TIMEOUT_TICK_GET_TIME != 0 && 3000 / TIMEOUT_TICK_GET_TIME <= 0)
+                return null;
+            else if (TIMEOUT_TICK_GET_TIME != 0)
+                Connect.Session.ReceiveTimeout = Timeout == null ? 3000 / TIMEOUT_TICK_GET_TIME : (int)Timeout;           
+            else if (TIMEOUT_TICK_GET_TIME == 0)
+                Connect.Session.ReceiveTimeout = Timeout == null ? 3000 : (int)Timeout;
+            
+
             if (Connect != null)
             {
-                //http://wiki.vg/Server_List_Ping#Ping
-                int code = new Random().Next(1, 25565);
-                Packet RequestPacket = new Packet();
-                RequestPacket.PacketID = 0x01;
-                RequestPacket.WriteLong(code);
-                DateTime TmpTime = DateTime.Now;
-                Connect.Session.Client.Send(RequestPacket.GetPacket());
-
-                //http://wiki.vg/Server_List_Ping#Pong
-                int PacketLenght = ProtocolHandler.GetPacketLength(Connect.Session);
-                Time = DateTime.Now.Ticks - TmpTime.Ticks;
-                List<byte> ResponesPacket = new List<byte>(
-                    ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session));
-
-                //校验
                 try {
+                    //http://wiki.vg/Server_List_Ping#Ping
+                    int code = new Random().Next(1, 25565);
+                    Packet RequestPacket = new Packet();
+                    RequestPacket.PacketID = 0x01;
+                    RequestPacket.WriteLong(code);
+                    DateTime TmpTime = DateTime.Now;
+                    Connect.Session.Client.Send(RequestPacket.GetPacket());
+
+                    //http://wiki.vg/Server_List_Ping#Pong
+                    int PacketLenght = ProtocolHandler.GetPacketLength(Connect.Session);
+                    Time = DateTime.Now.Ticks - TmpTime.Ticks;
+                    List<byte> ResponesPacket = new List<byte>(
+                        ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session));
+
+
+                    //校验
                     if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
                         return null;
                     if (ResponesPacket.Count != 8 && ProtocolHandler.ReadNextLong(ResponesPacket) != code)
@@ -181,7 +191,7 @@ namespace MinecraftProtocol.Utils
 #if DEBUG
                     throw;
 #else
-                    Connect.Session.ReceiveTimeout = tmp;
+                    TIMEOUT_TICK_GET_TIME++;
                     return null;//在正式发布的时候不能因为获取延迟时发生异常就影响到整个程序的运行
 #endif
 
