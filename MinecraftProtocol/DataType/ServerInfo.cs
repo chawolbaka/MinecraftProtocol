@@ -18,7 +18,7 @@ namespace MinecraftProtocol.DataType
             int protocolVersion,
             string serverVersion,
             string motd,
-            List<PlayerInfo> onlinePlayers,
+            List<Player> onlinePlayers,
             byte[] icon
             )
         {
@@ -67,7 +67,7 @@ namespace MinecraftProtocol.DataType
         /// <summary>
         /// 服务器在线玩家的uuid,name（如果可用）
         /// </summary>
-        public List<PlayerInfo> OnlinePlayers { get; protected set; }
+        public List<Player> OnlinePlayers { get; protected set; }
         public byte[] Icon { get; protected set; }
 
         /// <summary>

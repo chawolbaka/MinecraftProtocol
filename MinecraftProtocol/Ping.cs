@@ -90,9 +90,9 @@ namespace MinecraftProtocol
         /// 仅解析玩家列表
         /// </summary>
         /// <returns></returns>
-        public List<PlayerInfo> GetPlayers()
+        public List<Player> GetPlayers()
         {
-            List<PlayerInfo> players = new List<PlayerInfo>();
+            List<Player> players = new List<Player>();
 
             int Packet_Lenght = ProtocolHandler.GetPacketLength(this.tcp);
             if (Packet_Lenght > 0)
@@ -107,12 +107,12 @@ namespace MinecraftProtocol
                     Json.JsonData playerData = jsonData.Properties["players"];
                     if (playerData.Properties.ContainsKey("sample"))
                     {
-                        this.OnlinePlayers = new List<PlayerInfo>();
+                        this.OnlinePlayers = new List<Player>();
                         foreach (Json.JsonData name in playerData.Properties["sample"].DataArray)
                         {
                             string playerUUID = name.Properties["id"].StringValue;
                             string playerName = name.Properties["name"].StringValue;
-                            players.Add(new PlayerInfo(playerName,playerUUID));
+                            players.Add(new Player(playerName, Guid.Parse(playerUUID)));
                         }
                     }
                 }
@@ -143,12 +143,12 @@ namespace MinecraftProtocol
                         this.CurrentPlayerCount = int.Parse(playerData.Properties["online"].StringValue);
                     if (playerData.Properties.ContainsKey("sample"))
                     {
-                        this.OnlinePlayers = new List<PlayerInfo>();
+                        this.OnlinePlayers = new List<Player>();
                         foreach (Json.JsonData name in playerData.Properties["sample"].DataArray)
                         {
                             string playerUUID = name.Properties["id"].StringValue;
                             string playerName = name.Properties["name"].StringValue;
-                            this.OnlinePlayers.Add(new PlayerInfo(playerUUID,playerName));
+                            this.OnlinePlayers.Add(new Player(playerName, Guid.Parse(playerUUID)));
                         }
                     }
                 }

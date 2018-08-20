@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Utils
     {
         public string HostName { get; }
         public ushort Port { get; }
-        public PlayerEntity Player { get;}
+        public Player Player { get;}
         //添加一个接收到包的事件
         private PingReply PingPayload;
         private ConnectionPayload ConnectionInfo = new ConnectionPayload();
