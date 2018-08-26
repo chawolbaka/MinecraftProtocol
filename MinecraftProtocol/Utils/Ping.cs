@@ -25,7 +25,7 @@ namespace MinecraftProtocol.Utils
         public ushort ServerPort { get; set; }
         public int? Timeout { get; set; } = null;
 
-        //time out tick for GetTime();
+        //timeout count for method GetTime();
         private int TIMEOUT_TICK_GET_TIME = 0;
         private string JsonResult;
         private ConnectionPayload Connect = new ConnectionPayload();
@@ -119,17 +119,23 @@ namespace MinecraftProtocol.Utils
                 List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength,Connect.Session));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
-                PingReply tmp =  ResolveJson(this.JsonResult);
-                tmp.Time = GetTime();
+                if (!string.IsNullOrWhiteSpace(JsonResult))
+                {
+                    PingReply tmp = ResolveJson(JsonResult);
+                    tmp.Time = GetTime();
+                    return tmp;
+                }
                 Connect.Session.Dispose();
                 Connect.Session.Close();
-                return tmp;
+                return null;
             }
             else
                 throw new Exception($"Response Packet Length too Small (PacketLength:{PacketLength})");
         }
         public static PingReply ResolveJson(string json)
         {
+            if (string.IsNullOrWhiteSpace(json))
+                throw new ArgumentNullException(json);
             try
             {
                 PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
@@ -144,9 +150,11 @@ namespace MinecraftProtocol.Utils
             }
             catch (Exception)
             {
+                //我是不是不该处理这个异常??
                 if (json.Contains("translate"))
                     throw new JsonReaderException($"The Server did not give a correct json");
-                throw;
+                else
+                    throw;
             }
 
         }
