@@ -100,8 +100,12 @@ namespace MinecraftProtocol.Utils
                 this.ServerIP = host;
             this.ServerPort = port;
         }
-        public Ping(IPEndPoint IP, bool UseDnsRoundRobin = true) :this(IP.Address.ToString(), (ushort) IP.Port, UseDnsRoundRobin)
-        { }
+        public Ping(IPAddress serverIP, ushort serverPort)
+        {
+            this.ServerIP = serverIP.ToString();
+            this.ServerPort = serverPort;
+        }
+
         public PingReply Send()
         {
             Connect.Session = new System.Net.Sockets.TcpClient();
@@ -125,7 +129,7 @@ namespace MinecraftProtocol.Utils
                     tmp.Time = GetTime();
                     return tmp;
                 }
-                Connect.Session.Dispose();
+                Connect.Session.Client.Dispose();
                 Connect.Session.Close();
                 return null;
             }
@@ -136,16 +140,20 @@ namespace MinecraftProtocol.Utils
         {
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentNullException(json);
+
             try
             {
                 PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
 
                 //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
-                var Description = JObject.Parse(json)["description"];
-                if (Description.HasValues == false)
-                    result.Motd = Description.ToString();
-                else
-                    result.Motd = Description["text"].ToString();
+                if (JObject.Parse(json).ContainsKey("description"))
+                {
+                    var Description = JObject.Parse(json)["description"];
+                    if (Description.HasValues)
+                        result.Motd = Description["text"].ToString();
+                    else
+                        result.Motd = Description.ToString();
+                }
                 return result;
             }
             catch (Exception)
