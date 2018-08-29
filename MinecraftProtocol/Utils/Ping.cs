@@ -105,6 +105,11 @@ namespace MinecraftProtocol.Utils
             this.ServerIP = serverIP.ToString();
             this.ServerPort = serverPort;
         }
+        public Ping (IPEndPoint ipEndPoint)
+        {
+            this.ServerIP = ipEndPoint.Address.ToString();
+            this.ServerPort =  (ushort)ipEndPoint.Port;
+        }
 
         public PingReply Send()
         {
