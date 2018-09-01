@@ -1,7 +1,6 @@
 ﻿using MinecraftProtocol.DataType;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -12,121 +11,6 @@ namespace MinecraftProtocol.Protocol
 {
     public static class ProtocolHandler
     {
-        public const int MC17w45a = 343;
-        /// <summary>
-        /// 1.12.2
-        /// </summary>
-        public const int MC1122_ProtocolVersion = 340;
-        public const int MC17w31a = 336;
-        /// <summary>
-        /// 1.9.0 to 1.9.1-pre1
-        /// </summary>
-        public const int MC19_ProtocolVersion = 107;
-        /// <summary>
-        /// 15w36a
-        /// </summary>
-        public const int MC15w36a_ProtocolVersion = 340;
-        /// <summary>
-        /// 1.8-1.8.9
-        /// </summary>
-        public const int MC18_189_ProtocolVersion = 47;
-
-        public enum PacketIncomingType
-        {
-            KeepAlive,
-            LoginSuccess,
-            Unknown
-        }
-        public enum PacketOutgoingType
-        {
-            KeepAlive,
-            ChatMessage,
-            Unknown
-        }
-        public static int GetPacketID(PacketIncomingType packetType, int protocolVersion) => GetPacketIncomingID(packetType, protocolVersion);
-        public static int GetPacketID(PacketOutgoingType packetType, int protocolVersion) => GetPacketOutgoingID(packetType, protocolVersion);
-        public static int GetPacketIncomingID(PacketIncomingType packetType,int protocolVersion)
-        {
-            if (protocolVersion == MC1122_ProtocolVersion)
-            {
-                switch (packetType)
-                {
-                    case PacketIncomingType.KeepAlive: return 0x1F;
-                    case PacketIncomingType.LoginSuccess: return 0x02;
-                    default: break;
-                }
-            }
-            else if (protocolVersion<= ProtocolVersionNumbers.V1_8)
-            {
-                switch (packetType)
-                {
-                    case PacketIncomingType.KeepAlive: return 0x00;
-                    default: break;
-                }
-            }
-            return -1;
-        }
-        public static int GetPacketOutgoingID(PacketOutgoingType packetType, int protocolVersion)
-        {
-            if (protocolVersion == MC1122_ProtocolVersion)
-            {
-                switch (packetType)
-                {
-                    case PacketOutgoingType.KeepAlive: return 0x0B;
-                    default: break;
-                }
-            }
-            else if (protocolVersion <= MC18_189_ProtocolVersion)
-            {
-                switch (packetType)
-                {
-                    case PacketOutgoingType.KeepAlive: return 0x00;
-                    default: break;
-                }
-            }
-            if (packetType == PacketOutgoingType.ChatMessage)
-            {
-                /*
-                 * 17w45a(343)
-                 *Changed ID of Chat Message (serverbound) from 0x02 to 0x01
-                 * 17w31a(336)
-                 * Changed ID of Chat Message (serverbound) from 0x03 to 0x02
-                 * 1.12-pre5(332)
-                 * Changed ID of Chat Message (serverbound) from 0x02 to 0x03
-                 * 17w13a(318)
-                 * Changed ID of Chat Message (serverbound) changed from 0x02 to 0x03
-                 * 16w38a(306)
-                 * Max length for Chat Message (serverbound) (0x02) changed from 100 to 256.
-                 * 15w43a(80)
-                 * Changed ID of Chat Message from 0x01 to 0x02
-                 * 80Ago
-                 * 0x01
-                 */
-                if (protocolVersion >= ProtocolVersionNumbers.V17w45a) return 0x01;
-                else if (protocolVersion >= ProtocolVersionNumbers.V17w31a) return 0x02;
-                else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x03;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x02;
-                else return 0x01;
-            }
-            return -1;
-        }
-        public static PacketIncomingType GetPackeType(int packetID,int dataLength,int protocolVersion)
-        {
-            if (packetID == GetPacketID(PacketIncomingType.KeepAlive,protocolVersion))
-            {
-                if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && dataLength == 8) return PacketIncomingType.KeepAlive;
-                else if (protocolVersion < ProtocolVersionNumbers.V1_12_2_pre1 && dataLength > 0 && dataLength <= 5) return PacketIncomingType.KeepAlive;
-            }
-            if (packetID == GetPacketID(PacketIncomingType.LoginSuccess,protocolVersion))
-            {
-                //UUID:String(36)
-                //PlayerName:String(16)
-                //UUIDLength = 28(字母和数字占1个字符) + 8(符号占2个字符) + 1;
-                //玩家名长度,UTF-8好像一个字最多占4个字符,所以最大字节数我就设成16*4了(最小的是1个字符,然后加上前面那个标识string长度的varint的字节数)
-                if (dataLength >= 37 + 2 && dataLength <= 4 * 16 + 38) return PacketIncomingType.LoginSuccess;
-            }
-            return PacketIncomingType.Unknown;
-        }
         /// <summary>
         /// 获取包的长度
         /// </summary>
@@ -147,21 +31,68 @@ namespace MinecraftProtocol.Protocol
             return length;
         }
         /// <summary>
-        /// 从TCP在协议栈里面的缓存中取出数据
+        /// 获取包的长度
         /// </summary>
-        /// <param name="buffer">取出来的包</param>
-        /// <param name="start">从x开始读取</param>
-        /// <param name="offset">读取到x结束</param>
-        /// <param name="flags"></param>
-        /// <param name="tcp"></param>
-        /// <returns>错误码</returns>
-        public static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, TcpClient tcp)
+        /// <returns>长度(-1=Timeout)</returns>
+        public static int GetPacketLength(ConnectionPayload connectInfo) => GetPacketLength(connectInfo.Session);
+        /// <summary>
+        /// 通过包的id&data加上协议号来分析出是什么类型的包(这是一个低效率的方法,不推荐使用这个方法)
+        /// 如果无法分析出是什么类型的话会返回null
+        /// </summary>
+        /// <returns>PacketType.Client or PacketType.Server or null</returns>
+        public static object GetPacketType(Packet packet, int protocolVersion)
         {
-            int read = 0;
-            while (read < offset)
+            //按照包的重复量或者重要性来排序(比如KeepAlive的优先级是最高的,登陆成功的信息这种放很后面都可以
+            #region Keep Alive
+            /*
+            * 1.12.2-pre1, -pre2(339)
+            * Changed parameters in Keep Alive (clientbound - 0x1F) and Keep Alive (serverbound - 0x0B) from VarInts to longs.
+            * 14w31a
+            * Changed the type of Keep Alive ID from Int to VarInt (Clientbound)
+            */
+            if (packet.PacketID == PacketType.GetPacketID(PacketType.Client.KeepAlive, protocolVersion))
             {
-                    read += tcp.Client.Receive(buffer, start + read, offset - read, flags);
+                if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
+                    return PacketType.Client.KeepAlive;
+                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
+                    return PacketType.Client.KeepAlive;
+                else if (packet.Data.Count == 4)
+                    return PacketType.Client.KeepAlive;
             }
+            if (packet.PacketID == PacketType.GetPacketID(PacketType.Server.KeepAlive, protocolVersion))
+            {
+
+                if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
+                    return PacketType.Server.KeepAlive;
+                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
+                    return PacketType.Server.KeepAlive;
+                else if (packet.Data.Count == 4)
+                    return PacketType.Server.KeepAlive;
+            }
+            #endregion
+
+            if (packet.PacketID == PacketType.GetPacketID(PacketType.Server.SetCompression, protocolVersion))
+            {
+                if (packet.Data.Count <= 5 && packet.Data.Count > 0)
+                    return PacketType.Server.SetCompression;
+
+            }
+            if (packet.PacketID == PacketType.GetPacketID(PacketType.Server.LoginSuccess, protocolVersion))
+            {
+                //如果不是这个包的话,我这样读取会报错的,但是我还需要继续检测下去,所以丢掉异常了
+                try
+                {
+                    //UUID:String(36)
+                    //PlayerName:String(16)
+                    Packet tmp = new Packet(packet.PacketID, packet.Data);
+                    string UUID = ProtocolHandler.ReadNextString(tmp.Data);
+                    string PlayerName = ProtocolHandler.ReadNextString(tmp.Data);
+                    if (UUID.Length == 36 && PlayerName.Length > 0 && PlayerName.Length <= 16)
+                        return PacketType.Server.LoginSuccess;
+                }
+                catch { }
+            }
+            return null;
         }
         public static byte[] ReceiveData(int start, int offset,TcpClient session)
         {
@@ -169,51 +100,7 @@ namespace MinecraftProtocol.Protocol
             Receive(buffer, start, offset, SocketFlags.None, session);
             return buffer;
         }
-        private static void GetProtocolVersionNubers()
-        {
-            throw new NotImplementedException("这是一次性的东西,我用来把表格转成常量的...");
-            WebClient tmp = new WebClient();
-            byte[] pageData = tmp.DownloadData(@"http://wiki.vg/Protocol_version_numbers");
-            string html = Encoding.UTF8.GetString(pageData);
-            string Table = Regex.Match(html, @"(<table class=""wikitable"">)(\s|\S)+?</table>").Value;
-            Dictionary<string, string> VersionNumbers = new Dictionary<string, string>();
-            int rowspan = 0;
-            string protocolnumbrtbuff = "";
-            foreach (var tr in Regex.Matches(Table, @"<tr>(\s|\S)+?</tr>"))
-            {
-                if (Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success == true)
-                {
-                    string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)(</a>[\S\s]+?<td>\s?)(\d+)[\s\S]+?</tr>";
-                    VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), Regex.Replace(tr.ToString(), reg, "$4"));
-                }
-                else if (Regex.Match(tr.ToString(), @"<td rowspan=""(\d+)"">").Success)
-                {
-                    string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)</a>[\s\S]+?<td rowspan=""(\d+?)"">\s?(\d+)[\s\S]+?</tr>";
-                    rowspan = int.Parse(Regex.Replace(tr.ToString(), reg, "$3"));
-                    protocolnumbrtbuff = Regex.Replace(tr.ToString(), reg, "$4");
-                    VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), protocolnumbrtbuff);
-                }
-                else if (rowspan > 0)
-                {
-                    string reg = @"(<tr>[\s\S]+?<a.*?href=.+?>)(.+?)</a>[\s\S]+?</tr>";
-                    string version = Regex.Replace(tr.ToString(), reg, "$2");
-                    if (VersionNumbers.ContainsKey(version) == false)
-                        VersionNumbers.Add(version, protocolnumbrtbuff);
-                    rowspan--;
-                }
-            }
-            foreach (var item in VersionNumbers)
-            {
-                // public const int V17w45a = 343;
-                /// <summary>
-                /// 1.12.2
-                /// </summary>
-                Console.WriteLine("/// <summary>");
-                Console.WriteLine($"/// {item.Key}");
-                Console.WriteLine("/// </summary>");
-                Console.WriteLine($"public const int V{item.Key.Replace('.', '_').Replace('-', '_')} = {item.Value};");
-            }
-        }
+        public static byte[] ReceiveDate(int start, int offset, ConnectionPayload connectInfo) => ReceiveData(start, offset, connectInfo.Session);
         public static Packet ReceivePacket(ConnectionPayload connectInfo)
         {
             //写这个方法的时候Data属性暂时改成了可写的,我当初是为了什么设置成只读的?
@@ -233,6 +120,23 @@ namespace MinecraftProtocol.Protocol
             }
             Packet_tmp.PacketID = ReadNextVarInt(Packet_tmp.Data);
             return Packet_tmp;
+        }
+        /// <summary>
+        /// 从TCP在协议栈里面的缓存中取出数据
+        /// </summary>
+        /// <param name="buffer">取出来的包</param>
+        /// <param name="start">从x开始读取</param>
+        /// <param name="offset">读取到x结束</param>
+        /// <param name="flags"></param>
+        /// <param name="tcp"></param>
+        /// <returns>错误码</returns>
+        private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, TcpClient tcp)
+        {
+            int read = 0;
+            while (read < offset)
+            {
+                read += tcp.Client.Receive(buffer, start + read, offset - read, flags);
+            }
         }
 
         #region ReadNext(DataType)
@@ -296,6 +200,7 @@ namespace MinecraftProtocol.Protocol
             return result;
         }
         #endregion
+        #region ToolMethod
         /// <summary>
         /// 拼接Byte数组
         /// </summary>
@@ -313,5 +218,54 @@ namespace MinecraftProtocol.Protocol
             }
             return result.ToArray();
         }
+        private static void GetProtocolVersionNubers()
+        {
+
+#pragma warning disable 162
+            throw new NotImplementedException("这是一次性的东西,我用来把表格转成常量的...");
+            WebClient tmp = new WebClient();
+            byte[] pageData = tmp.DownloadData(@"http://wiki.vg/Protocol_version_numbers");
+            string html = Encoding.UTF8.GetString(pageData);
+            string Table = Regex.Match(html, @"(<table class=""wikitable"">)(\s|\S)+?</table>").Value;
+            Dictionary<string, string> VersionNumbers = new Dictionary<string, string>();
+            int rowspan = 0;
+            string protocolnumbrtbuff = "";
+            foreach (var tr in Regex.Matches(Table, @"<tr>(\s|\S)+?</tr>"))
+            {
+                if (Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success == true)
+                {
+                    string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)(</a>[\S\s]+?<td>\s?)(\d+)[\s\S]+?</tr>";
+                    VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), Regex.Replace(tr.ToString(), reg, "$4"));
+                }
+                else if (Regex.Match(tr.ToString(), @"<td rowspan=""(\d+)"">").Success)
+                {
+                    string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)</a>[\s\S]+?<td rowspan=""(\d+?)"">\s?(\d+)[\s\S]+?</tr>";
+                    rowspan = int.Parse(Regex.Replace(tr.ToString(), reg, "$3"));
+                    protocolnumbrtbuff = Regex.Replace(tr.ToString(), reg, "$4");
+                    VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), protocolnumbrtbuff);
+                }
+                else if (rowspan > 0)
+                {
+                    string reg = @"(<tr>[\s\S]+?<a.*?href=.+?>)(.+?)</a>[\s\S]+?</tr>";
+                    string version = Regex.Replace(tr.ToString(), reg, "$2");
+                    if (VersionNumbers.ContainsKey(version) == false)
+                        VersionNumbers.Add(version, protocolnumbrtbuff);
+                    rowspan--;
+                }
+            }
+            foreach (var item in VersionNumbers)
+            {
+                // public const int V17w45a = 343;
+                /// <summary>
+                /// 1.12.2
+                /// </summary>
+                Console.WriteLine("/// <summary>");
+                Console.WriteLine($"/// {item.Key}");
+                Console.WriteLine("/// </summary>");
+                Console.WriteLine($"public const int V{item.Key.Replace('.', '_').Replace('-', '_')} = {item.Value};");
+            }
+#pragma warning restore 162
+        }
+        #endregion
     }
 }

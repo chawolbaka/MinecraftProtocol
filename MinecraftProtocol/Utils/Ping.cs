@@ -21,7 +21,7 @@ namespace MinecraftProtocol.Utils
         */
 
 
-        public string ServerIP { get; set; }
+        public IPAddress ServerIP { get; set; }
         public ushort ServerPort { get; set; }
         public int? Timeout { get; set; } = null;
 
@@ -43,11 +43,11 @@ namespace MinecraftProtocol.Utils
         public Ping(string host, ushort port,bool UseDnsRoundRobin=true)
         {
             if (string.IsNullOrWhiteSpace(host))
-                throw new ArgumentNullException("host");
+                throw new ArgumentNullException(nameof(host));
             if (port == 0)
-                throw new ArgumentOutOfRangeException("port","0", "port 0 is not allowed");
+                throw new ArgumentOutOfRangeException(nameof(port),0, "not allowed use port 0");
 
-            if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)//域名的正则我写不出来...(这个都是抄来的)
+            if (!Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success)//域名的正则我写不出来...(这个都是抄来的)
             {
                 IPHostEntry hostInfo = Dns.GetHostEntry(host);
                 if (UseDnsRoundRobin == true && hostInfo.AddressList.Length > 1)
@@ -55,9 +55,9 @@ namespace MinecraftProtocol.Utils
                     //一种拿DNS来负载均衡的方法,如果多条同名记录的话 DNS会循环提供这些记录的IP
                     //但是这些IP只是位置会循环变更,并不是只能查询到一条记录,所以我这边使用ICMP的ping来查询那条记录延迟最低
                     //我不确定这个会不会有什么严重的bug,所以现在暂时只在这边使用
-                    
-                    System.Net.NetworkInformation.PingException buff=null;
-                    long? MinTime=null;
+
+                    System.Net.NetworkInformation.PingException buff = null;
+                    long? MinTime = null;
                     foreach (var ip in hostInfo.AddressList)
                     {
                         try
@@ -67,10 +67,10 @@ namespace MinecraftProtocol.Utils
                                 var pingResulr = ping.Send(ip, 1000 * 10);
                                 if (pingResulr.Status == System.Net.NetworkInformation.IPStatus.Success)
                                 {
-                                    if (MinTime == null|| pingResulr.RoundtripTime < MinTime)
+                                    if (MinTime == null || pingResulr.RoundtripTime < MinTime)
                                     {
                                         MinTime = pingResulr.RoundtripTime;
-                                        this.ServerIP = ip.ToString();
+                                        this.ServerIP = ip;
                                         //太多了的话就不一个个来检测了,只要找到一个能使用的就用这个吧
                                         if (hostInfo.AddressList.Length > 16 && MinTime > 300 || hostInfo.AddressList.Length > 32)
                                             break;
@@ -88,35 +88,41 @@ namespace MinecraftProtocol.Utils
                             continue;
                         }
                     }
-                    if (string.IsNullOrWhiteSpace(ServerIP) && buff != null)
+                    if (ServerIP != null && buff != null)
                         throw buff;
-                    else if (string.IsNullOrWhiteSpace(ServerIP) && buff == null)
+                    else if (ServerIP != null && buff == null)
                         throw new Exception("DNS记录中没有可用的IP");
                 }
-                else
-                    this.ServerIP = hostInfo.AddressList[0].ToString();
+                else {
+                    ServerIP = hostInfo.AddressList[0];
+                }
             }
-            else
-                this.ServerIP = host;
-            this.ServerPort = port;
+            else {
+                ServerIP = IPAddress.Parse(host);
+            }
+            ServerPort = port;
         }
         public Ping(IPAddress serverIP, ushort serverPort)
         {
-            this.ServerIP = serverIP.ToString();
-            this.ServerPort = serverPort;
+            ServerIP = serverIP ?? throw new ArgumentNullException(nameof(serverIP));
+            ServerPort = serverPort;
         }
         public Ping (IPEndPoint ipEndPoint)
         {
-            this.ServerIP = ipEndPoint.Address.ToString();
-            this.ServerPort =  (ushort)ipEndPoint.Port;
+            if (ipEndPoint==null)
+            {
+                throw new ArgumentNullException(nameof(ipEndPoint));
+            }
+            ServerIP = ipEndPoint.Address;
+            ServerPort =  (ushort)ipEndPoint.Port;
         }
 
         public PingReply Send()
         {
             Connect.Session = new System.Net.Sockets.TcpClient();
-            Connect.Session.Connect(this.ServerIP, this.ServerPort);
+            Connect.Session.Connect(ServerIP, this.ServerPort);
             //Send Ping Packet
-            SendPacket.Handshake(this.ServerIP, this.ServerPort, -1, 1, Connect);
+            SendPacket.Handshake(ServerIP.ToString(), this.ServerPort, -1, 1, Connect);
             SendPacket.PingRequest(Connect);
             //Receive Packet
             if (Timeout != null)
@@ -145,7 +151,6 @@ namespace MinecraftProtocol.Utils
         {
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentNullException(json);
-
             try
             {
                 PingReply result = JsonConvert.DeserializeObject<PingReply>(json);

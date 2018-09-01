@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Text;
 using System.Collections.Generic;
-using MinecraftProtocol.DataType;
+using MinecraftProtocol.Protocol;
 
-namespace MinecraftProtocol.Protocol
+namespace MinecraftProtocol.DataType
 {
     public class Packet
     {
@@ -63,7 +63,6 @@ namespace MinecraftProtocol.Protocol
                 return ProtocolHandler.ConcatBytes(VarInt.Convert(tmp_packet.Length),tmp_packet);
             
         }
-
         public void WriteBoolean(bool value)
         {
             if (value == true)

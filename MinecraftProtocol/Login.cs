@@ -8,13 +8,10 @@ using System.Text.RegularExpressions;
 
 namespace MinecraftProtocol
 {
-    public class Login
+    internal static class Login
     {
-        /// <summary>
-        /// 
-        /// </summary>
         /// <returns>如果登陆成功,会返回LoginSuccess包和数据包压缩阀值(如果有)</returns>
-        public static (Packet LoginSuccess,int CompressionThreshold) Start(IPEndPoint IPAndPort, string playerName, string password,TcpClient tcpClient)
+        public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(IPEndPoint IPAndPort, string playerName, string password,TcpClient tcpClient)
         {
 
             PingReply ReplyInfo = new Utils.Ping(IPAndPort).Send();
@@ -44,7 +41,7 @@ namespace MinecraftProtocol
                 }
                 else if (Type is PacketType.Server && (PacketType.Server)Type == PacketType.Server.LoginSuccess)
                 {
-                    return (tmp, Connect.CompressionThreshold);
+                    return (tmp, Connect);
                 }
                 else
                 {
@@ -52,8 +49,7 @@ namespace MinecraftProtocol
                     throw new Exception($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.PacketID}");
 #else
                                     
-                   Console.WriteLine($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.PacketID}");
-                
+                   Console.WriteLine($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.PacketID}");              
 #endif
                 }
 
@@ -61,23 +57,23 @@ namespace MinecraftProtocol
 
             throw new Exception("Can not Get LoginSuccess Packet");
         }
-        public static (Packet LoginSuccess, int CompressionThreshold) Start(string host, ushort port, string playerName, string password, TcpClient tcpClient)
+        public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(string host, ushort port, string playerName, string password, TcpClient tcpClient)
         {
-            IPEndPoint IPAndPort;
+            IPEndPoint IPAndEndPort;
             if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)
-                IPAndPort = new IPEndPoint(Dns.GetHostEntry(host).AddressList[0], port);
+                IPAndEndPort = new IPEndPoint(Dns.GetHostEntry(host).AddressList[0], port);
             else
-                IPAndPort = new IPEndPoint(IPAddress.Parse(host), port);
-            return Login.Start(IPAndPort, playerName, password,tcpClient);
+                IPAndEndPort = new IPEndPoint(IPAddress.Parse(host), port);
+            return Login.Start(IPAndEndPort, playerName, password,tcpClient);
         }
-        public static (Packet LoginSuccess, int CompressionThreshold, TcpClient TcpSession) Start(IPEndPoint IPAndPort, string playerName,string password)
+        public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(IPEndPoint IPEndPort, string playerName,string password)
         {
             TcpClient tmp = new TcpClient();
-            tmp.Connect(IPAndPort);
-            var result =  Login.Start(IPAndPort, playerName, password,tmp);
-            return (result.LoginSuccess,result.CompressionThreshold, tmp);
+            tmp.Connect(IPEndPort);
+            var result = Login.Start(IPEndPort, playerName, password,tmp);
+            return (result.LoginSuccess,result.ConnectInfo);
         }
-        public static (Packet LoginSuccess, int CompressionThreshold, TcpClient TcpSession) Start(string host, ushort port, string playerName, string password)
+        public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(string host, ushort port, string playerName, string password)
         {
             IPEndPoint IPAndPort;
             if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)

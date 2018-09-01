@@ -16,7 +16,7 @@ namespace MinecraftProtocol.Utils
 
         public Client(string hostName,ushort port)
         {
-            //throw new NotImplementedException("占位符,无实现。");
+            throw new NotImplementedException("暂时无法使用");
             Ping tmp = new Ping(hostName, port);
             PingPayload = tmp.Send();
             ConnectionInfo.ProtocolVersion = PingPayload.Version.Protocol;
