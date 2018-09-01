@@ -30,7 +30,7 @@ namespace MinecraftProtocol
                 Packet tmp = ProtocolHandler.ReceivePacket(Connect);
                 Console.WriteLine("接收到了一个包,总接次数:" + i);
                 Console.WriteLine($"PacketID:{tmp.PacketID}");
-                object Type = PacketType.GetPacketType(tmp, Connect.ProtocolVersion);
+                object Type = ProtocolHandler.GetPacketType(tmp, Connect.ProtocolVersion);
                 //数据包压缩阀值
                 if (Connect.CompressionThreshold == -1 && Type is PacketType.Server && (PacketType.Server)Type == PacketType.Server.SetCompression)
                     Connect.CompressionThreshold = VarInt.Read(tmp.Data);
