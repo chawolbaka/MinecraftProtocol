@@ -14,7 +14,7 @@ namespace MinecraftProtocol
         public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(IPEndPoint IPAndPort, string playerName, string password,TcpClient tcpClient)
         {
 
-            PingReply ReplyInfo = new Utils.Ping(IPAndPort).Send();
+            PingReply ReplyInfo = new Utils.ServerListPing(IPAndPort).Send();
 
             ConnectionPayload Connect = new ConnectionPayload();
             Connect.Session = tcpClient != null ? tcpClient : throw new ArgumentNullException("tcpClient");

@@ -11,7 +11,10 @@ using System.Diagnostics;
 
 namespace MinecraftProtocol.Utils
 {
-    public class Ping
+    /// <summary>
+    /// See:http://wiki.vg/Server_List_Ping
+    /// </summary>
+    public class ServerListPing
     {
         /* 
          * Support Version:1.7 - 1.12.2
@@ -31,7 +34,7 @@ namespace MinecraftProtocol.Utils
         private ConnectionPayload Connect = new ConnectionPayload();
 
         /// <summary>
-        /// Not Support Legacy Ping(https://wiki.vg/Server_List_Ping#1.6)
+        /// Not Support Legacy Ping(See:https://wiki.vg/Server_List_Ping#1.6)
         /// </summary>
         /// <param name="host">Server IP Address or Domain Name</param>
         /// <param name="UseDnsRoundRobin">
@@ -40,7 +43,7 @@ namespace MinecraftProtocol.Utils
         /// 禁用这个选项的话会只使用最前面的那条记录中的IP
         /// (不禁用的话会使用ICMP的Ping来检测所以记录中哪条的延迟最低,并使用那条记录来进行接下来的工作)
         /// </param>
-        public Ping(string host, ushort port,bool UseDnsRoundRobin=true)
+        public ServerListPing(string host, ushort port,bool UseDnsRoundRobin=true)
         {
             if (string.IsNullOrWhiteSpace(host))
                 throw new ArgumentNullException(nameof(host));
@@ -102,12 +105,12 @@ namespace MinecraftProtocol.Utils
             }
             ServerPort = port;
         }
-        public Ping(IPAddress serverIP, ushort serverPort)
+        public ServerListPing(IPAddress serverIP, ushort serverPort)
         {
             ServerIP = serverIP ?? throw new ArgumentNullException(nameof(serverIP));
             ServerPort = serverPort;
         }
-        public Ping (IPEndPoint ipEndPoint)
+        public ServerListPing (IPEndPoint ipEndPoint)
         {
             if (ipEndPoint==null)
             {
