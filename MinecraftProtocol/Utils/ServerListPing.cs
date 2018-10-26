@@ -26,7 +26,7 @@ namespace MinecraftProtocol.Utils
 
         public IPAddress ServerIP { get; set; }
         public ushort ServerPort { get; set; }
-        public int? Timeout { get; set; } = null;
+        public int ReceiveTimeout { get; set; }
 
         //timeout count for method GetTime();
         private int TIMEOUT_TICK_GET_TIME = 0;
@@ -124,13 +124,14 @@ namespace MinecraftProtocol.Utils
         {
             Connect.Session = new System.Net.Sockets.TcpClient();
             Connect.Session.Connect(ServerIP, this.ServerPort);
+            if (ReceiveTimeout != default(int))
+                Connect.Session.ReceiveTimeout = ReceiveTimeout;
+
             //Send Ping Packet
             SendPacket.Handshake(ServerIP.ToString(), this.ServerPort, -1, 1, Connect);
             SendPacket.PingRequest(Connect);
-            //Receive Packet
-            if (Timeout != null)
-                Connect.Session.ReceiveTimeout = (int)Timeout;
 
+            //Receive Packet
             int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
             if (PacketLength > 0)
             {
@@ -182,13 +183,14 @@ namespace MinecraftProtocol.Utils
         private long? GetTime()
         {
             long? Time = 0;
-            //QAQ do not look this
-            if (TIMEOUT_TICK_GET_TIME != 0 && 3000 / TIMEOUT_TICK_GET_TIME <= 0)
-                return null;
-            else if (TIMEOUT_TICK_GET_TIME != 0)
-                Connect.Session.ReceiveTimeout = Timeout == null ? 3000 / TIMEOUT_TICK_GET_TIME : (int)Timeout;           
-            else if (TIMEOUT_TICK_GET_TIME == 0)
-                Connect.Session.ReceiveTimeout = Timeout == null ? 3000 : (int)Timeout;
+
+            //TODO:重写这块或者直接删掉
+            //if (TIMEOUT_TICK_GET_TIME != 0 && 3000 / TIMEOUT_TICK_GET_TIME <= 0)
+            //    return null;
+            //else if (TIMEOUT_TICK_GET_TIME != 0)
+            //    Connect.Session.ReceiveTimeout = ReceiveTimeout == 0 ? 3000 / TIMEOUT_TICK_GET_TIME : ReceiveTimeout;           
+            //else if (TIMEOUT_TICK_GET_TIME == 0)
+            //    Connect.Session.ReceiveTimeout = ReceiveTimeout == 0 ? 3000 : ReceiveTimeout;
             
 
             if (Connect != null)
@@ -207,7 +209,6 @@ namespace MinecraftProtocol.Utils
                     Time = DateTime.Now.Ticks - TmpTime.Ticks;
                     List<byte> ResponesPacket = new List<byte>(
                         ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session));
-
 
                     //校验
                     if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
@@ -231,13 +232,14 @@ namespace MinecraftProtocol.Utils
         }
 
         /// <summary>
-        /// Return Json(if it exists)
+        /// Return json(if it exists)
         /// </summary>
         public override string ToString()
         {
             if (!string.IsNullOrWhiteSpace(JsonResult))
                 return JsonResult;
-            return base.ToString();
+            else
+                return string.Empty;
         }
     }
 }
