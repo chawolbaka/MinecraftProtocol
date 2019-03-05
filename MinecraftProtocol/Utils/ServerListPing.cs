@@ -164,7 +164,7 @@ namespace MinecraftProtocol.Utils
                 {
                     var Description = JObject.Parse(json)["description"];
                     if (Description.HasValues)
-                        result.Motd = Description["text"].ToString();
+                        result.Motd = Description[Description.ToString() == "text" ? "text" : "translate"].ToString();
                     else
                         result.Motd = Description.ToString();
                 }
