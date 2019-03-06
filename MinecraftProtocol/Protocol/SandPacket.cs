@@ -27,11 +27,11 @@ namespace MinecraftProtocol.Protocol
         /// <param name="port">it is as a field write to packet</param>
         /// <param name="protocolVersion">it is as a field write to packet</param>
         /// <param name="nextState">Next State(1 for status, 2 for login)</param>
-        public static void Handshake(string serverIP,ushort port, int protocolVersion, int nextState,ConnectionPayload connectInfo)
+        public static void Handshake(string serverIP,ushort port, VarInt protocolVersion, VarInt nextState,ConnectionPayload connectInfo)
         {
             //http://wiki.vg/Server_List_Ping#Handshake
             Packet packet = new Packet();
-            packet.PacketID = 0x00;
+            packet.ID = 0x00;
             packet.WriteVarInt(protocolVersion);//Field:ProtocolVersion
             packet.WriteString(serverIP);//Field:Server Address
             packet.WriteUnsignedShort(port);//Field:Server Port
@@ -46,13 +46,13 @@ namespace MinecraftProtocol.Protocol
         public static void PingRequest(ConnectionPayload connectInfo)
         {
             Packet packet = new Packet();
-            packet.PacketID = 0x00;
+            packet.ID = 0x00;
             connectInfo.Session.Client.Send(packet.GetPacket(connectInfo.CompressionThreshold));
         }
         public static void LoginStart(string playerName,ConnectionPayload connectInfo)
         {
             Packet LoginStartPacket = new Packet();
-            LoginStartPacket.PacketID = PacketType.GetPacketID(
+            LoginStartPacket.ID = PacketType.GetPacketID(
                 PacketType.Client.LoginStart, connectInfo.ProtocolVersion);
             LoginStartPacket.WriteString(playerName);
             connectInfo.Session.Client.Send(LoginStartPacket.GetPacket(connectInfo.CompressionThreshold));
@@ -68,7 +68,7 @@ namespace MinecraftProtocol.Protocol
         public static void KeepAlive(List<byte> data, ConnectionPayload connectInfo)
         {
             Packet packet = new Packet();
-            packet.WriteVarInt(PacketType.GetPacketID(PacketType.Client.KeepAlive,connectInfo.ProtocolVersion));
+            packet.ID=PacketType.GetPacketID(PacketType.Client.KeepAlive,connectInfo.ProtocolVersion);
             packet.WriteBytes(data.ToArray());
             connectInfo.Session.Client.Send(packet.GetPacket(connectInfo.CompressionThreshold));
         }
@@ -80,7 +80,7 @@ namespace MinecraftProtocol.Protocol
         public static void ChatMessage(string message, ConnectionPayload connectInfo)
         {
             Packet packet = new Packet();
-            packet.PacketID = PacketType.GetPacketID(PacketType.Client.ChatMessage, connectInfo.ProtocolVersion);
+            packet.ID = PacketType.GetPacketID(PacketType.Client.ChatMessage, connectInfo.ProtocolVersion);
             packet.WriteString(message);
             connectInfo.Session.Client.Send(packet.GetPacket(connectInfo.CompressionThreshold));
         }

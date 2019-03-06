@@ -8,7 +8,7 @@ namespace MinecraftProtocol.DataType
     public class Packet
     {
         public List<byte> Data { get; set; } = new List<byte>();
-        public int PacketID
+        public int ID
         {
             //解释一下为什么要这样子写
             //我的想法是这样子的,PacketID不是必须写的参数,如果不写的话在GetPacket的时候就不在前面加PacketID了
@@ -31,12 +31,12 @@ namespace MinecraftProtocol.DataType
         }
         public Packet(int packetID, List<byte> packetData)
         {
-            this.PacketID = packetID;
+            this.ID = packetID;
             this.Data = packetData;
         }
         public Packet(int packetID,params byte[] packetData)
         {
-            this.PacketID = packetID;
+            this.ID = packetID;
             foreach (var data in packetData)
             {
                 this.Data.Add(data);
@@ -48,19 +48,24 @@ namespace MinecraftProtocol.DataType
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
         /// <returns></returns>
-        public byte[] GetPacket(int compress=-1)
+        public byte[] GetPacket(int compress = -1)
         {
-            byte[] tmp_packet = ProtocolHandler.ConcatBytes(_PacketID.ToVarInt(), this.Data.ToArray());
+            byte[] DataPacket;
+            if (_PacketID.HasValue)
+                DataPacket = ProtocolHandler.ConcatBytes(new VarInt(_PacketID.Value).ToBytes(), this.Data.ToArray());
+            else
+                DataPacket = this.Data.ToArray();
+
             if (compress > 0)
             {
                 if (this.Data.Count >= compress)
-                    tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(tmp_packet.Length), ZlibUtils.Compress(tmp_packet));
+                    DataPacket = ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(), ZlibUtils.Compress(DataPacket));
                 else
-                    tmp_packet = ProtocolHandler.ConcatBytes(VarInt.Write(0), tmp_packet);
-                return ProtocolHandler.ConcatBytes(VarInt.Write(tmp_packet.Length), tmp_packet);
+                    DataPacket = ProtocolHandler.ConcatBytes(new VarInt(0).ToBytes(), DataPacket);
+                return ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(), DataPacket);
             }
             else
-                return ProtocolHandler.ConcatBytes(VarInt.Convert(tmp_packet.Length),tmp_packet);
+                return ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(),DataPacket);
             
         }
         public void WriteBoolean(bool value)
@@ -81,11 +86,11 @@ namespace MinecraftProtocol.DataType
         public void WriteString(string value)
         {
             byte[] tmp = Encoding.UTF8.GetBytes(value);
-            WriteBytes(ProtocolHandler.ConcatBytes(VarInt.Write(tmp.Length), tmp));
+            WriteBytes(ProtocolHandler.ConcatBytes(new VarInt(tmp.Length).ToBytes(), tmp));
         }
-        public void WriteVarInt(int value)
+        public void WriteVarInt(VarInt value)
         {
-            WriteBytes(VarInt.Write(value));
+            WriteBytes(value.ToBytes());
         }
         public void WriteVarLong(long value)
         {

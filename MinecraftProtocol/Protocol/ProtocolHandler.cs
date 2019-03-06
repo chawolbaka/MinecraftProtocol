@@ -51,7 +51,7 @@ namespace MinecraftProtocol.Protocol
             * 14w31a
             * Changed the type of Keep Alive ID from Int to VarInt (Clientbound)
             */
-            if (packet.PacketID == PacketType.GetPacketID(PacketType.Client.KeepAlive, protocolVersion))
+            if (packet.ID == PacketType.GetPacketID(PacketType.Client.KeepAlive, protocolVersion))
             {
                 if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
                     return PacketType.Client.KeepAlive;
@@ -60,7 +60,7 @@ namespace MinecraftProtocol.Protocol
                 else if (packet.Data.Count == 4)
                     return PacketType.Client.KeepAlive;
             }
-            if (packet.PacketID == PacketType.GetPacketID(PacketType.Server.KeepAlive, protocolVersion))
+            if (packet.ID == PacketType.GetPacketID(PacketType.Server.KeepAlive, protocolVersion))
             {
 
                 if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
@@ -72,20 +72,20 @@ namespace MinecraftProtocol.Protocol
             }
             #endregion
 
-            if (packet.PacketID == PacketType.GetPacketID(PacketType.Server.SetCompression, protocolVersion))
+            if (packet.ID == PacketType.GetPacketID(PacketType.Server.SetCompression, protocolVersion))
             {
                 if (packet.Data.Count <= 5 && packet.Data.Count > 0)
                     return PacketType.Server.SetCompression;
 
             }
-            if (packet.PacketID == PacketType.GetPacketID(PacketType.Server.LoginSuccess, protocolVersion))
+            if (packet.ID == PacketType.GetPacketID(PacketType.Server.LoginSuccess, protocolVersion))
             {
                 //如果不是这个包的话,我这样读取会报错的,但是我还需要继续检测下去,所以丢掉异常了
                 try
                 {
                     //UUID:String(36)
                     //PlayerName:String(16)
-                    Packet tmp = new Packet(packet.PacketID, packet.Data);
+                    Packet tmp = new Packet(packet.ID, packet.Data);
                     string UUID = ProtocolHandler.ReadNextString(tmp.Data);
                     string PlayerName = ProtocolHandler.ReadNextString(tmp.Data);
                     if (UUID.Length == 36 && PlayerName.Length > 0 && PlayerName.Length <= 16)
@@ -119,7 +119,7 @@ namespace MinecraftProtocol.Protocol
                     Packet_tmp.Data.AddRange(uncompressed);
                 }
             }
-            Packet_tmp.PacketID = ReadNextVarInt(Packet_tmp.Data);
+            Packet_tmp.ID = ReadNextVarInt(Packet_tmp.Data);
             return Packet_tmp;
         }
         /// <summary>
@@ -148,9 +148,9 @@ namespace MinecraftProtocol.Protocol
         /// <returns>The integer</returns>
         public static int ReadNextVarInt(List<byte> cache)
         {
-            var result = VarInt.Read(cache.ToArray(), 0, out int end);
+            VarInt result = new VarInt(cache.ToArray(), 0, out int end);
             cache.RemoveRange(0, end);
-            return result;
+            return result.ToInt();
         }
         public static long ReadNextInt(List<byte> cache)
         {

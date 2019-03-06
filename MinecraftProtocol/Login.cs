@@ -20,7 +20,7 @@ namespace MinecraftProtocol
             Connect.Session = tcpClient != null ? tcpClient : throw new ArgumentNullException("tcpClient");
             Connect.ProtocolVersion = ReplyInfo.Version.Protocol;
 
-            SendPacket.Handshake(IPAndPort.Address.ToString(),(ushort)IPAndPort.Port, ReplyInfo.Version.Protocol,2,Connect);
+            SendPacket.Handshake(IPAndPort.Address.ToString(),(ushort)IPAndPort.Port, new VarInt(ReplyInfo.Version.Protocol),new VarInt(2),Connect);
 
             SendPacket.LoginStart(playerName, Connect);
             
@@ -29,11 +29,11 @@ namespace MinecraftProtocol
             {
                 Packet tmp = ProtocolHandler.ReceivePacket(Connect);
                 Console.WriteLine("接收到了一个包,总接次数:" + i);
-                Console.WriteLine($"PacketID:{tmp.PacketID}");
+                Console.WriteLine($"PacketID:{tmp.ID}");
                 object Type = ProtocolHandler.GetPacketType(tmp, Connect.ProtocolVersion);
                 //数据包压缩阀值
                 if (Connect.CompressionThreshold == -1 && Type is PacketType.Server && (PacketType.Server)Type == PacketType.Server.SetCompression)
-                    Connect.CompressionThreshold = VarInt.Read(tmp.Data);
+                    Connect.CompressionThreshold = new VarInt(tmp.Data.ToArray(),0).ToInt();
 
                 else if (false)
                 {
@@ -46,7 +46,7 @@ namespace MinecraftProtocol
                 else
                 {
 #if DEBUG
-                    throw new Exception($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.PacketID}");
+                    throw new Exception($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.ID}");
 #else
                                     
                    Console.WriteLine($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.PacketID}");              
