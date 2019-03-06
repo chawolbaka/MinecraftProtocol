@@ -81,8 +81,10 @@ namespace Ionic.Zlib
     /// </remarks>
     [Interop.GuidAttribute("ebc25cf6-9120-4283-b972-0e5520d0000D")]
     [Interop.ComVisible(true)]
-#if !NETCF    
+#if !NETCF
+#pragma warning disable CS0618 // 类型或成员已过时
     [Interop.ClassInterface(Interop.ClassInterfaceType.AutoDispatch)]
+#pragma warning restore CS0618 // 类型或成员已过时
 #endif
     sealed internal class ZlibCodec
     {
