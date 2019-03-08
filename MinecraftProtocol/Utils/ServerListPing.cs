@@ -1,106 +1,63 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol;
-using System.Diagnostics;
 
 namespace MinecraftProtocol.Utils
 {
     /// <summary>
-    /// See:http://wiki.vg/Server_List_Ping
+    /// Support Version:1.7 - 1.12.2
+    /// More See:http://wiki.vg/Server_List_Ping
     /// </summary>
     public class ServerListPing
     {
         /* 
          * Support Version:1.7 - 1.12.2
-         * 参考资料(Main):
+         * Reference(Main):
          * http://wiki.vg/Server_List_Ping
          * https://gist.github.com/csh/2480d14fbbb33b4bbae3
+         * (Not Support Legacy Ping(See:https://wiki.vg/Server_List_Ping#1.6))
         */
+
+        private readonly string REG_IPv4 = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
 
 
         public IPAddress ServerIP { get; set; }
         public ushort ServerPort { get; set; }
         public int ReceiveTimeout { get; set; }
+        public bool EnableDelayDetect { get; set; } = true;
+        public bool EnableDnsRoundRobin { get; set; }
 
-        //timeout count for method GetTime();
-        private int TIMEOUT_TICK_GET_TIME = 0;
         private string JsonResult;
+        private IPHostEntry Host;
         private ConnectionPayload Connect = new ConnectionPayload();
 
-        /// <summary>
-        /// Not Support Legacy Ping(See:https://wiki.vg/Server_List_Ping#1.6)
-        /// </summary>
+        /// <summary> Warning:don't use this constructor,if you want fast run for your program</summary>
         /// <param name="host">Server IP Address or Domain Name</param>
-        /// <param name="UseDnsRoundRobin">
-        /// 一种拿DNS来负载均衡的方法
-        /// 大概是这样的:如果多条同名记录的话 DNS会循环提供这些记录(全部都会提供,循环的是顺序)
-        /// 禁用这个选项的话会只使用最前面的那条记录中的IP
-        /// (不禁用的话会使用ICMP的Ping来检测所以记录中哪条的延迟最低,并使用那条记录来进行接下来的工作)
-        /// </param>
-        public ServerListPing(string host, ushort port,bool UseDnsRoundRobin=true)
+        public ServerListPing(string host, ushort port, bool useDnsRoundRobin=false)
         {
             if (string.IsNullOrWhiteSpace(host))
                 throw new ArgumentNullException(nameof(host));
             if (port == 0)
-                throw new ArgumentOutOfRangeException(nameof(port),0, "not allowed use port 0");
+                throw new ArgumentOutOfRangeException(nameof(port), port, "incorrect port supplied");
 
-            if (!Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success)//域名的正则我写不出来...(这个都是抄来的)
+            EnableDnsRoundRobin = useDnsRoundRobin;
+
+            if (!Regex.Match(host, REG_IPv4).Success)//域名的正则我写不出来...(这个都是抄来的)
             {
-                IPHostEntry hostInfo = Dns.GetHostEntry(host);
-                if (UseDnsRoundRobin == true && hostInfo.AddressList.Length > 1)
-                {
-                    //一种拿DNS来负载均衡的方法,如果多条同名记录的话 DNS会循环提供这些记录的IP
-                    //但是这些IP只是位置会循环变更,并不是只能查询到一条记录,所以我这边使用ICMP的ping来查询那条记录延迟最低
-                    //我不确定这个会不会有什么严重的bug,所以现在暂时只在这边使用
+                Host = Dns.GetHostEntry(host);
+                if (Host.AddressList.Length > 0)
+                    ServerIP = Host.AddressList[0];
+                else //IPv6 or error addr
+                    ServerIP = IPAddress.Parse(host);
 
-                    System.Net.NetworkInformation.PingException buff = null;
-                    long? MinTime = null;
-                    foreach (var ip in hostInfo.AddressList)
-                    {
-                        try
-                        {
-                            using (System.Net.NetworkInformation.Ping ping = new System.Net.NetworkInformation.Ping())
-                            {
-                                var pingResulr = ping.Send(ip, 1000 * 10);
-                                if (pingResulr.Status == System.Net.NetworkInformation.IPStatus.Success)
-                                {
-                                    if (MinTime == null || pingResulr.RoundtripTime < MinTime)
-                                    {
-                                        MinTime = pingResulr.RoundtripTime;
-                                        this.ServerIP = ip;
-                                        //太多了的话就不一个个来检测了,只要找到一个能使用的就用这个吧
-                                        if (hostInfo.AddressList.Length > 16 && MinTime > 300 || hostInfo.AddressList.Length > 32)
-                                            break;
-                                    }
-                                    else
-                                        continue;
-                                }
-                            }
-                        }
-                        catch (System.Net.NetworkInformation.PingException e)
-                        {
-                            //这一条Ping不通没关系,继续Ping下一条.
-                            //(缓存起来是为了防止出现所以IP都不可用的情况,那种情况下的话遍历结束后会重新抛出异常)
-                            buff = e;
-                            continue;
-                        }
-                    }
-                    if (ServerIP != null && buff != null)
-                        throw buff;
-                    else if (ServerIP != null && buff == null)
-                        throw new Exception("DNS记录中没有可用的IP");
-                }
-                else {
-                    ServerIP = hostInfo.AddressList[0];
-                }
             }
-            else {
+            else
+            {
                 ServerIP = IPAddress.Parse(host);
             }
             ServerPort = port;
@@ -110,96 +67,87 @@ namespace MinecraftProtocol.Utils
             ServerIP = serverIP ?? throw new ArgumentNullException(nameof(serverIP));
             ServerPort = serverPort;
         }
-        public ServerListPing (IPEndPoint ipEndPoint)
+        public ServerListPing(IPEndPoint ipEndPoint)
         {
-            if (ipEndPoint==null)
+            if (ipEndPoint != null)
             {
-                throw new ArgumentNullException(nameof(ipEndPoint));
+                ServerIP = ipEndPoint.Address;
+                ServerPort = (ushort)ipEndPoint.Port;
             }
-            ServerIP = ipEndPoint.Address;
-            ServerPort =  (ushort)ipEndPoint.Port;
+            else
+                throw new ArgumentNullException(nameof(ipEndPoint));
         }
 
         public PingReply Send()
         {
+            PingReply PingResult;
+            if (EnableDnsRoundRobin&&Host.AddressList.Length>1) DnsRoundRobinHandler();
             Connect.Session = new System.Net.Sockets.TcpClient();
             Connect.Session.Connect(ServerIP, this.ServerPort);
             if (ReceiveTimeout != default(int))
                 Connect.Session.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            SendPacket.Handshake(ServerIP.ToString(), this.ServerPort, -1, 1, Connect);
+            SendPacket.Handshake(ServerIP.ToString(), this.ServerPort, new VarInt(-1),new VarInt(1), Connect);
             SendPacket.PingRequest(Connect);
 
             //Receive Packet
             int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
             if (PacketLength > 0)
             {
-                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength,Connect.Session));
+                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))
                 {
-                    PingReply tmp = ResolveJson(JsonResult);
-                    tmp.Time = GetTime();
-                    return tmp;
+                    PingResult = ResolveJson(JsonResult);
+                    PingResult.Time = EnableDelayDetect ? GetTime() : null;
+                }
+                else
+                {
+                    //这边我是想抛异常的,可是找不到什么适合的异常又懒的自己写一个就直接返回了null
+                    PingResult = null;
                 }
                 Connect.Session.Client.Dispose();
                 Connect.Session.Close();
-                return null;
             }
             else
                 throw new Exception($"Response Packet Length too Small (PacketLength:{PacketLength})");
+            return PingResult;
         }
         public static PingReply ResolveJson(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
-                throw new ArgumentNullException(json);
-            try
-            {
-                PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
+                throw new ArgumentNullException(nameof(json));
 
-                //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
-                if (JObject.Parse(json).ContainsKey("description"))
-                {
-                    var Description = JObject.Parse(json)["description"];
-                    if (Description.HasValues)
-                        result.Motd = Description[Description.ToString() == "text" ? "text" : "translate"].ToString();
-                    else
-                        result.Motd = Description.ToString();
-                }
-                return result;
-            }
-            catch (Exception)
+            PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
+
+            //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
+            if (JObject.Parse(json).ContainsKey("description"))
             {
-                //我是不是不该处理这个异常??
-                if (json.Contains("translate"))
-                    throw new JsonReaderException($"The Server did not give a correct json");
+
+                var Description = JObject.Parse(json)["description"];
+                if (Description.HasValues && Description.First is JProperty)
+                    result.Motd = ((JProperty)Description.First).Value.ToString();
                 else
-                    throw;
+                    result.Motd = Description.ToString();
             }
+            return result;
+
 
         }
         private long? GetTime()
         {
             long? Time = 0;
-
-            //TODO:重写这块或者直接删掉
-            //if (TIMEOUT_TICK_GET_TIME != 0 && 3000 / TIMEOUT_TICK_GET_TIME <= 0)
-            //    return null;
-            //else if (TIMEOUT_TICK_GET_TIME != 0)
-            //    Connect.Session.ReceiveTimeout = ReceiveTimeout == 0 ? 3000 / TIMEOUT_TICK_GET_TIME : ReceiveTimeout;           
-            //else if (TIMEOUT_TICK_GET_TIME == 0)
-            //    Connect.Session.ReceiveTimeout = ReceiveTimeout == 0 ? 3000 : ReceiveTimeout;
             
-
             if (Connect != null)
             {
-                try {
+                try
+                {
                     //http://wiki.vg/Server_List_Ping#Ping
                     int code = new Random().Next(1, 25565);
                     Packet RequestPacket = new Packet();
-                    RequestPacket.PacketID = 0x01;
+                    RequestPacket.ID = 0x01;
                     RequestPacket.WriteLong(code);
                     DateTime TmpTime = DateTime.Now;
                     Connect.Session.Client.Send(RequestPacket.GetPacket());
@@ -216,12 +164,12 @@ namespace MinecraftProtocol.Utils
                     if (ResponesPacket.Count != 8 && ProtocolHandler.ReadNextLong(ResponesPacket) != code)
                         return null;
                 }
-                catch {
+                catch
+                {
 
 #if DEBUG
                     throw;
 #else
-                    TIMEOUT_TICK_GET_TIME++;
                     return null;//在正式发布的时候不能因为获取延迟时发生异常就影响到整个程序的运行
 #endif
 
@@ -230,6 +178,27 @@ namespace MinecraftProtocol.Utils
             else throw new NullReferenceException("Do You Used Method \"Send\"?");
             return Time;
         }
+
+        private void DnsRoundRobinHandler()
+        {
+            ServerIP = Host.AddressList[0];
+            if (Host.AddressList.Length == 2)
+            {
+                //这边单独处理只有2个地址的情况是因为我产生了这样子效率高一点的错觉
+                Host.AddressList[0] = Host.AddressList[1];
+                Host.AddressList[1] = ServerIP;
+            }
+            else if (Host.AddressList.Length > 1)
+            {
+                ServerIP = Host.AddressList[0];
+                for (int i = 0; i < Host.AddressList.Length - 1; i++)
+                {
+                    Host.AddressList[i] = Host.AddressList[i + 1];
+                }
+                Host.AddressList[Host.AddressList.Length - 1] = ServerIP;
+            }
+        }
+
 
         /// <summary>
         /// Return json(if it exists)
