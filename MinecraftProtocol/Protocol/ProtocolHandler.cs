@@ -233,7 +233,7 @@ namespace MinecraftProtocol.Protocol
             string protocolnumbrtbuff = "";
             foreach (var tr in Regex.Matches(Table, @"<tr>(\s|\S)+?</tr>"))
             {
-                if (Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success == true)
+                if (Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success)
                 {
                     string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)(</a>[\S\s]+?<td>\s?)(\d+)[\s\S]+?</tr>";
                     VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), Regex.Replace(tr.ToString(), reg, "$4"));
@@ -249,7 +249,7 @@ namespace MinecraftProtocol.Protocol
                 {
                     string reg = @"(<tr>[\s\S]+?<a.*?href=.+?>)(.+?)</a>[\s\S]+?</tr>";
                     string version = Regex.Replace(tr.ToString(), reg, "$2");
-                    if (VersionNumbers.ContainsKey(version) == false)
+                    if (!VersionNumbers.ContainsKey(version))
                         VersionNumbers.Add(version, protocolnumbrtbuff);
                     rowspan--;
                 }

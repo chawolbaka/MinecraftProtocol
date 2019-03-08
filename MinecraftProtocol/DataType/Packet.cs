@@ -68,9 +68,9 @@ namespace MinecraftProtocol.DataType
                 return ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(),DataPacket);
             
         }
-        public void WriteBoolean(bool value)
+        public void WriteBoolean(bool boolean)
         {
-            if (value == true)
+            if (boolean)
                 WriteUnsignedByte(0x01);
             else
                 WriteUnsignedByte(0x00);

@@ -60,7 +60,7 @@ namespace MinecraftProtocol
         public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(string host, ushort port, string playerName, string password, TcpClient tcpClient)
         {
             IPEndPoint IPAndEndPort;
-            if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)
+            if (!Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success)
                 IPAndEndPort = new IPEndPoint(Dns.GetHostEntry(host).AddressList[0], port);
             else
                 IPAndEndPort = new IPEndPoint(IPAddress.Parse(host), port);
@@ -76,7 +76,7 @@ namespace MinecraftProtocol
         public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(string host, ushort port, string playerName, string password)
         {
             IPEndPoint IPAndPort;
-            if (Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success == false)
+            if (!Regex.Match(host, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$").Success)
                 IPAndPort = new IPEndPoint(Dns.GetHostEntry(host).AddressList[0], port);
             else
                 IPAndPort = new IPEndPoint(IPAddress.Parse(host), port);
