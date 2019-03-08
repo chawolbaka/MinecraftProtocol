@@ -27,13 +27,13 @@ namespace MinecraftProtocol
             int MaxReceiveCount = 2;//这个等我到时候查查最多会有几个包
             for (int i = 0; i < MaxReceiveCount; i++)
             {
-                Packet tmp = ProtocolHandler.ReceivePacket(Connect);
+                Packet TempPacket = ProtocolHandler.ReceivePacket(Connect);
                 Console.WriteLine("接收到了一个包,总接次数:" + i);
-                Console.WriteLine($"PacketID:{tmp.ID}");
-                object Type = ProtocolHandler.GetPacketType(tmp, Connect.ProtocolVersion);
+                Console.WriteLine($"PacketID:{TempPacket.ID}");
+                object Type = ProtocolHandler.GetPacketType(TempPacket, Connect.ProtocolVersion);
                 //数据包压缩阀值
                 if (Connect.CompressionThreshold == -1 && Type is PacketType.Server && (PacketType.Server)Type == PacketType.Server.SetCompression)
-                    Connect.CompressionThreshold = new VarInt(tmp.Data.ToArray(),0).ToInt();
+                    Connect.CompressionThreshold = new VarInt(TempPacket.Data.ToArray(),0).ToInt();
 
                 else if (false)
                 {
@@ -41,15 +41,15 @@ namespace MinecraftProtocol
                 }
                 else if (Type is PacketType.Server && (PacketType.Server)Type == PacketType.Server.LoginSuccess)
                 {
-                    return (tmp, Connect);
+                    return (TempPacket, Connect);
                 }
                 else
                 {
 #if DEBUG
-                    throw new Exception($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.ID}");
+                    throw new Exception($"接收到了不该出现在登陆流程中的包.PacketID:{TempPacket.ID}");
 #else
                                     
-                   Console.WriteLine($"接收到了不该出现在登陆流程中的包.PacketID:{tmp.PacketID}");              
+                   Console.WriteLine($"接收到了不该出现在登陆流程中的包.PacketID:{TempPacket.ID}");              
 #endif
                 }
 
