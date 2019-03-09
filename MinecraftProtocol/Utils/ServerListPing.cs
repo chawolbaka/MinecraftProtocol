@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol;
+using System.Net.Sockets;
 
 namespace MinecraftProtocol.Utils
 {
@@ -80,10 +81,17 @@ namespace MinecraftProtocol.Utils
 
         public PingReply Send()
         {
+            return Send(new TcpClient());
+        }
+        public PingReply Send(TcpClient session)
+        {
+            Connect.Session = session != null ? session : throw new ArgumentNullException(nameof(session));
+            
             PingReply PingResult;
-            if (EnableDnsRoundRobin&&Host.AddressList.Length>1) DnsRoundRobinHandler();
-            Connect.Session = new System.Net.Sockets.TcpClient();
-            Connect.Session.Connect(ServerIP, this.ServerPort);
+            if (EnableDnsRoundRobin&&Host.AddressList.Length>1)
+                DnsRoundRobinHandler();
+            if(!Connect.Session.Client.Connected)
+                Connect.Session.Connect(ServerIP, this.ServerPort);
             if (ReceiveTimeout != default(int))
                 Connect.Session.ReceiveTimeout = ReceiveTimeout;
 
