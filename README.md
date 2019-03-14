@@ -8,7 +8,7 @@
 ps:不会排版，英文完全不会，C#只学了一点点(真的非常少,摸鱼非常严重)，里面大量代码的从别人那边抄来的(来源我记得的话会尽量写在下面的)
 
 ### Building
-[安装.Net Core SDK 2.1](https://www.microsoft.com/net/download/dotnet-core/2.1 "安装.Net Core SDK 2.1")
+[安装.Net Core SDK 2.2](https://www.microsoft.com/net/download/dotnet-core/2.2 "安装.Net Core SDK 2.2")
 
     git clone https://github.com/chawolbaka/PlayersMonitor.git
     cd MinecraftProtocol\PlayersMonitor
