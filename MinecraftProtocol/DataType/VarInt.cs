@@ -35,6 +35,14 @@ namespace MinecraftProtocol.DataType
         public static VarInt operator -(VarInt right, VarInt left) => new VarInt(right.ToInt() - left.ToInt());
         public static VarInt operator -(int right, VarInt left) => new VarInt(right - left.ToInt());
         public static VarInt operator -(VarInt right, int left) => new VarInt(right.ToInt() - left);
+        
+        public static VarInt operator *(VarInt right, VarInt left) => new VarInt(right.ToInt() * left.ToInt());
+        public static VarInt operator *(int right, VarInt left) => new VarInt(right * left.ToInt());
+        public static VarInt operator *(VarInt right, int left) => new VarInt(right.ToInt() * left);
+
+        public static VarInt operator /(VarInt right, VarInt left) => new VarInt(right.ToInt() / left.ToInt());
+        public static VarInt operator /(int right, VarInt left) => new VarInt(right / left.ToInt());
+        public static VarInt operator /(VarInt right, int left) => new VarInt(right.ToInt() / left);
 
         public static bool operator >(VarInt right, VarInt left) => right.ToInt() > left.ToInt();
         public static bool operator >(int right, VarInt left) => right > left.ToInt();
