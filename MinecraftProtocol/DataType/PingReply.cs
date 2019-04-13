@@ -16,7 +16,7 @@ namespace MinecraftProtocol.DataType
         public PlayersPayload Player { get; set; }
 
         [JsonIgnore]
-        public string Motd { get; set; }
+        public Description Motd { get; set; }
 
         [JsonProperty(PropertyName = "modinfo")]
         public ForgePayLoad Forge { get; set; }
@@ -38,6 +38,7 @@ namespace MinecraftProtocol.DataType
 
             [JsonProperty(PropertyName = "modList")]
             public List<Forge.ForgeInfo> ModList { get; set; }
+
         }
         public class VersionPayload
         {
@@ -60,6 +61,40 @@ namespace MinecraftProtocol.DataType
             /// </summary>
             [JsonProperty(PropertyName = "sample")]
             public List<PlayerSample> Samples { get; set; }
+        }
+        /// <summary>
+        /// 这个类随时会被我丢到其它地方的或者改名
+        /// </summary>
+        public class ExtraPayload
+        {
+            public string Color { get; set; }
+            public string Text { get; set; }
+            public bool Strikethrough { get; set; }
+            public bool Bold { get; set; }
+        }
+        public class Description
+        {
+            public string Text { get; set; }
+            public List<ExtraPayload> Extra { get; set; }
+            
+            public override string ToString()
+            {
+                StringBuilder motd = new StringBuilder();
+                motd.Append(Text);
+                if (Extra!=null&&Extra.Count>0)
+                {
+                    foreach (var item in Extra)
+                    {
+                        if (item.Strikethrough)
+                            motd.Append("§m");
+                        if (item.Bold)
+                            motd.Append("§l");
+                        //还有个颜色代码我懒的处理了
+                        motd.Append(item.Text);
+                    }
+                 }
+                return motd.ToString();
+            }
         }
         public class PlayerSample
         {

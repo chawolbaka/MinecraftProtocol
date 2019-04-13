@@ -39,6 +39,9 @@ namespace MinecraftProtocol.Utils
 
         /// <summary> Warning:don't use this constructor,if you want fast run for your program</summary>
         /// <param name="host">Server IP Address or Domain Name</param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentOutOfRangeException"/>
+        /// <exception cref="SocketException"/>
         public ServerListPing(string host, ushort port, bool useDnsRoundRobin=false)
         {
             if (string.IsNullOrWhiteSpace(host))
@@ -63,11 +66,13 @@ namespace MinecraftProtocol.Utils
             }
             ServerPort = port;
         }
+        /// <exception cref="ArgumentNullException"/>
         public ServerListPing(IPAddress serverIP, ushort serverPort)
         {
             ServerIP = serverIP ?? throw new ArgumentNullException(nameof(serverIP));
             ServerPort = serverPort;
         }
+        /// <exception cref="ArgumentNullException"/>
         public ServerListPing(IPEndPoint ipEndPoint)
         {
             if (ipEndPoint != null)
@@ -79,6 +84,10 @@ namespace MinecraftProtocol.Utils
                 throw new ArgumentNullException(nameof(ipEndPoint));
         }
 
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="SocketException"/>
+        /// <exception cref="JsonException"/>
+        /// <exception cref="Exception"/>
         public PingReply Send()
         {
             return Send(new TcpClient());
@@ -123,33 +132,71 @@ namespace MinecraftProtocol.Utils
                 throw new Exception($"Response Packet Length too Small (PacketLength:{PacketLength})");
             return PingResult;
         }
+
+        /// <exception cref="JsonException"/>
         public static PingReply ResolveJson(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentNullException(nameof(json));
 
-            PingReply result = JsonConvert.DeserializeObject<PingReply>(json);
+            PingReply PingInfo = JsonConvert.DeserializeObject<PingReply>(json);
 
-            //因为motd有两种,然后我不知道怎么直接反序列化,所以就这样写了.
+            //我不知道怎么直接反序列化motd,不是每个服务器给的json都长的一样的,我也查不到具体的标准.
+            //所以我现在只能尽量去兼容已知的种类
             if (JObject.Parse(json).ContainsKey("description"))
             {
-
+                PingInfo.Motd = new PingReply.Description();
                 var Description = JObject.Parse(json)["description"];
-                if (Description.HasValues && Description.First is JProperty)
-                    result.Motd = ((JProperty)Description.First).Value.ToString();
+
+                if (Description.HasValues)
+                {
+                    foreach (JProperty property in Description.Children())
+                    {
+                        if (property.Name == "text" || property.Name == "translate")
+                        {
+                            PingInfo.Motd.Text = property.Value.ToString();
+
+                        }
+                        else if (property.Name == "extra")
+                        {
+                            PingInfo.Motd.Extra = new List<PingReply.ExtraPayload>();
+
+                            foreach (var ja in (JArray)property.First)
+                            {
+                                PingReply.ExtraPayload Extra = new PingReply.ExtraPayload();
+                                foreach (JProperty extraItem in ja)
+                                {
+                                    switch(extraItem.Name)
+                                    {
+                                        case "color":
+                                            Extra.Color = extraItem.Value.ToString();break;
+                                        case "strikethrough":
+                                            Extra.Strikethrough = bool.Parse(extraItem.Value.ToString().Trim()); break;
+                                        case "bold":
+                                            Extra.Bold = bool.Parse(extraItem.Value.ToString().Trim()); break;
+                                        case "text":
+                                            Extra.Text = extraItem.Value.ToString(); break;
+                                    }
+                                }
+                                PingInfo.Motd.Extra.Add(Extra);
+                            }
+                        }
+                    }
+                }
                 else
-                    result.Motd = Description.ToString();
+                {
+                    PingInfo.Motd.Text = Description.ToString();
+                }
             }
-            return result;
-
-
+            return PingInfo;
+            
         }
         private long? GetTime()
         {
             long? Time = 0;
             
             if (Connect != null)
-            {
+            { 
                 try
                 {
                     //http://wiki.vg/Server_List_Ping#Ping
@@ -198,7 +245,6 @@ namespace MinecraftProtocol.Utils
             }
             else if (Host.AddressList.Length > 1)
             {
-                ServerIP = Host.AddressList[0];
                 for (int i = 0; i < Host.AddressList.Length - 1; i++)
                 {
                     Host.AddressList[i] = Host.AddressList[i + 1];
@@ -213,10 +259,7 @@ namespace MinecraftProtocol.Utils
         /// </summary>
         public override string ToString()
         {
-            if (!string.IsNullOrWhiteSpace(JsonResult))
-                return JsonResult;
-            else
-                return string.Empty;
+            return JsonResult;
         }
     }
 }
