@@ -219,7 +219,7 @@ namespace MinecraftProtocol.Protocol
             }
             return result.ToArray();
         }
-        private static void GetProtocolVersionNubers()
+        private static void PrintProtocolVersionNumbers()
         {
 
 #pragma warning disable 162
@@ -236,7 +236,14 @@ namespace MinecraftProtocol.Protocol
                 if (Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success)
                 {
                     string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)(</a>[\S\s]+?<td>\s?)(\d+)[\s\S]+?</tr>";
-                    VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), Regex.Replace(tr.ToString(), reg, "$4"));
+                    string key = Regex.Replace(tr.ToString(), reg, "$2");
+                    if (key == "18w03b")
+                        VersionNumbers.Add(key, "355");
+                    else if(!VersionNumbers.ContainsKey(key))
+                        VersionNumbers.Add(key, Regex.Replace(tr.ToString(), reg, "$4"));
+                    else
+                        Console.WriteLine($"key:{key.Trim()} 已存在,它会被跳过");
+
                 }
                 else if (Regex.Match(tr.ToString(), @"<td rowspan=""(\d+)"">").Success)
                 {
@@ -256,13 +263,10 @@ namespace MinecraftProtocol.Protocol
             }
             foreach (var item in VersionNumbers)
             {
-                // public const int V17w45a = 343;
-                /// <summary>
-                /// 1.12.2
-                /// </summary>
-                Console.WriteLine("/// <summary>");
-                Console.WriteLine($"/// {item.Key}");
-                Console.WriteLine("/// </summary>");
+                //样品:
+                /// <summary>1.12.2</summary>
+                //public const int V17w45a = 343;
+                Console.WriteLine($"/// <summary>{item.Key.Replace(' ','_')}".TrimEnd()+ "</summary>");
                 Console.WriteLine($"public const int V{item.Key.Replace('.', '_').Replace('-', '_')} = {item.Value};");
             }
 #pragma warning restore 162
