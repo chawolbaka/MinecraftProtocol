@@ -13,7 +13,7 @@ ps:不会排版，英文完全不会，C#只学了一点点(真的非常少,摸�
     git clone https://github.com/chawolbaka/PlayersMonitor.git
     cd MinecraftProtocol\PlayersMonitor
     sudo dotnet publish -c Release
-编译好后你可以在: bin\Release\netcoreapp2.1\publish 里面找到文件
+编译好后你可以在: bin\Release\netcoreapp2.2\publish 里面找到文件
 
 ## 抄袭项目
 https://github.com/Nsiso/MinecraftOutClient  
@@ -22,7 +22,7 @@ https://github.com/ORelio/Minecraft-Console-Client
 ### 引用的开源库
 https://www.newtonsoft.com  
 http://dotnetzip.codeplex.com  
-(数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个项目里面的代码,不知道是不是上面那个)
+(数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个项目里面的代码,不知道来源是不是这个)
 ### 参考资料
 https://wiki.vg/Protocol  
 https://github.com/bangbang93/minecraft-protocol   
