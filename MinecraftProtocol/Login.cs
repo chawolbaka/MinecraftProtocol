@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace MinecraftProtocol
 {
-    internal static class Login
+    public static class Login
     {
         /// <returns>如果登陆成功,会返回LoginSuccess包和数据包压缩阀值(如果有)</returns>
         public static (Packet LoginSuccess, ConnectionPayload ConnectInfo) Start(IPEndPoint IPAndPort, string playerName, string password,TcpClient tcpClient)
@@ -27,7 +27,7 @@ namespace MinecraftProtocol
             int MaxReceiveCount = 2;//这个等我到时候查查最多会有几个包
             for (int i = 0; i < MaxReceiveCount; i++)
             {
-                Packet TempPacket = ProtocolHandler.ReceivePacket(Connect);
+                Packet TempPacket = ProtocolHandler.ReceivePacket(Connect.Session.Client,Connect.CompressionThreshold);
                 Console.WriteLine("接收到了一个包,总接次数:" + i);
                 Console.WriteLine($"PacketID:{TempPacket.ID}");
                 object Type = ProtocolHandler.GetPacketType(TempPacket, Connect.ProtocolVersion);

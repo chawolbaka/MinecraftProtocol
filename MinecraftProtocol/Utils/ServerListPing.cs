@@ -24,7 +24,7 @@ namespace MinecraftProtocol.Utils
          * (Not Support Legacy Ping(See:https://wiki.vg/Server_List_Ping#1.6))
         */
 
-        private readonly string REG_IPv4 = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
+        private const string REG_IPv4 = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
 
 
         public IPAddress ServerIP { get; set; }
@@ -112,7 +112,7 @@ namespace MinecraftProtocol.Utils
             int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
             if (PacketLength > 0)
             {
-                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session));
+                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session.Client));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))
@@ -194,9 +194,9 @@ namespace MinecraftProtocol.Utils
         private long? GetTime()
         {
             long? Time = 0;
-            
+
             if (Connect != null)
-            { 
+            {
                 try
                 {
                     //http://wiki.vg/Server_List_Ping#Ping
@@ -204,14 +204,14 @@ namespace MinecraftProtocol.Utils
                     Packet RequestPacket = new Packet();
                     RequestPacket.ID = 0x01;
                     RequestPacket.WriteLong(code);
-                    DateTime TmpTime = DateTime.Now;
+                    DateTime StartTime = DateTime.Now;
                     Connect.Session.Client.Send(RequestPacket.GetPacket());
 
                     //http://wiki.vg/Server_List_Ping#Pong
                     int PacketLenght = ProtocolHandler.GetPacketLength(Connect.Session);
-                    Time = DateTime.Now.Ticks - TmpTime.Ticks;
+                    Time = DateTime.Now.Ticks - StartTime.Ticks;
                     List<byte> ResponesPacket = new List<byte>(
-                        ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session));
+                        ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session.Client));
 
                     //校验
                     if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
@@ -230,7 +230,7 @@ namespace MinecraftProtocol.Utils
 
                 }
             }
-            else throw new NullReferenceException("Do You Used Method \"Send\"?");
+            else throw new NullReferenceException("Do you used method \"Send\"?");
             return Time;
         }
 

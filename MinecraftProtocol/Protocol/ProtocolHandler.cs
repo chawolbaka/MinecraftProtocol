@@ -12,35 +12,45 @@ namespace MinecraftProtocol.Protocol
 {
     public static class ProtocolHandler
     {
-        /// <summary>
-        /// 获取包的长度
-        /// </summary>
-        /// <returns>长度(-1=Timeout)</returns>
-        public static int GetPacketLength(TcpClient session)
+        /*
+         * 数据包格式(https://github.com/bangbang93/minecraft-protocol/blob/master/protocol.md)
+         * 
+         * 未压缩的数据包:
+         * 
+         * 名称      类型
+         * 数据包长度 Varint
+         * 数据包ID  Varint
+         * 数据
+         * 
+         * 压缩的数据包:
+         * 
+         * 名称      类型     备注
+         * 数据包长度 Varint  等于下方两者解压前的总字节数
+         * 解压后长度 Varint  若为0则表示本包未被压缩
+         * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
+         */
+
+        public static int GetPacketLength(ConnectionPayload connectInfo) => GetPacketLength(connectInfo.Session);
+        public static int GetPacketLength(TcpClient session) => GetPacketLength(session.Client);
+        /// <summary>获取数据包的长度</summary>
+        public static int GetPacketLength(Socket session)
         {
             //0x7F=127 0x80=128
             int length = 0;
-            int x = 0;
+            int readCount = 0;
             byte[] tmp = new byte[5];
             while (true)
             {
                 Receive(tmp, 0, 1, SocketFlags.None, session);
-                length |= (tmp[0] & 0x7F) << x++ * 7;
-                if (x > 5) throw new OverflowException("VarInt too big");
+                length |= (tmp[0] & 0x7F) << readCount++ * 7;
+                if (readCount > 5) throw new OverflowException("VarInt too big");
                 if ((tmp[0] & 0x80) != 128) break;
             }
             return length;
         }
-        /// <summary>
-        /// 获取包的长度
-        /// </summary>
-        /// <returns>长度(-1=Timeout)</returns>
-        public static int GetPacketLength(ConnectionPayload connectInfo) => GetPacketLength(connectInfo.Session);
-        /// <summary>
-        /// 通过包的id&data加上协议号来分析出是什么类型的包(这是一个低效率的方法,不推荐使用这个方法)
-        /// 如果无法分析出是什么类型的话会返回null
-        /// </summary>
+        /// <summary>通过包的id&data加上协议号来分析出是什么类型的包(这是一个低效率的方法,不推荐使用这个方法)</summary>
         /// <returns>PacketType.Client or PacketType.Server or null</returns>
+        [Obsolete("效率过低,随时会被删除")]
         public static object GetPacketType(Packet packet, int protocolVersion)
         {
             //按照包的重复量或者重要性来排序(比如KeepAlive的优先级是最高的,登陆成功的信息这种放很后面都可以
@@ -95,75 +105,82 @@ namespace MinecraftProtocol.Protocol
             }
             return null;
         }
-        public static byte[] ReceiveData(int start, int offset,TcpClient session)
+
+        public static byte[] ReceiveDate(int start, int offset, ConnectionPayload connectInfo) => ReceiveData(start, offset, connectInfo.Session.Client);
+        public static byte[] ReceiveData(int start, int offset, Socket session)
         {
-            byte[] buffer = new byte[offset-start];
+            byte[] buffer = new byte[offset - start];
             Receive(buffer, start, offset, SocketFlags.None, session);
             return buffer;
         }
-        public static byte[] ReceiveDate(int start, int offset, ConnectionPayload connectInfo) => ReceiveData(start, offset, connectInfo.Session);
-        public static Packet ReceivePacket(ConnectionPayload connectInfo)
+        public static Packet ReceivePacket(Socket session,int compressionThreshold)
         {
             //写这个方法的时候Data属性暂时改成了可写的,我当初是为了什么设置成只读的?
             //先去睡觉了,醒来后想想看要不要改回去,为什么要只读这两个问题
-            Packet Packet_tmp = new Packet();
-            int PacketLength = ProtocolHandler.GetPacketLength(connectInfo.Session);
-            Packet_tmp.WriteBytes(ReceiveData(0, PacketLength, connectInfo.Session));
-            if (connectInfo.CompressionThreshold > 0)
+            Packet recPacket = new Packet();
+            int PacketLength = ProtocolHandler.GetPacketLength(session);
+            recPacket.WriteBytes(ReceiveData(0, PacketLength, session));
+            if (compressionThreshold > 0)
             {
-                int DataLength = ReadNextVarInt(Packet_tmp.Data);
+                int DataLength = ReadNextVarInt(recPacket.Data);
                 if (DataLength != 0) //如果是0的话就代表这个数据包没有被压缩
                 {
-                    byte[] uncompressed = ZlibUtils.Decompress(Packet_tmp.Data.ToArray(), DataLength);
-                    Packet_tmp.Data.Clear();
-                    Packet_tmp.Data.AddRange(uncompressed);
+                    byte[] uncompressed = ZlibUtils.Decompress(recPacket.Data.ToArray(), DataLength);
+                    recPacket.Data.Clear();
+                    recPacket.Data.AddRange(uncompressed);
                 }
             }
-            Packet_tmp.ID = ReadNextVarInt(Packet_tmp.Data);
-            return Packet_tmp;
+            recPacket.ID = ReadNextVarInt(recPacket.Data);
+            return recPacket;
         }
         /// <summary>
         /// 从TCP在协议栈里面的缓存中取出数据
         /// </summary>
-        /// <param name="buffer">取出来的包</param>
+        /// <param name="buffer">取出来的数据</param>
         /// <param name="start">从x开始读取</param>
         /// <param name="offset">读取到x结束</param>
-        /// <param name="flags"></param>
-        /// <param name="tcp"></param>
-        /// <returns>错误码</returns>
-        private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, TcpClient tcp)
+        private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, Socket tcp)
         {
             int read = 0;
             while (read < offset)
             {
-                read += tcp.Client.Receive(buffer, start + read, offset - read, flags);
+                read += tcp.Receive(buffer, start + read, offset - read, flags);
             }
         }
 
         #region ReadNext(DataType)
-        /// <summary>
-        /// Read an integer from a cache of bytes and remove it from the cache
-        /// </summary>
-        /// <param name="cache">Cache of bytes to read from</param>
-        /// <returns>The integer</returns>
+        /// <summary> Read a varint from a cache of bytes and remove it from the cache</summary>
         public static int ReadNextVarInt(List<byte> cache)
         {
             VarInt result = new VarInt(cache.ToArray(), 0, out int end);
             cache.RemoveRange(0, end);
             return result.ToInt();
         }
+        /// <summary> Read a unsigned short from a cache of bytes and remove it from the cache</summary>
+        public static ushort ReadNextUnsignedShort(List<byte> cache)
+        {
+            byte[] result = cache.ToArray();
+            Array.Reverse(result);
+            cache.RemoveRange(0, 2);
+            return BitConverter.ToUInt16(result, 0);
+        }
+        /// <summary> Read a int32 from a cache of bytes and remove it from the cache</summary>
         public static long ReadNextInt(List<byte> cache)
         {
             byte[] result = cache.ToArray();
             Array.Reverse(result);
+            cache.RemoveRange(0, 4);
             return BitConverter.ToInt32(result, 0);
         }
+        /// <summary> Read a Long from a cache of bytes and remove it from the cache</summary>
         public static long ReadNextLong(List<byte> cache)
         {
             byte[] result = cache.ToArray();
             Array.Reverse(result);
+            cache.RemoveRange(0, 8);
             return BitConverter.ToInt64(result, 0);
         }
+        /// <summary> Read a string from a cache of bytes and remove it from the cache</summary>
         public static string ReadNextString(List<byte> cache)
         {
             //这边索引可能有问题,我现在懒的思考
@@ -172,28 +189,20 @@ namespace MinecraftProtocol.Protocol
             cache.RemoveRange(0, length);
             return result;
         }
+        /// <summary> Read a bool from a cache of bytes and remove it from the cache</summary>
         public static bool ReadNextBoolean(List<byte> cache)
         {
             bool result = cache[0] == 0x01 ? true : false;
             cache.RemoveAt(0);
             return result;
         }
-        /// <summary>
-        /// Read a single byte from a cache of bytes and remove it from the cache
-        /// </summary>
-        /// <returns>The byte that was read</returns>
+        /// <summary> Read a single byte from a cache of bytes and remove it from the cache</summary>
         public static byte ReadNextByte(List<byte> cache)
         {
             byte result = cache[0];
             cache.RemoveAt(0);
             return result;
         }
-        /// <summary>
-        /// Read some data from a cache of bytes and remove it from the cache
-        /// </summary>
-        /// <param name="offset">Amount of bytes to read</param>
-        /// <param name="cache">Cache of bytes to read from</param>
-        /// <returns>The data read from the cache as an array</returns>
         public static byte[] ReadData(int offset, List<byte> cache)
         {
             byte[] result = cache.Take(offset).ToArray();
@@ -201,14 +210,11 @@ namespace MinecraftProtocol.Protocol
             return result;
         }
         #endregion
+        
         #region ToolMethod
-        /// <summary>
-        /// 拼接Byte数组
-        /// </summary>
-        /// <returns>拼接完的数组</returns>
+        /// <summary>拼接Byte数组</summary>
         public static byte[] ConcatBytes(params byte[][] bytes)
         {
-            //这段我直接抄来了
             List<byte> result = new List<byte>();
             foreach (byte[] array in bytes)
             {
