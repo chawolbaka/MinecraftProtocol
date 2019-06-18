@@ -148,6 +148,7 @@ namespace MinecraftProtocol.Protocol
             }
         }
 
+
         #region ReadNext(DataType)
         /// <summary> Read a varint from a cache of bytes and remove it from the cache</summary>
         public static int ReadNextVarInt(List<byte> cache)
@@ -159,25 +160,25 @@ namespace MinecraftProtocol.Protocol
         /// <summary> Read a unsigned short from a cache of bytes and remove it from the cache</summary>
         public static ushort ReadNextUnsignedShort(List<byte> cache)
         {
-            byte[] result = cache.ToArray();
-            Array.Reverse(result);
-            cache.RemoveRange(0, 2);
+            const int INT16_LENGHT = 2;
+            byte[] result = cache.Take(INT16_LENGHT).Reverse().ToArray();
+            cache.RemoveRange(0, INT16_LENGHT);
             return BitConverter.ToUInt16(result, 0);
         }
         /// <summary> Read a int32 from a cache of bytes and remove it from the cache</summary>
         public static long ReadNextInt(List<byte> cache)
         {
-            byte[] result = cache.ToArray();
-            Array.Reverse(result);
-            cache.RemoveRange(0, 4);
+            const int INT32_LENGHT = 4;
+            byte[] result = cache.Take(INT32_LENGHT).Reverse().ToArray();
+            cache.RemoveRange(0, INT32_LENGHT);
             return BitConverter.ToInt32(result, 0);
         }
         /// <summary> Read a Long from a cache of bytes and remove it from the cache</summary>
         public static long ReadNextLong(List<byte> cache)
         {
-            byte[] result = cache.ToArray();
-            Array.Reverse(result);
-            cache.RemoveRange(0, 8);
+            const int INT64_LENGHT = 8;
+            byte[] result = cache.Take(INT64_LENGHT).Reverse().ToArray();
+            cache.RemoveRange(0, INT64_LENGHT);
             return BitConverter.ToInt64(result, 0);
         }
         /// <summary> Read a string from a cache of bytes and remove it from the cache</summary>
@@ -215,15 +216,15 @@ namespace MinecraftProtocol.Protocol
         /// <summary>拼接Byte数组</summary>
         public static byte[] ConcatBytes(params byte[][] bytes)
         {
-            List<byte> result = new List<byte>();
+            List<byte> buffer = new List<byte>();
             foreach (byte[] array in bytes)
             {
                 if (array == null)
                     continue;
                 else
-                    result.AddRange(array);
+                    buffer.AddRange(array);
             }
-            return result.ToArray();
+            return buffer.ToArray();
         }
         private static void PrintProtocolVersionNumbers()
         {
