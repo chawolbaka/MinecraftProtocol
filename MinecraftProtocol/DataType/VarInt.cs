@@ -3,27 +3,28 @@ using System.Collections.Generic;
 
 namespace MinecraftProtocol.DataType
 {
-    public struct VarInt
+    
+    public struct VarInt:IEquatable<VarInt>
     {
-        private byte[] Data;
-        private int? Buffer;
+        private byte[] Bytes;
+        private int Data;
 
-        public int Length => Data.Length;
+        public int Length => Bytes != null ? Bytes.Length : -1;
 
         public VarInt(int value)
         {
-            this.Buffer = null;
-            this.Data = ReadByInt(value);
+            this.Data = value;
+            this.Bytes = null;
         }
         public VarInt(byte[] data,int startIndex)
         {
-            this.Buffer = null;
-            this.Data = ReadByBytes(data, startIndex, out _);
+            this.Bytes = ReadByBytes(data, startIndex, out _);
+            this.Data = 0;
         }
         public VarInt(byte[] data, int startIndex, out int endIndex)
         {
-            this.Buffer = null;
-            this.Data = ReadByBytes(data, startIndex, out endIndex);
+            this.Bytes = ReadByBytes(data, startIndex, out endIndex);
+            this.Data = 0;
         }
 
         //Q:为什么写这坨operator的?
@@ -61,15 +62,15 @@ namespace MinecraftProtocol.DataType
         public static bool operator <=(VarInt right, int left) => right.ToInt() <= left;
 
         public static bool operator ==(VarInt right, VarInt left) => right.Equals(left);
-        public static bool operator ==(int right, VarInt left) => new VarInt(right).Equals(left);
-        public static bool operator ==(VarInt right, int left) => right.Equals(new VarInt(left));
+        public static bool operator ==(int right, VarInt left) => left.Equals(right);
+        public static bool operator ==(VarInt right, int left) => right.Equals(left);
 
         public static bool operator !=(VarInt right, VarInt left) => !right.Equals(left);
-        public static bool operator !=(int right, VarInt left) => !(new VarInt(right).Equals(left));
-        public static bool operator !=(VarInt right, int left) => !right.Equals(new VarInt(left));
+        public static bool operator !=(int right, VarInt left) => !left.Equals(right);
+        public static bool operator !=(VarInt right, int left) => !right.Equals(left);
 
-        public static VarInt operator ++(VarInt v) => new VarInt(v.ToInt() + 1);
-        public static VarInt operator --(VarInt v) => new VarInt(v.ToInt() - 1);
+        public static VarInt operator ++(VarInt value) => new VarInt(value.ToInt() + 1);
+        public static VarInt operator --(VarInt value) => new VarInt(value.ToInt() - 1);
 
         public static explicit operator VarInt(int value) => new VarInt(value);
         public static explicit operator int(VarInt value) => value.ToInt();
@@ -77,17 +78,20 @@ namespace MinecraftProtocol.DataType
 
         public int ToInt()
         {
-            if (Buffer == null)
+            if (Data==0&&Bytes!=null&&Bytes[Bytes.Length-1]!=0)
             {
-                Buffer = 0;
-                for (int i = 0; i < Data.Length; i++)
+                for (int i = 0; i < Bytes.Length; i++)
                 {
-                    Buffer |= (Data[i] & 127) << i * 7;
+                    Data |= (Bytes[i] & 127) << i * 7;
                 }
             }
-            return Buffer.Value;
+            return Data;
         }
-        public byte[] ToBytes() => Data;
+        public byte[] ToBytes()
+        {
+            if (this.Bytes == null) Bytes = ReadByInt(Data);
+            return this.Bytes;
+        }
         public override string ToString() => ToInt().ToString();
         public override bool Equals(object obj)
         {
@@ -96,16 +100,35 @@ namespace MinecraftProtocol.DataType
             else
                 return false;
         }
-        public bool Equals(VarInt obj)
+        public bool Equals(int value)
         {
-            if (obj.Length != Data.Length) return false;
-            for (int i = 0; i < obj.Length; i++)
-            {
-                if (obj.ToBytes()[i] != Data[i]) return false;
-            }
-            return true;
+            if (Bytes != null && Data == 0)
+                return ToInt() == value;
+            else
+                return Data == value;
         }
-
+        public bool Equals(VarInt varint)
+        {
+            //这边可以理解成Data它是不是null,如果data是null就通过Bytes对比
+            if (Data==0&&Bytes!=null&&Bytes[0]!=0)
+            {
+                if (varint.Bytes == null) varint.ToBytes();
+                if (varint.Length != Bytes.Length) return false;
+                byte[] temp = varint.ToBytes();
+                for (int i = 0; i < varint.Length; i++)
+                {
+                    if (temp[i] != Bytes[i]) return false;
+                }
+                return true;
+            }
+            else 
+            {
+                if (Bytes == null)
+                    return Data == varint.ToInt();
+                else
+                    return ToInt() == varint.ToInt();
+            }
+        }
         public static VarInt Parse(string s) => new VarInt(int.Parse(s));
         public static bool TryParse(string s, out VarInt result)
         {
@@ -113,7 +136,14 @@ namespace MinecraftProtocol.DataType
             result = new VarInt(number);
             return CanParse;
         }
-        
+        public override int GetHashCode()
+        {
+            if (Bytes == null)
+                return Data;
+            else
+                return ToInt();
+        }
+
         private static byte[] ReadByBytes(byte[] data, int startIndex, out int endIndex)
         {
             //这个方法的使用场景是从一堆byte里面取出一段varint,不会做任何转换.
@@ -140,12 +170,6 @@ namespace MinecraftProtocol.DataType
             }
             bytes.Add((byte)value);
             return bytes.ToArray();
-        }
-
-        public override int GetHashCode()
-        {
-            //看见个绿色的波浪线要我重写GetHasCode,这我怎么重写哇QAQ,不会写...
-            return base.GetHashCode();
         }
     }
 }
