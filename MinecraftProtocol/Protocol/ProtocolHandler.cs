@@ -1,12 +1,12 @@
-﻿using MinecraftProtocol.DataType;
-using MinecraftProtocol.Protocol.VersionCompatible;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using MinecraftProtocol.DataType;
+using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol
 {
@@ -38,7 +38,8 @@ namespace MinecraftProtocol.Protocol
             //0x7F=127 0x80=128
             int length = 0;
             int readCount = 0;
-            byte[] tmp = new byte[5];
+			//这边的范围本来是5,可是下面每次就读一个。后面的4个byte根本用不到吧
+            byte[] tmp = new byte[1];
             while (true)
             {
                 Receive(tmp, 0, 1, SocketFlags.None, session);
@@ -147,9 +148,7 @@ namespace MinecraftProtocol.Protocol
                 read += tcp.Receive(buffer, start + read, offset - read, flags);
             }
         }
-
-
-        #region ReadNext(DataType)
+        #region ReadDataAndRemove
         /// <summary> Read a varint from a cache of bytes and remove it from the cache</summary>
         public static int ReadNextVarInt(List<byte> cache)
         {
@@ -160,25 +159,25 @@ namespace MinecraftProtocol.Protocol
         /// <summary> Read a unsigned short from a cache of bytes and remove it from the cache</summary>
         public static ushort ReadNextUnsignedShort(List<byte> cache)
         {
-            const int INT16_LENGHT = 2;
-            byte[] result = cache.Take(INT16_LENGHT).Reverse().ToArray();
-            cache.RemoveRange(0, INT16_LENGHT);
+            const int INT16_LENGTH = 2;
+            byte[] result = cache.Take(INT16_LENGTH).Reverse().ToArray();
+            cache.RemoveRange(0, INT16_LENGTH);
             return BitConverter.ToUInt16(result, 0);
         }
         /// <summary> Read a int32 from a cache of bytes and remove it from the cache</summary>
         public static long ReadNextInt(List<byte> cache)
         {
-            const int INT32_LENGHT = 4;
-            byte[] result = cache.Take(INT32_LENGHT).Reverse().ToArray();
-            cache.RemoveRange(0, INT32_LENGHT);
+            const int INT32_LENGTH = 4;
+            byte[] result = cache.Take(INT32_LENGTH).Reverse().ToArray();
+            cache.RemoveRange(0, INT32_LENGTH);
             return BitConverter.ToInt32(result, 0);
         }
         /// <summary> Read a Long from a cache of bytes and remove it from the cache</summary>
         public static long ReadNextLong(List<byte> cache)
         {
-            const int INT64_LENGHT = 8;
-            byte[] result = cache.Take(INT64_LENGHT).Reverse().ToArray();
-            cache.RemoveRange(0, INT64_LENGHT);
+            const int INT64_LENGTH = 8;
+            byte[] result = cache.Take(INT64_LENGTH).Reverse().ToArray();
+            cache.RemoveRange(0, INT64_LENGTH);
             return BitConverter.ToInt64(result, 0);
         }
         /// <summary> Read a string from a cache of bytes and remove it from the cache</summary>
@@ -211,7 +210,97 @@ namespace MinecraftProtocol.Protocol
             return result;
         }
         #endregion
-        
+        #region ReadDataWithoutRemove
+        /// <summary> Read a varint from a cache of bytes</summary>
+        public static int ReadVarInt(List<byte> cache) => ReadVarInt(cache, 0, out _);
+        /// <summary> Read a varint from a cache of bytes</summary>
+        public static int ReadVarInt(List<byte> cache, out int end) => ReadVarInt(cache, 0, out end);
+        /// <summary> Read a varint from a cache of bytes</summary>
+        public static int ReadVarInt(List<byte> cache, int offset) => ReadVarInt(cache, offset, out _);
+        /// <summary> Read a varint from a cache of bytes</summary>
+        public static int ReadVarInt(List<byte> cache, int offset, out int end)
+        {
+            VarInt result = new VarInt(cache.ToArray(), offset, out end);
+            return result.ToInt();
+        }
+        /// <summary> Read a unsigned short from a cache of bytes</summary>
+        public static ushort ReadUnsignedShort(List<byte> cache) => ReadUnsignedShort(cache, 0);
+        /// <summary> Read a unsigned short from a cache of bytes</summary>
+        public static ushort ReadUnsignedShort(List<byte> cache, int offset)
+        {
+            const int INT16_LENGTH = 2;
+            byte[] result;
+            if (offset > 0)
+            {
+                List<byte> buffer = new List<byte>(cache);
+                buffer.RemoveRange(0, offset);
+                result = buffer.Take(INT16_LENGTH).Reverse().ToArray();
+            }
+            else
+                result = cache.Take(INT16_LENGTH).Reverse().ToArray();
+            return BitConverter.ToUInt16(result, 0);
+        }
+        /// <summary> Read a int32 from a cache of bytes</summary>
+        public static long ReadInt(List<byte> cache) => ReadInt(cache, 0);
+        /// <summary> Read a int32 from a cache of bytes</summary>
+        public static long ReadInt(List<byte> cache, int offset)
+        {
+            const int INT32_LENGTH = 4;
+            byte[] result;
+            if (offset > 0)
+            {
+                List<byte> buffer = new List<byte>(cache);
+                buffer.RemoveRange(0, offset);
+                result = buffer.Take(INT32_LENGTH).Reverse().ToArray();
+            }
+            else
+                result = cache.Take(INT32_LENGTH).Reverse().ToArray();
+            return BitConverter.ToInt32(result, 0);
+        }
+        /// <summary> Read a Long from a cache of bytes</summary>
+        public static long ReadLong(List<byte> cache) => ReadLong(cache, 0);
+        /// <summary> Read a Long from a cache of bytes</summary>
+        public static long ReadLong(List<byte> cache, int offset)
+        {
+            const int INT64_LENGTH = 8;
+            byte[] result;
+            if (offset > 0)
+            {
+                List<byte> buffer = new List<byte>(cache);
+                buffer.RemoveRange(0, offset);
+                result = buffer.Take(INT64_LENGTH).Reverse().ToArray();
+            }
+            else
+                result = cache.Take(INT64_LENGTH).Reverse().ToArray();
+            return BitConverter.ToInt64(result, 0);
+        }
+        /// <summary> Read a string from a cache of bytes</summary>
+        public static string ReadString(List<byte> cache) => ReadString(cache, 0);
+        /// <summary> Read a string from a cache of bytes</summary>
+        public static string ReadString(List<byte> cache, int offset)
+        {
+            int length = ReadVarInt(cache, offset, out int end);
+            List<byte> buffer = new List<byte>(cache);
+            buffer.RemoveRange(0, end + offset);
+            return Encoding.UTF8.GetString(buffer.Take(length).ToArray());
+        }
+        /// <summary> Read a bool from a cache of bytes</summary>
+        public static bool ReadBoolean(List<byte> cache) => ReadBoolean(cache, 0);
+        /// <summary> Read a bool from a cache of bytes</summary>
+        public static bool ReadBoolean(List<byte> cache, int offset)
+        {
+            bool result = cache[offset] == 0x01 ? true : false;
+            return result;
+        }
+        /// <summary> Read a single byte from a cache of bytes</summary>
+        public static byte ReadByte(List<byte> cache) => ReadByte(cache, 0);
+        /// <summary> Read a single byte from a cache of bytes</summary>
+        public static byte ReadByte(List<byte> cache, int offset)
+        {
+            return cache[offset];
+        }
+        #endregion
+
         #region ToolMethod
         /// <summary>拼接Byte数组</summary>
         public static byte[] ConcatBytes(params byte[][] bytes)
