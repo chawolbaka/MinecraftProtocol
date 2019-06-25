@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.RegularExpressions;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
@@ -301,7 +299,6 @@ namespace MinecraftProtocol.Protocol
         }
         #endregion
 
-        #region ToolMethod
         /// <summary>拼接Byte数组</summary>
         public static byte[] ConcatBytes(params byte[][] bytes)
         {
@@ -315,58 +312,5 @@ namespace MinecraftProtocol.Protocol
             }
             return buffer.ToArray();
         }
-        private static void PrintProtocolVersionNumbers()
-        {
-
-#pragma warning disable 162
-            throw new NotImplementedException("这是一次性的东西,我用来把表格转成常量的...");
-            WebClient tmp = new WebClient();
-            byte[] pageData = tmp.DownloadData(@"http://wiki.vg/Protocol_version_numbers");
-            string html = Encoding.UTF8.GetString(pageData);
-            string Table = Regex.Match(html, @"(<table class=""wikitable"">)(\s|\S)+?</table>").Value;
-            Dictionary<string, string> VersionNumbers = new Dictionary<string, string>();
-            int rowspan = 0;
-            string protocolnumbrtbuff = "";
-            foreach (var tr in Regex.Matches(Table, @"<tr>(\s|\S)+?</tr>"))
-            {
-                if (Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success)
-                {
-                    string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)(</a>[\S\s]+?<td>\s?)(\d+)[\s\S]+?</tr>";
-                    string key = Regex.Replace(tr.ToString(), reg, "$2");
-                    if (key == "18w03b")
-                        VersionNumbers.Add(key, "355");
-                    else if(!VersionNumbers.ContainsKey(key))
-                        VersionNumbers.Add(key, Regex.Replace(tr.ToString(), reg, "$4"));
-                    else
-                        Console.WriteLine($"key:{key.Trim()} 已存在,它会被跳过");
-
-                }
-                else if (Regex.Match(tr.ToString(), @"<td rowspan=""(\d+)"">").Success)
-                {
-                    string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)</a>[\s\S]+?<td rowspan=""(\d+?)"">\s?(\d+)[\s\S]+?</tr>";
-                    rowspan = int.Parse(Regex.Replace(tr.ToString(), reg, "$3"));
-                    protocolnumbrtbuff = Regex.Replace(tr.ToString(), reg, "$4");
-                    VersionNumbers.Add(Regex.Replace(tr.ToString(), reg, "$2"), protocolnumbrtbuff);
-                }
-                else if (rowspan > 0)
-                {
-                    string reg = @"(<tr>[\s\S]+?<a.*?href=.+?>)(.+?)</a>[\s\S]+?</tr>";
-                    string version = Regex.Replace(tr.ToString(), reg, "$2");
-                    if (!VersionNumbers.ContainsKey(version))
-                        VersionNumbers.Add(version, protocolnumbrtbuff);
-                    rowspan--;
-                }
-            }
-            foreach (var item in VersionNumbers)
-            {
-                //样品:
-                /// <summary>1.12.2</summary>
-                //public const int V17w45a = 343;
-                Console.WriteLine($"/// <summary>{item.Key.Replace(' ','_')}".TrimEnd()+ "</summary>");
-                Console.WriteLine($"public const int V{item.Key.Replace('.', '_').Replace('-', '_')} = {item.Value};");
-            }
-#pragma warning restore 162
-        }
-        #endregion
     }
 }

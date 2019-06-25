@@ -2,34 +2,49 @@
 using System.Collections.Generic;
 using System.Text;
 
+
 namespace MinecraftProtocol.Protocol.VersionCompatible
 {
     public static class ProtocolVersionNumbers
     {
+        /// <summary>1.14.3</summary>
+        public const int V1_14_3 = 490;
+        /// <summary>1.14.3 Pre-Release 4</summary>
+        public const int V1_14_3_pre4 = 489;
+        /// <summary>1.14.3 Pre-Release 3</summary>
+        public const int V1_14_3_pre3 = 488;
+        /// <summary>1.14.3 Pre-Release 2</summary>
+        public const int V1_14_3_pre2 = 487;
+        /// <summary>1.14.3 Pre-Release 1</summary>
+        public const int V1_14_3_pre1 = 486;
+        /// <summary>1.14.2</summary>
+        public const int V1_14_2 = 485;
+        /// <summary>1.14.2 Pre-Release 4</summary>
+        public const int V1_14_2_pre4 = 484;
         /// <summary>1.14.2 Pre-Release 3</summary>
-        public const int V1_14_2_Pre_Release3 = 483;
+        public const int V1_14_2_pre3 = 483;
         /// <summary>1.14.2 Pre-Release 2</summary>
-        public const int V1_14_2_Pre_Release2 = 482;
+        public const int V1_14_2_pre2 = 482;
         /// <summary>1.14.2 Pre-Release 1</summary>
-        public const int V1_14_2_Pre_Release1 = 481;
+        public const int V1_14_2_pre1 = 481;
         /// <summary>1.14.1</summary>
         public const int V1_14_1 = 480;
         /// <summary>1.14.1 Pre-Release 2</summary>
-        public const int V1_14_1_Pre_Release2 = 479;
+        public const int V1_14_1_pre2 = 479;
         /// <summary>1.14.1 Pre-Release 1</summary>
-        public const int V1_14_1_Pre_Release1 = 478;
+        public const int V1_14_1_pre1 = 478;
         /// <summary>1.14</summary>
         public const int V1_14 = 477;
         /// <summary>1.14 Pre-Release 5</summary>
-        public const int V1_14_Pre_Release5 = 476;
+        public const int V1_14_pre5 = 476;
         /// <summary>1.14 Pre-Release 4</summary>
-        public const int V1_14_Pre_Release4 = 475;
+        public const int V1_14_pre4 = 475;
         /// <summary>1.14 Pre-Release 3</summary>
-        public const int V1_14_Pre_Release3  = 474;
+        public const int V1_14_pre3 = 474;
         /// <summary>1.14 Pre-Release 2</summary>
-        public const int V1_14_Pre_Release2  = 473;
+        public const int V1_14_pre2 = 473;
         /// <summary>1.14 Pre-Release 1</summary>
-        public const int V1_14_Pre_Release1  = 472;
+        public const int V1_14_pre1 = 472;
         /// <summary>19w14b</summary>
         public const int V19w14b = 471;
         /// <summary>19w14a</summary>
@@ -96,15 +111,15 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V18w43a = 441;
         /// <summary>1.13.2</summary>
         public const int V1_13_2 = 404;
-        /// <summary>1.13.2-pre2</summary>
+        /// <summary>1.13.2 Pre-Release 2</summary>
         public const int V1_13_2_pre2 = 403;
-        /// <summary>1.13.2-pre1</summary>
+        /// <summary>1.13.2 Pre-Release 1</summary>
         public const int V1_13_2_pre1 = 402;
         /// <summary>1.13.1</summary>
         public const int V1_13_1 = 401;
-        /// <summary>1.13.1-pre2</summary>
+        /// <summary>1.13.1 Pre-Release 2</summary>
         public const int V1_13_1_pre2 = 400;
-        /// <summary>1.13.1-pre1</summary>
+        /// <summary>1.13.1 Pre-Release 1</summary>
         public const int V1_13_1_pre1 = 399;
         /// <summary>18w33a</summary>
         public const int V18w33a = 398;
@@ -118,25 +133,25 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V18w30a = 394;
         /// <summary>1.13</summary>
         public const int V1_13 = 393;
-        /// <summary>1.13-pre10</summary>
+        /// <summary>1.13 Pre-Release 10</summary>
         public const int V1_13_pre10 = 392;
-        /// <summary>1.13-pre9</summary>
+        /// <summary>1.13 Pre-Release 9</summary>
         public const int V1_13_pre9 = 391;
-        /// <summary>1.13-pre8</summary>
+        /// <summary>1.13 Pre-Release 8</summary>
         public const int V1_13_pre8 = 390;
-        /// <summary>1.13-pre7</summary>
+        /// <summary>1.13 Pre-Release 7</summary>
         public const int V1_13_pre7 = 389;
-        /// <summary>1.13-pre6</summary>
+        /// <summary>1.13 Pre-Release 6</summary>
         public const int V1_13_pre6 = 388;
-        /// <summary>1.13-pre5</summary>
+        /// <summary>1.13 Pre-Release 5</summary>
         public const int V1_13_pre5 = 387;
-        /// <summary>1.13-pre4</summary>
+        /// <summary>1.13 Pre-Release 4</summary>
         public const int V1_13_pre4 = 386;
-        /// <summary>1.13-pre3</summary>
+        /// <summary>1.13 Pre-Release 3</summary>
         public const int V1_13_pre3 = 385;
-        /// <summary>1.13-pre2</summary>
+        /// <summary>1.13 Pre-Release 2</summary>
         public const int V1_13_pre2 = 384;
-        /// <summary>1.13-pre1</summary>
+        /// <summary>1.13 Pre-Release 1</summary>
         public const int V1_13_pre1 = 383;
         /// <summary>18w22c</summary>
         public const int V18w22c = 382;
@@ -222,31 +237,31 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V17w43a = 341;
         /// <summary>1.12.2</summary>
         public const int V1_12_2 = 340;
-        /// <summary>1.12.2-pre2</summary>
+        /// <summary>1.12.2 Pre-Release 2</summary>
         public const int V1_12_2_pre2 = 339;
-        /// <summary>1.12.2-pre1</summary>
+        /// <summary>1.12.2 Pre-Release 1</summary>
         public const int V1_12_2_pre1 = 339;
         /// <summary>1.12.1</summary>
         public const int V1_12_1 = 338;
-        /// <summary>1.12.1-pre1</summary>
+        /// <summary>1.12.1 Pre-Release 1</summary>
         public const int V1_12_1_pre1 = 337;
         /// <summary>17w31a</summary>
         public const int V17w31a = 336;
         /// <summary>1.12</summary>
         public const int V1_12 = 335;
-        /// <summary>1.12-pre7</summary>
+        /// <summary>1.12 Pre-Release 7</summary>
         public const int V1_12_pre7 = 334;
-        /// <summary>1.12-pre6</summary>
+        /// <summary>1.12 Pre-Release 6</summary>
         public const int V1_12_pre6 = 333;
-        /// <summary>1.12-pre5</summary>
+        /// <summary>1.12 Pre-Release 5</summary>
         public const int V1_12_pre5 = 332;
-        /// <summary>1.12-pre4</summary>
+        /// <summary>1.12 Pre-Release 4</summary>
         public const int V1_12_pre4 = 331;
-        /// <summary>1.12-pre3</summary>
+        /// <summary>1.12 Pre-Release 3</summary>
         public const int V1_12_pre3 = 330;
-        /// <summary>1.12-pre2</summary>
+        /// <summary>1.12 Pre-Release 2</summary>
         public const int V1_12_pre2 = 329;
-        /// <summary>1.12-pre1</summary>
+        /// <summary>1.12 Pre-Release 1</summary>
         public const int V1_12_pre1 = 328;
         /// <summary>17w18b</summary>
         public const int V17w18b = 327;
@@ -278,7 +293,7 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V16w50a = 316;
         /// <summary>1.11</summary>
         public const int V1_11 = 315;
-        /// <summary>1.11-pre1</summary>
+        /// <summary>1.11 Pre-Release 1</summary>
         public const int V1_11_pre1 = 314;
         /// <summary>16w44a</summary>
         public const int V16w44a = 313;
@@ -314,9 +329,9 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V1_10_1 = 210;
         /// <summary>1.10</summary>
         public const int V1_10 = 210;
-        /// <summary>1.10-pre2</summary>
+        /// <summary>1.10 Pre-Release 2</summary>
         public const int V1_10_pre2 = 205;
-        /// <summary>1.10-pre1</summary>
+        /// <summary>1.10 Pre-Release 1</summary>
         public const int V1_10_pre1 = 204;
         /// <summary>16w21b</summary>
         public const int V16w21b = 203;
@@ -328,11 +343,11 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V1_9_4 = 110;
         /// <summary>1.9.3</summary>
         public const int V1_9_3 = 110;
-        /// <summary>1.9.3-pre3</summary>
+        /// <summary>1.9.3 Pre-Release 3</summary>
         public const int V1_9_3_pre3 = 110;
-        /// <summary>1.9.3-pre2</summary>
+        /// <summary>1.9.3 Pre-Release 2</summary>
         public const int V1_9_3_pre2 = 110;
-        /// <summary>1.9.3-pre1</summary>
+        /// <summary>1.9.3 Pre-Release 1</summary>
         public const int V1_9_3_pre1 = 109;
         /// <summary>16w15b</summary>
         public const int V16w15b = 109;
@@ -342,25 +357,25 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V16w14a = 109;
         /// <summary>1.9.2</summary>
         public const int V1_9_2 = 109;
-        /// <summary>1.RV-Pre1</summary>
+        /// <summary>1.RV Pre-Release 1</summary>
         public const int V1_RV_Pre1 = 108;
         /// <summary>1.9.1</summary>
         public const int V1_9_1 = 108;
-        /// <summary>1.9.1-pre3</summary>
+        /// <summary>1.9.1 Pre-Release 3</summary>
         public const int V1_9_1_pre3 = 108;
-        /// <summary>1.9.1-pre2</summary>
+        /// <summary>1.9.1 Pre-Release 2</summary>
         public const int V1_9_1_pre2 = 108;
-        /// <summary>1.9.1-pre1</summary>
+        /// <summary>1.9.1 Pre-Release 1</summary>
         public const int V1_9_1_pre1 = 107;
         /// <summary>1.9</summary>
         public const int V1_9 = 107;
-        /// <summary>1.9-pre4</summary>
+        /// <summary>1.9 Pre-Release 4</summary>
         public const int V1_9_pre4 = 106;
-        /// <summary>1.9-pre3</summary>
+        /// <summary>1.9 Pre-Release 3</summary>
         public const int V1_9_pre3 = 105;
-        /// <summary>1.9-pre2</summary>
+        /// <summary>1.9 Pre-Release 2</summary>
         public const int V1_9_pre2 = 104;
-        /// <summary>1.9-pre1</summary>
+        /// <summary>1.9 Pre-Release 1</summary>
         public const int V1_9_pre1 = 103;
         /// <summary>16w07b</summary>
         public const int V16w07b = 102;
@@ -492,39 +507,39 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V1_8_3 = 47;
         /// <summary>1.8.2</summary>
         public const int V1_8_2 = 47;
-        /// <summary>1.8.2-pre7</summary>
+        /// <summary>1.8.2 Pre-Release 7</summary>
         public const int V1_8_2_pre7 = 47;
-        /// <summary>1.8.2-pre6</summary>
+        /// <summary>1.8.2 Pre-Release 6</summary>
         public const int V1_8_2_pre6 = 47;
-        /// <summary>1.8.2-pre5</summary>
+        /// <summary>1.8.2 Pre-Release 5</summary>
         public const int V1_8_2_pre5 = 47;
-        /// <summary>1.8.2-pre4</summary>
+        /// <summary>1.8.2 Pre-Release 4</summary>
         public const int V1_8_2_pre4 = 47;
-        /// <summary>1.8.2-pre3</summary>
+        /// <summary>1.8.2 Pre-Release 3</summary>
         public const int V1_8_2_pre3 = 47;
-        /// <summary>1.8.2-pre2</summary>
+        /// <summary>1.8.2 Pre-Release 2</summary>
         public const int V1_8_2_pre2 = 47;
-        /// <summary>1.8.2-pre1</summary>
+        /// <summary>1.8.2 Pre-Release 1</summary>
         public const int V1_8_2_pre1 = 47;
         /// <summary>1.8.1</summary>
         public const int V1_8_1 = 47;
-        /// <summary>1.8.1-pre5</summary>
+        /// <summary>1.8.1 Pre-Release 5</summary>
         public const int V1_8_1_pre5 = 47;
-        /// <summary>1.8.1-pre4</summary>
+        /// <summary>1.8.1 Pre-Release 4</summary>
         public const int V1_8_1_pre4 = 47;
-        /// <summary>1.8.1-pre3</summary>
+        /// <summary>1.8.1 Pre-Release 3</summary>
         public const int V1_8_1_pre3 = 47;
-        /// <summary>1.8.1-pre2</summary>
+        /// <summary>1.8.1 Pre-Release 2</summary>
         public const int V1_8_1_pre2 = 47;
-        /// <summary>1.8.1-pre1</summary>
+        /// <summary>1.8.1 Pre-Release 1</summary>
         public const int V1_8_1_pre1 = 47;
         /// <summary>1.8</summary>
         public const int V1_8 = 47;
-        /// <summary>1.8-pre3</summary>
+        /// <summary>1.8 Pre-Release 3</summary>
         public const int V1_8_pre3 = 46;
-        /// <summary>1.8-pre2</summary>
+        /// <summary>1.8 Pre-Release 2</summary>
         public const int V1_8_pre2 = 45;
-        /// <summary>1.8-pre1</summary>
+        /// <summary>1.8 Pre-Release 1</summary>
         public const int V1_8_pre1 = 44;
         /// <summary>14w34d</summary>
         public const int V14w34d = 43;
@@ -630,13 +645,13 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V14w02a = 5;
         /// <summary>1.7.10</summary>
         public const int V1_7_10 = 5;
-        /// <summary>1.7.10-pre4</summary>
+        /// <summary>1.7.10 Pre-Release 4</summary>
         public const int V1_7_10_pre4 = 5;
-        /// <summary>1.7.10-pre3</summary>
+        /// <summary>1.7.10 Pre-Release 3</summary>
         public const int V1_7_10_pre3 = 5;
-        /// <summary>1.7.10-pre2</summary>
+        /// <summary>1.7.10 Pre-Release 2</summary>
         public const int V1_7_10_pre2 = 5;
-        /// <summary>1.7.10-pre1</summary>
+        /// <summary>1.7.10 Pre-Release 1</summary>
         public const int V1_7_10_pre1 = 5;
         /// <summary>1.7.9</summary>
         public const int V1_7_9 = 5;
@@ -646,15 +661,15 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V1_7_7 = 5;
         /// <summary>1.7.6</summary>
         public const int V1_7_6 = 5;
-        /// <summary>1.7.6-pre2</summary>
+        /// <summary>1.7.6 Pre-Release 2</summary>
         public const int V1_7_6_pre2 = 5;
-        /// <summary>1.7.6-pre1</summary>
+        /// <summary>1.7.6 Pre-Release 1</summary>
         public const int V1_7_6_pre1 = 5;
         /// <summary>1.7.5</summary>
         public const int V1_7_5 = 4;
         /// <summary>1.7.4</summary>
         public const int V1_7_4 = 4;
-        /// <summary>1.7.3-pre</summary>
+        /// <summary>1.7.3 Pre-Release </summary>
         public const int V1_7_3_pre = 4;
         /// <summary>13w49a</summary>
         public const int V13w49a = 4;
@@ -674,9 +689,9 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V13w47a = 4;
         /// <summary>1.7.2</summary>
         public const int V1_7_2 = 4;
-        /// <summary>1.7.1-pre</summary>
+        /// <summary>1.7.1 Pre-Release </summary>
         public const int V1_7_1_pre = 3;
-        /// <summary>1.7-pre</summary>
+        /// <summary>1.7 Pre-Release </summary>
         public const int V1_7_pre = 3;
         /// <summary>13w43a</summary>
         public const int V13w43a = 2;
@@ -688,5 +703,54 @@ namespace MinecraftProtocol.Protocol.VersionCompatible
         public const int V13w41b = 0;
         /// <summary>13w41a</summary>
         public const int V13w41a = 0;
+
+        //public static void PrintFromWiki()
+        //{
+        //    System.Net.WebClient tmp = new System.Net.WebClient();
+        //    byte[] pageData = tmp.DownloadData(@"http://wiki.vg/Protocol_version_numbers");
+        //    string html = Encoding.UTF8.GetString(pageData);
+        //    string Table = System.Text.RegularExpressions.Regex.Match(html, @"(<table class=""wikitable"">)(\s|\S)+?</table>").Value;
+        //    Dictionary<string, string> VersionNumbers = new Dictionary<string, string>();
+        //    int rowspan = 0;
+        //    string protocolnumbrtbuff = "";
+        //    foreach (var tr in System.Text.RegularExpressions.Regex.Matches(Table, @"<tr>(\s|\S)+?</tr>"))
+        //    {
+        //        if (System.Text.RegularExpressions.Regex.Match(tr.ToString(), @"<td>\s?(\d+)\s?</td>").Success)
+        //        {
+        //            string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)(</a>[\S\s]+?<td>\s?)(\d+)[\s\S]+?</tr>";
+        //            string key = System.Text.RegularExpressions.Regex.Replace(tr.ToString(), reg, "$2");
+        //            if (key == "18w03b")
+        //                VersionNumbers.Add(key, "355");
+        //            else if (!VersionNumbers.ContainsKey(key))
+        //                VersionNumbers.Add(key, System.Text.RegularExpressions.Regex.Replace(tr.ToString(), reg, "$4"));
+        //            else
+        //                Console.WriteLine($"key:{key.Trim()} 已存在,它会被跳过");
+
+        //        }
+        //        else if (System.Text.RegularExpressions.Regex.Match(tr.ToString(), @"<td rowspan=""(\d+)"">").Success)
+        //        {
+        //            string reg = @"(<tr>[\s\S]+?<a.*?href="".+?"">)(.+?)</a>[\s\S]+?<td rowspan=""(\d+?)"">\s?(\d+)[\s\S]+?</tr>";
+        //            rowspan = int.Parse(System.Text.RegularExpressions.Regex.Replace(tr.ToString(), reg, "$3"));
+        //            protocolnumbrtbuff = System.Text.RegularExpressions.Regex.Replace(tr.ToString(), reg, "$4");
+        //            VersionNumbers.Add(System.Text.RegularExpressions.Regex.Replace(tr.ToString(), reg, "$2"), protocolnumbrtbuff);
+        //        }
+        //        else if (rowspan > 0)
+        //        {
+        //            string reg = @"(<tr>[\s\S]+?<a.*?href=.+?>)(.+?)</a>[\s\S]+?</tr>";
+        //            string version = System.Text.RegularExpressions.Regex.Replace(tr.ToString(), reg, "$2");
+        //            if (!VersionNumbers.ContainsKey(version))
+        //                VersionNumbers.Add(version, protocolnumbrtbuff);
+        //            rowspan--;
+        //        }
+        //    }
+        //    foreach (var item in VersionNumbers)
+        //    {
+        //        //样品:
+        //        /// <summary>1.12.2</summary>
+        //        //public const int V17w45a = 343;
+        //        Console.WriteLine($"/// <summary>{item.Key.Replace("-pre", " Pre-Release ")}".TrimEnd() + "</summary>");
+        //        Console.WriteLine($"public const int V{item.Key.Replace(" Pre-Release ", "_pre").Replace('.', '_').Replace('-', '_')} = {item.Value};");
+        //    }
+        //}
     }
 }
