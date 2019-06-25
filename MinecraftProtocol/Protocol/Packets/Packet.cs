@@ -1,42 +1,30 @@
 ﻿using System;
 using System.Text;
 using System.Collections.Generic;
-using MinecraftProtocol.Protocol;
+using MinecraftProtocol.DataType;
 
-namespace MinecraftProtocol.DataType
+namespace MinecraftProtocol.Protocol.Packets
 {
-    public class Packet
+    public class Packet:IEquatable<Packet>
     {
-        public List<byte> Data { get; set; } = new List<byte>();
-        public int ID
-        {
-            //解释一下为什么要这样子写
-            //我的想法是这样子的,PacketID不是必须写的参数,如果不写的话在GetPacket的时候就不在前面加PacketID了
-            //但是我直接往属性上面加个?的话外面调用PacketID可能需要一个强制转换才能使用,所以就写了这块代码
-            //(其实我一开始的想法是去掉这个强制转换的,然后写了后发现还是需要一个强制转换.不过起码现在不用在外部强制转换了)
-            get {
-                if (_PacketID == null)
-                    throw new Exception("PacketID is null , Please set a value");
-                else 
-                    return (int)_PacketID;
-            }
-            set {
-                _PacketID = value;
-            }
-        }
-        private int? _PacketID = null;
+        public List<byte> Data { get; set; }
+        public int ID { get; set; }
 
-        public Packet()
+        public Packet() : this(-1) { }
+        public Packet(int packetID)
         {
+            this.ID = packetID;
+            this.Data = new List<byte>();
         }
         public Packet(int packetID, List<byte> packetData)
         {
             this.ID = packetID;
-            this.Data = packetData;
+            this.Data = new List<byte>(packetData);
         }
-        public Packet(int packetID,params byte[] packetData)
+        public Packet(int packetID, params byte[] packetData)
         {
             this.ID = packetID;
+            this.Data = new List<byte>();
             foreach (var data in packetData)
             {
                 this.Data.Add(data);
@@ -48,13 +36,9 @@ namespace MinecraftProtocol.DataType
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
         /// <returns></returns>
-        public byte[] GetPacket(int compress = -1)
+        public virtual byte[] GetPacket(int compress = -1)
         {
-            byte[] DataPacket;
-            if (_PacketID.HasValue)
-                DataPacket = ProtocolHandler.ConcatBytes(new VarInt(_PacketID.Value).ToBytes(), this.Data.ToArray());
-            else
-                DataPacket = this.Data.ToArray();
+            byte[] DataPacket = ProtocolHandler.ConcatBytes(new VarInt(ID).ToBytes(), this.Data.ToArray());
 
             if (compress > 0)
             {
@@ -65,9 +49,11 @@ namespace MinecraftProtocol.DataType
                 return ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(), DataPacket);
             }
             else
-                return ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(),DataPacket);
+                return ProtocolHandler.ConcatBytes(new VarInt(DataPacket.Length).ToBytes(), DataPacket);
             
         }
+
+
         public void WriteBoolean(bool boolean)
         {
             if (boolean)
@@ -146,6 +132,43 @@ namespace MinecraftProtocol.DataType
             {
                 Data.Add(item);
             }
+        }
+
+        public override string ToString()
+        {
+#if DEBUG
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine($"PacketID:{ID},PacketLength:{Data.Count}");
+            sb.Append("PacketData:");
+            foreach (var BYTE in Data)
+                sb.Append(BYTE.ToString("X2"));
+            return sb.ToString();
+#else
+            return $"PacketID:{ID},PacketLength:{Data.Count}";
+#endif
+        }
+        public override bool Equals(object obj)
+        {
+            if (obj is Packet packet)
+                return Equals(packet);
+            else
+                return false;
+        }
+        public bool Equals(Packet packet)
+        {
+            if (this.ID != packet.ID)
+                return false;
+            for (int i = 0; i < packet.Data.Count; i++)
+            {
+                if (this.Data[i] != packet.Data[i])
+                    return false;
+            }
+            return true;
+        }
+        public override int GetHashCode()
+        {
+            //return ID ^ Data.GetHashCode();
+            return HashCode.Combine(ID, Data);
         }
     }
 }

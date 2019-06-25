@@ -6,7 +6,11 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol;
+using MinecraftProtocol.Protocol.Packets;
+using MinecraftProtocol.Protocol.Packets.Client;
+using MinecraftProtocol.Protocol.Packets.Server;
 using System.Net.Sockets;
+
 
 namespace MinecraftProtocol.Utils
 {
@@ -105,8 +109,10 @@ namespace MinecraftProtocol.Utils
                 Connect.Session.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            SendPacket.Handshake(ServerIP.ToString(), this.ServerPort, new VarInt(-1),new VarInt(1), Connect);
-            SendPacket.PingRequest(Connect);
+            Packet HandshakePacket = new Handshake(ServerIP.ToString(), this.ServerPort, -1, Handshake.NextState.GetStatus);
+            session.Client.Send(HandshakePacket.GetPacket());
+            Packet PingRequestPacket = new PingRequest();
+            session.Client.Send(PingRequestPacket.GetPacket());
 
             //Receive Packet
             int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
@@ -114,6 +120,8 @@ namespace MinecraftProtocol.Utils
             {
                 List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session.Client));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
+                if (PacketID != PingResponse.PacketID)
+                    throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet));
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))
                 {
@@ -122,7 +130,6 @@ namespace MinecraftProtocol.Utils
                 }
                 else
                 {
-                    //这边我是想抛异常的,可是找不到什么适合的异常又懒的自己写一个就直接返回了null
                     PingResult = null;
                 }
                 Connect.Session.Client.Dispose();
@@ -208,10 +215,10 @@ namespace MinecraftProtocol.Utils
                     Connect.Session.Client.Send(RequestPacket.GetPacket());
 
                     //http://wiki.vg/Server_List_Ping#Pong
-                    int PacketLenght = ProtocolHandler.GetPacketLength(Connect.Session);
+                    int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
                     Time = DateTime.Now.Ticks - StartTime.Ticks;
                     List<byte> ResponesPacket = new List<byte>(
-                        ProtocolHandler.ReceiveData(0, PacketLenght, Connect.Session.Client));
+                        ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session.Client));
 
                     //校验
                     if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)

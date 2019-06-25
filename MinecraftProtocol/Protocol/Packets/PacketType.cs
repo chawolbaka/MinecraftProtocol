@@ -1,7 +1,7 @@
 ﻿using System;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
-namespace MinecraftProtocol.DataType
+namespace MinecraftProtocol.Protocol.Packets
 {
     public static class PacketType
     {
@@ -99,7 +99,7 @@ namespace MinecraftProtocol.DataType
                 else return 0x01;
             }
 
-            throw new Exception("Can not Get PacketID");
+            throw new Exception("Can not get packet id");
         }
         /// <summary>
         /// 通过包的类型来获取包的ID
@@ -173,7 +173,7 @@ namespace MinecraftProtocol.DataType
                 else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x1F;
                 else return 0x00;
             }
-            throw new Exception("Can not Get PacketID");
+            throw new Exception("cannot get the packet id");
         }
     }
 }
