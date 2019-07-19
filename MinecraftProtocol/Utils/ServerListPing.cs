@@ -39,7 +39,7 @@ namespace MinecraftProtocol.Utils
 
         private string JsonResult;
         private IPHostEntry Host;
-        private ConnectionPayload Connect = new ConnectionPayload();
+        //private ConnectionPayload Connect = new ConnectionPayload();
 
         /// <summary> Warning:don't use this constructor,if you want fast run for your program</summary>
         /// <param name="host">Server IP Address or Domain Name</param>
@@ -94,31 +94,38 @@ namespace MinecraftProtocol.Utils
         /// <exception cref="Exception"/>
         public PingReply Send()
         {
-            return Send(new TcpClient());
+            using (Socket socket = new TcpClient().Client)
+                return Send(socket, false);
         }
-        public PingReply Send(TcpClient session)
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="SocketException"/>
+        /// <exception cref="JsonException"/>
+        /// <exception cref="Exception"/>
+        public PingReply Send(TcpClient tcp)
         {
-            Connect.Session = session != null ? session : throw new ArgumentNullException(nameof(session));
-            
+            return Send(tcp.Client, true);
+        }
+        public PingReply Send(Socket socket,bool reuseSocket)
+        {
             PingReply PingResult;
             if (EnableDnsRoundRobin&&Host.AddressList.Length>1)
                 DnsRoundRobinHandler();
-            if(!Connect.Session.Client.Connected)
-                Connect.Session.Connect(ServerIP, this.ServerPort);
+            if(!socket.Connected)
+                socket.Connect(ServerIP, this.ServerPort);
             if (ReceiveTimeout != default(int))
-                Connect.Session.ReceiveTimeout = ReceiveTimeout;
+                socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
             Packet HandshakePacket = new Handshake(ServerIP.ToString(), this.ServerPort, -1, Handshake.NextState.GetStatus);
-            session.Client.Send(HandshakePacket.GetPacket());
+            socket.Send(HandshakePacket.GetPacket());
             Packet PingRequestPacket = new PingRequest();
-            session.Client.Send(PingRequestPacket.GetPacket());
+            socket.Send(PingRequestPacket.GetPacket());
 
             //Receive Packet
-            int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
+            int PacketLength = ProtocolHandler.GetPacketLength(socket);
             if (PacketLength > 0)
             {
-                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session.Client));
+                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, socket));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
                 if (PacketID != PingResponse.PacketID)
                     throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet));
@@ -126,14 +133,14 @@ namespace MinecraftProtocol.Utils
                 if (!string.IsNullOrWhiteSpace(JsonResult))
                 {
                     PingResult = ResolveJson(JsonResult);
-                    PingResult.Time = EnableDelayDetect ? GetTime() : null;
+                    PingResult.Time = EnableDelayDetect ? GetTime(socket) : null;
                 }
                 else
                 {
                     PingResult = null;
                 }
-                Connect.Session.Client.Dispose();
-                Connect.Session.Close();
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Disconnect(reuseSocket);
             }
             else
                 throw new Exception($"Response Packet Length too Small (PacketLength:{PacketLength})");
@@ -176,7 +183,7 @@ namespace MinecraftProtocol.Utils
                                     switch(extraItem.Name)
                                     {
                                         case "color":
-                                            Extra.Color = extraItem.Value.ToString();break;
+                                            Extra.Color = extraItem.Value.ToString(); break;
                                         case "strikethrough":
                                             Extra.Strikethrough = bool.Parse(extraItem.Value.ToString().Trim()); break;
                                         case "bold":
@@ -198,11 +205,11 @@ namespace MinecraftProtocol.Utils
             return PingInfo;
             
         }
-        private long? GetTime()
+        private long? GetTime(Socket socket)
         {
             long? Time = 0;
 
-            if (Connect != null)
+            if (socket != null)
             {
                 try
                 {
@@ -212,13 +219,13 @@ namespace MinecraftProtocol.Utils
                     RequestPacket.ID = 0x01;
                     RequestPacket.WriteLong(code);
                     DateTime StartTime = DateTime.Now;
-                    Connect.Session.Client.Send(RequestPacket.GetPacket());
+                    socket.Send(RequestPacket.GetPacket());
 
                     //http://wiki.vg/Server_List_Ping#Pong
-                    int PacketLength = ProtocolHandler.GetPacketLength(Connect.Session);
+                    int PacketLength = ProtocolHandler.GetPacketLength(socket);
                     Time = DateTime.Now.Ticks - StartTime.Ticks;
                     List<byte> ResponesPacket = new List<byte>(
-                        ProtocolHandler.ReceiveData(0, PacketLength, Connect.Session.Client));
+                        ProtocolHandler.ReceiveData(0, PacketLength, socket));
 
                     //校验
                     if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
