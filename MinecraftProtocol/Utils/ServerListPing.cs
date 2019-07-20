@@ -30,7 +30,6 @@ namespace MinecraftProtocol.Utils
 
         private const string REG_IPv4 = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
 
-
         public IPAddress ServerIP { get; set; }
         public ushort ServerPort { get; set; }
         public int ReceiveTimeout { get; set; }
@@ -38,7 +37,8 @@ namespace MinecraftProtocol.Utils
         public bool EnableDnsRoundRobin { get; set; }
 
         private string JsonResult;
-        private IPHostEntry Host;
+        private string Host;
+        private IPHostEntry IPEntry;
         //private ConnectionPayload Connect = new ConnectionPayload();
 
         /// <summary> Warning:don't use this constructor,if you want fast run for your program</summary>
@@ -57,17 +57,17 @@ namespace MinecraftProtocol.Utils
 
             if (!Regex.Match(host, REG_IPv4).Success)//域名的正则我写不出来...(这个都是抄来的)
             {
-                Host = Dns.GetHostEntry(host);
-                if (Host.AddressList.Length > 0)
-                    ServerIP = Host.AddressList[0];
+                IPEntry = Dns.GetHostEntry(host);
+                if (IPEntry.AddressList.Length > 0)
+                    ServerIP = IPEntry.AddressList[0];
                 else //IPv6 or error addr
                     ServerIP = IPAddress.Parse(host);
-
             }
             else
             {
                 ServerIP = IPAddress.Parse(host);
             }
+            Host = host;
             ServerPort = port;
         }
         /// <exception cref="ArgumentNullException"/>
@@ -108,7 +108,7 @@ namespace MinecraftProtocol.Utils
         public PingReply Send(Socket socket,bool reuseSocket)
         {
             PingReply PingResult;
-            if (EnableDnsRoundRobin&&Host.AddressList.Length>1)
+            if (EnableDnsRoundRobin&&IPEntry!=null&&IPEntry.AddressList.Length>1)
                 DnsRoundRobinHandler();
             if(!socket.Connected)
                 socket.Connect(ServerIP, this.ServerPort);
@@ -116,7 +116,7 @@ namespace MinecraftProtocol.Utils
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            Packet HandshakePacket = new Handshake(ServerIP.ToString(), this.ServerPort, -1, Handshake.NextState.GetStatus);
+            Packet HandshakePacket = new Handshake(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, this.ServerPort, -1, Handshake.NextState.GetStatus);
             socket.Send(HandshakePacket.GetPacket());
             Packet PingRequestPacket = new PingRequest();
             socket.Send(PingRequestPacket.GetPacket());
@@ -250,20 +250,20 @@ namespace MinecraftProtocol.Utils
 
         private void DnsRoundRobinHandler()
         {
-            ServerIP = Host.AddressList[0];
-            if (Host.AddressList.Length == 2)
+            ServerIP = IPEntry.AddressList[0];
+            if (IPEntry.AddressList.Length == 2)
             {
                 //这边单独处理只有2个地址的情况是因为我产生了这样子效率高一点的错觉
-                Host.AddressList[0] = Host.AddressList[1];
-                Host.AddressList[1] = ServerIP;
+                IPEntry.AddressList[0] = IPEntry.AddressList[1];
+                IPEntry.AddressList[1] = ServerIP;
             }
-            else if (Host.AddressList.Length > 1)
+            else if (IPEntry.AddressList.Length > 1)
             {
-                for (int i = 0; i < Host.AddressList.Length - 1; i++)
+                for (int i = 0; i < IPEntry.AddressList.Length - 1; i++)
                 {
-                    Host.AddressList[i] = Host.AddressList[i + 1];
+                    IPEntry.AddressList[i] = IPEntry.AddressList[i + 1];
                 }
-                Host.AddressList[Host.AddressList.Length - 1] = ServerIP;
+                IPEntry.AddressList[IPEntry.AddressList.Length - 1] = ServerIP;
             }
         }
 
