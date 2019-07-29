@@ -3,36 +3,34 @@ using System.Collections.Generic;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Protocol.Packets.Client
 {
-
     /// <summary>
-    /// https://wiki.vg/Protocol#Keep_Alive_.28clientbound.29
+    /// https://wiki.vg/Protocol#Keep_Alive_.28serverbound.29
     /// </summary>
-    public class KeepAlive : Packet
+    public class KeepAlivePacket : Packet
     {
         private int ProtocolVersion;
         public long Code
         {
-            get
-            {
+            get {
                 if (ProtocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1)
                     return BitConverter.ToInt64(Data.ToArray(), 0);
                 else if (ProtocolVersion >= ProtocolVersionNumbers.V14w31a)
                     return new VarInt(Data.ToArray(), 0).ToInt();
                 else if (ProtocolVersion < ProtocolVersionNumbers.V14w31a)
                     return BitConverter.ToInt32(Data.ToArray(), 0);
-                else
-                    throw new NotSupportedException($"version {ProtocolVersion} not support");
+                else //这个永远不会执行到吧!?
+                    throw new ProtocolVersionNotSupportedException($"version {ProtocolVersion} not support", ProtocolVersionNumbers.V1_14_3, 1);
             }
         }
-        public KeepAlive(List<byte> code, int protocolVersion)
+        public KeepAlivePacket(List<byte> code, int protocolVersion)
         {
             this.ID = GetPacketID(protocolVersion);
             this.ProtocolVersion = protocolVersion;
             WriteBytes(code.ToArray());
         }
-        public KeepAlive(byte[] code, int protocolVersion)
+        public KeepAlivePacket(byte[] code, int protocolVersion)
         {
             this.ID = GetPacketID(protocolVersion);
             this.ProtocolVersion = protocolVersion;
@@ -42,31 +40,34 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         {
             /*
              * 1.13-pre7(389)
-             * Changed ID of Keep Alive (clientbound) from 0x20 to 0x21
-             * 17w46a(345)
-             * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
+             * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0E
+             * 1.13-pre4(386)
+             * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
+             * 17w45a(343)
+             * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0A
+             * 17w31a(336)
+             * Changed ID of Keep Alive (serverbound) from 0x0C to 0x0B
              * 1.12-pre5(332)
-             * Changed ID of Keep Alive (clientbound) from 0x20 to 0x1F
+             * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
              * 17w13a(318)
-             * Changed ID of Keep Alive (clientbound) from 0x1F to 0x20
-             * 15w46a(86)
-             * Changed ID of Keep Alive from 0x20 to 0x1F
+             * Changed ID of Keep Alive (serverbound) from 0x0B to 0x0C
              * 15w43a(80)
-             * Changed ID of Keep Alive from 0x1F to 0x20
+             * Changed ID of Keep Alive (serverbound) from 0x0A to 0x0B
              * 15w36a(67)
-             * Changed ID of Keep Alive from 0x00 to 0x1F
+             * Changed ID of Keep Alive (serverbound) from 0x00 to 0x0A
              */
 
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x21;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w46a) return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x1F;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w46a) return 0x1F;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x1F;
+            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x0E;
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre4) return 0x0C;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w45a) return 0x0A;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w31a) return 0x0B;
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x0C;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x0C;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x0B;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x0A;
             else return 0x00;
         }
-        public static bool Verify(Packet packet, int protocolVersion)
+        public static bool Verify(Packet packet,int protocolVersion)
         {
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;

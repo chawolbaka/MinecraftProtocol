@@ -7,14 +7,14 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Protocol#Chat_Message_.28serverbound.29
     /// </summary>
-    public class ChatMessage:Packet
+    public class ChatMessagePacket:Packet
     {
         /// <summary>For New Version(>=16w38a)</summary>
         public const int MaxMessageLength = 256;
         /// <summary>For Old Version(16w38a ago)</summary>
         public const int OldMaxMessageLength = 100;
 
-        public ChatMessage(string message, int protocolVersion)
+        public ChatMessagePacket(string message, int protocolVersion)
         {
             /*       
              * 16w38a(306)

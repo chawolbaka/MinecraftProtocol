@@ -7,17 +7,17 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Protocol#Login_Start
     /// </summary>
-    public class LoginStart : Packet
+    public class LoginStartPacket : Packet
     {
         public string PlayerName { get; }
 
-        public LoginStart(string playerName, int protocolVersion)
+        public LoginStartPacket(string playerName, int protocolVersion)
         {
             this.ID = PacketType.GetPacketID(PacketType.Client.LoginStart, protocolVersion);
             this.PlayerName = playerName;
             WriteString(PlayerName);
         }
-        public LoginStart(Packet loginStartPacket, int protocolVersion)
+        public LoginStartPacket(Packet loginStartPacket, int protocolVersion)
         {
             if (Verify(loginStartPacket, protocolVersion))
             {

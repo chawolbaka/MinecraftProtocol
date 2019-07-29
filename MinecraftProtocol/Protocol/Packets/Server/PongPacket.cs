@@ -1,18 +1,18 @@
 ﻿using System;
 
-namespace MinecraftProtocol.Protocol.Packets.Client
+namespace MinecraftProtocol.Protocol.Packets.Server
 {
     /// <summary>
-    /// https://wiki.vg/Server_List_Ping#Ping
+    /// https://wiki.vg/Server_List_Ping#Pong
     /// </summary>
-    public class Ping:Packet
+    public class PongPacket:Packet
     {
         public const int PacketID = 0x01;
         public long Code { get; }
-        public Ping(long code)
+        public PongPacket(long code)
         {
             this.Code = code;
-            this.ID = Ping.PacketID;
+            this.ID = PongPacket.PacketID;
             WriteLong(code);
         }
         public static bool Verify(Packet packet)

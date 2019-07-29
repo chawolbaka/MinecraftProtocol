@@ -116,10 +116,10 @@ namespace MinecraftProtocol.Utils
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            Packet HandshakePacket = new Handshake(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, this.ServerPort, -1, Handshake.NextState.GetStatus);
-            socket.Send(HandshakePacket.GetPacket());
-            Packet PingRequestPacket = new PingRequest();
-            socket.Send(PingRequestPacket.GetPacket());
+            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, this.ServerPort, -1, HandshakePacket.NextState.GetStatus);
+            socket.Send(Handshake.GetPacket());
+            Packet PingRequest = new PingRequestPacket();
+            socket.Send(PingRequest.GetPacket());
 
             //Receive Packet
             int PacketLength = ProtocolHandler.GetPacketLength(socket);
@@ -127,7 +127,7 @@ namespace MinecraftProtocol.Utils
             {
                 List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, socket));
                 int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
-                if (PacketID != PingResponse.PacketID)
+                if (PacketID != PingResponsePacket.PacketID)
                     throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet));
                 JsonResult = ProtocolHandler.ReadNextString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))

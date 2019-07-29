@@ -8,7 +8,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// <summary>
     /// http://wiki.vg/Server_List_Ping#Handshake
     /// </summary>
-    public class Handshake:Packet
+    public class HandshakePacket:Packet
     {
         //握手包永远不会变ID(大概)
         public const int PacketID = 0x00;
@@ -26,7 +26,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         /// The version that the client plans on using to connect to the server (which is not important for the ping).
         /// If the client is pinging to determine what version to use, by convention -1 should be set.
         /// </param>
-        public Handshake(string serverIP, ushort port, int protocolVersion, NextState nextState)
+        public HandshakePacket(string serverIP, ushort port, int protocolVersion, NextState nextState)
         {
             this.ID = PacketID;
             this.ServerAddress = serverIP;
@@ -38,9 +38,9 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             WriteUnsignedShort(ServerPort);
             WriteVarInt(new VarInt((int)Next));
         }
-        public Handshake(Packet handshakePacket)
+        public HandshakePacket(Packet handshakePacket)
         {
-            if(Handshake.Verify(handshakePacket))
+            if(HandshakePacket.Verify(handshakePacket))
             {
                 List<byte> buffer = new List<byte>(handshakePacket.Data);
                 this.ID = handshakePacket.ID;
