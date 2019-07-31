@@ -56,8 +56,8 @@ namespace MinecraftProtocol.Protocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Keep Alive from 0x00 to 0x1F
              */
-
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x21;
+            if (protocolVersion >= ProtocolVersionNumbers.V1_14) return 0x20;//不知道什么时候更新成这个的
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x21;
             else if (protocolVersion >= ProtocolVersionNumbers.V17w46a) return 0x20;
             else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x1F;
             else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x20;
