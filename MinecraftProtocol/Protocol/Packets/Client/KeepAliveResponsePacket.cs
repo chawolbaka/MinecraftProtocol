@@ -8,7 +8,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Protocol#Keep_Alive_.28serverbound.29
     /// </summary>
-    public class KeepAlivePacket : Packet
+    public class KeepAliveResponsePacket : Packet
     {
         private int ProtocolVersion;
         public long Code
@@ -24,13 +24,13 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                     throw new ProtocolVersionNotSupportedException($"version {ProtocolVersion} not support", ProtocolVersionNumbers.V1_14_3, 1);
             }
         }
-        public KeepAlivePacket(List<byte> code, int protocolVersion)
+        public KeepAliveResponsePacket(List<byte> code, int protocolVersion)
         {
             this.ID = GetPacketID(protocolVersion);
             this.ProtocolVersion = protocolVersion;
-            WriteBytes(code.ToArray());
+            WriteBytes(code);
         }
-        public KeepAlivePacket(byte[] code, int protocolVersion)
+        public KeepAliveResponsePacket(byte[] code, int protocolVersion)
         {
             this.ID = GetPacketID(protocolVersion);
             this.ProtocolVersion = protocolVersion;
