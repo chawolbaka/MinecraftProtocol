@@ -148,7 +148,7 @@ namespace MinecraftProtocol.DataType
         {
             //这个方法的使用场景是从一堆byte里面取出一段varint,不会做任何转换.
             List<byte> result = new List<byte>();
-            for (int i = 0; i < 5; i++)
+            for (int i = startIndex; i < startIndex+5; i++)
             {
                 result.Add(data[i]);
                 startIndex++;
