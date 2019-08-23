@@ -39,7 +39,6 @@ namespace MinecraftProtocol.Utils
         private string JsonResult;
         private string Host;
         private IPHostEntry IPEntry;
-        //private ConnectionPayload Connect = new ConnectionPayload();
 
         /// <summary> Warning:don't use this constructor,if you want fast run for your program</summary>
         /// <param name="host">Server IP Address or Domain Name</param>

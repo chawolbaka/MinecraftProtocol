@@ -29,7 +29,6 @@ namespace MinecraftProtocol.Protocol
          * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
          */
 
-        public static int GetPacketLength(ConnectionPayload connectInfo) => GetPacketLength(connectInfo.Session);
         public static int GetPacketLength(TcpClient session) => GetPacketLength(session.Client);
         /// <summary>获取数据包的长度</summary>
         public static int GetPacketLength(Socket session)
@@ -37,7 +36,7 @@ namespace MinecraftProtocol.Protocol
             //0x7F=127 0x80=128
             int length = 0;
             int readCount = 0;
-			//这边的范围本来是5,可是下面每次就读一个。后面的4个byte根本用不到吧
+            //这边的范围本来是5,可是下面每次就读一个。后面的4个byte根本用不到吧
             byte[] tmp = new byte[1];
             while (true)
             {
@@ -106,14 +105,13 @@ namespace MinecraftProtocol.Protocol
             return null;
         }
 
-        public static byte[] ReceiveDate(int start, int offset, ConnectionPayload connectInfo) => ReceiveData(start, offset, connectInfo.Session.Client);
         public static byte[] ReceiveData(int start, int offset, Socket session)
         {
             byte[] buffer = new byte[offset - start];
             Receive(buffer, start, offset, SocketFlags.None, session);
             return buffer;
         }
-        public static Packet ReceivePacket(Socket session,int compressionThreshold)
+        public static Packet ReceivePacket(Socket session, int compressionThreshold)
         {
             //写这个方法的时候Data属性暂时改成了可写的,我当初是为了什么设置成只读的?
             //先去睡觉了,醒来后想想看要不要改回去,为什么要只读这两个问题
