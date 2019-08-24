@@ -30,8 +30,8 @@ namespace MinecraftProtocol.DataType
         /// </summary>
         /// <exception cref="ArgumentNullException"/>
         /// <exception cref="MojangAPIException"/>
-        public static UUID GetUUIDByMojangAPI(string playerName)=>MojangAPI.GetUUID(playerName);
-        public static UUID GetUUIDByPlayerName(string playerName)
+        public static UUID GetFromMojangAPI(string playerName)=>MojangAPI.GetUUID(playerName);
+        public static UUID GetFromPlayerName(string playerName)
         {
             if (string.IsNullOrEmpty(playerName))
             {
