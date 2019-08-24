@@ -68,14 +68,9 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                     return false;
                 return buffer.Count == 0;
             }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
-            catch(OverflowException)
-            {
-                return false;
-            }
+            catch (ArgumentOutOfRangeException) { return false; }
+            catch (IndexOutOfRangeException) { return false; }
+            catch (OverflowException) { return false; }
         }
     }
 }

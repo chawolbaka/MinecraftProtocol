@@ -54,14 +54,9 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                 ProtocolHandler.ReadNextString(buffer);
                 return buffer.Count == 0;
             }
-            catch (ArgumentOutOfRangeException)
-            {
-                return false;
-            }
-            catch (OverflowException)
-            {
-                return false;
-            }
+            catch (ArgumentOutOfRangeException) { return false; }
+            catch (IndexOutOfRangeException) { return false; }
+            catch (OverflowException) { return false; }
         }
     }
 }
