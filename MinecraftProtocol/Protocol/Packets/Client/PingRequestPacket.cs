@@ -17,7 +17,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             if (Verify(pingRequestPacket))
                 this.ID = PingRequestPacket.PacketID;
             else
-                throw new ArgumentException("Invalid packet");
+                throw new InvalidPacketException(pingRequestPacket);
         }
         public static bool Verify(Packet packet)
         {

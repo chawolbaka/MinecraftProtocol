@@ -4,7 +4,7 @@ namespace MinecraftProtocol.Protocol.Packets
 {
     public class InvalidPacketException:Exception
     {
-        Packet Packet { get; }
+        public Packet Packet { get; }
 
         public InvalidPacketException(Packet packet) : base()
         {
@@ -14,5 +14,6 @@ namespace MinecraftProtocol.Protocol.Packets
         {
             this.Packet = new Packet(packet.ID,Packet.Data);
         }
+
     }
 }
