@@ -47,64 +47,6 @@ namespace MinecraftProtocol.Protocol
             }
             return length;
         }
-        /// <summary>通过包的id&data加上协议号来分析出是什么类型的包(这是一个低效率的方法,不推荐使用这个方法)</summary>
-        /// <returns>PacketType.Client or PacketType.Server or null</returns>
-        [Obsolete("效率过低,随时会被删除")]
-        public static object GetPacketType(Packet packet, int protocolVersion)
-        {
-            //按照包的重复量或者重要性来排序(比如KeepAlive的优先级是最高的,登陆成功的信息这种放很后面都可以
-            #region Keep Alive
-            /*
-            * 1.12.2-pre1, -pre2(339)
-            * Changed parameters in Keep Alive (clientbound - 0x1F) and Keep Alive (serverbound - 0x0B) from VarInts to longs.
-            * 14w31a
-            * Changed the type of Keep Alive ID from Int to VarInt (Clientbound)
-            */
-            if (packet.ID == PacketType.GetPacketID(PacketType.Client.KeepAlive, protocolVersion))
-            {
-                if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
-                    return PacketType.Client.KeepAlive;
-                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
-                    return PacketType.Client.KeepAlive;
-                else if (packet.Data.Count == 4)
-                    return PacketType.Client.KeepAlive;
-            }
-            if (packet.ID == PacketType.GetPacketID(PacketType.Server.KeepAlive, protocolVersion))
-            {
-
-                if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
-                    return PacketType.Server.KeepAlive;
-                else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
-                    return PacketType.Server.KeepAlive;
-                else if (packet.Data.Count == 4)
-                    return PacketType.Server.KeepAlive;
-            }
-            #endregion
-
-            if (packet.ID == PacketType.GetPacketID(PacketType.Server.SetCompression, protocolVersion))
-            {
-                if (packet.Data.Count <= 5 && packet.Data.Count > 0)
-                    return PacketType.Server.SetCompression;
-
-            }
-            if (packet.ID == PacketType.GetPacketID(PacketType.Server.LoginSuccess, protocolVersion))
-            {
-                //如果不是这个包的话,我这样读取会报错的,但是我还需要继续检测下去,所以丢掉异常了
-                try
-                {
-                    //UUID:String(36)
-                    //PlayerName:String(16)
-                    Packet tmp = new Packet(packet.ID, packet.Data);
-                    string UUID = ProtocolHandler.ReadNextString(tmp.Data);
-                    string PlayerName = ProtocolHandler.ReadNextString(tmp.Data);
-                    if (UUID.Length == 36 && PlayerName.Length > 0 && PlayerName.Length <= 16)
-                        return PacketType.Server.LoginSuccess;
-                }
-                catch { }
-            }
-            return null;
-        }
-
         public static byte[] ReceiveData(int start, int offset, Socket session)
         {
             byte[] buffer = new byte[offset - start];
