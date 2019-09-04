@@ -29,45 +29,45 @@ namespace MinecraftProtocol.DataType
 
         //Q:为什么写这坨operator的?
         //A:我想把它当成int用
-        public static VarInt operator +(VarInt right, VarInt left) => new VarInt(right.ToInt() + left.ToInt());
-        public static VarInt operator +(int right, VarInt left) => new VarInt(right + left.ToInt());
-        public static VarInt operator +(VarInt right, int left) => new VarInt(right.ToInt() + left);
+        public static VarInt operator +(VarInt left, VarInt right) => new VarInt(left.ToInt() + right.ToInt());
+        public static VarInt operator +(int left, VarInt right) => new VarInt(left + right.ToInt());
+        public static VarInt operator +(VarInt left, int right) => new VarInt(left.ToInt() + right);
 
-        public static VarInt operator -(VarInt right, VarInt left) => new VarInt(right.ToInt() - left.ToInt());
-        public static VarInt operator -(int right, VarInt left) => new VarInt(right - left.ToInt());
-        public static VarInt operator -(VarInt right, int left) => new VarInt(right.ToInt() - left);
+        public static VarInt operator -(VarInt left, VarInt right) => new VarInt(left.ToInt() - right.ToInt());
+        public static VarInt operator -(int left, VarInt right) => new VarInt(left - right.ToInt());
+        public static VarInt operator -(VarInt left, int right) => new VarInt(left.ToInt() - right);
         
-        public static VarInt operator *(VarInt right, VarInt left) => new VarInt(right.ToInt() * left.ToInt());
-        public static VarInt operator *(int right, VarInt left) => new VarInt(right * left.ToInt());
-        public static VarInt operator *(VarInt right, int left) => new VarInt(right.ToInt() * left);
+        public static VarInt operator *(VarInt left, VarInt right) => new VarInt(left.ToInt() * right.ToInt());
+        public static VarInt operator *(int left, VarInt right) => new VarInt(left * right.ToInt());
+        public static VarInt operator *(VarInt left, int right) => new VarInt(left.ToInt() * right);
 
-        public static VarInt operator /(VarInt right, VarInt left) => new VarInt(right.ToInt() / left.ToInt());
-        public static VarInt operator /(int right, VarInt left) => new VarInt(right / left.ToInt());
-        public static VarInt operator /(VarInt right, int left) => new VarInt(right.ToInt() / left);
+        public static VarInt operator /(VarInt left, VarInt right) => new VarInt(left.ToInt() / right.ToInt());
+        public static VarInt operator /(int left, VarInt right) => new VarInt(left / right.ToInt());
+        public static VarInt operator /(VarInt left, int right) => new VarInt(left.ToInt() / right);
 
-        public static bool operator >(VarInt right, VarInt left) => right.ToInt() > left.ToInt();
-        public static bool operator >(int right, VarInt left) => right > left.ToInt();
-        public static bool operator >(VarInt right, int left) => right.ToInt() > left;
+        public static bool operator >(VarInt left, VarInt right) => left.ToInt() > right.ToInt();
+        public static bool operator >(int left, VarInt right) => left > right.ToInt();
+        public static bool operator >(VarInt left, int right) => left.ToInt() > right;
 
-        public static bool operator <(VarInt right, VarInt left) => right.ToInt() < left.ToInt();
-        public static bool operator <(int right, VarInt left) => right < left.ToInt();
-        public static bool operator <(VarInt right, int left) => right.ToInt() < left;
+        public static bool operator <(VarInt left, VarInt right) => left.ToInt() < right.ToInt();
+        public static bool operator <(int left, VarInt right) => left < right.ToInt();
+        public static bool operator <(VarInt left, int right) => left.ToInt() < right;
 
-        public static bool operator >=(VarInt right, VarInt left) => right.ToInt() >= left.ToInt();
-        public static bool operator >=(int right, VarInt left) => right >= left.ToInt();
-        public static bool operator >=(VarInt right, int left) => right.ToInt() >= left;
+        public static bool operator >=(VarInt left, VarInt right) => left.ToInt() >= right.ToInt();
+        public static bool operator >=(int left, VarInt right) => left >= right.ToInt();
+        public static bool operator >=(VarInt left, int right) => left.ToInt() >= right;
 
-        public static bool operator <=(VarInt right, VarInt left) => right.ToInt() <= left.ToInt();
-        public static bool operator <=(int right, VarInt left) => right <= left.ToInt();
-        public static bool operator <=(VarInt right, int left) => right.ToInt() <= left;
+        public static bool operator <=(VarInt left, VarInt right) => left.ToInt() <= right.ToInt();
+        public static bool operator <=(int left, VarInt right) => left <= right.ToInt();
+        public static bool operator <=(VarInt left, int right) => left.ToInt() <= right;
 
-        public static bool operator ==(VarInt right, VarInt left) => right.Equals(left);
-        public static bool operator ==(int right, VarInt left) => left.Equals(right);
-        public static bool operator ==(VarInt right, int left) => right.Equals(left);
+        public static bool operator ==(VarInt left, VarInt right) => left.Equals(right);
+        public static bool operator ==(int left, VarInt right) => right.Equals(left);
+        public static bool operator ==(VarInt left, int right) => left.Equals(right);
 
-        public static bool operator !=(VarInt right, VarInt left) => !right.Equals(left);
-        public static bool operator !=(int right, VarInt left) => !left.Equals(right);
-        public static bool operator !=(VarInt right, int left) => !right.Equals(left);
+        public static bool operator !=(VarInt left, VarInt right) => !left.Equals(right);
+        public static bool operator !=(int left, VarInt right) => !right.Equals(left);
+        public static bool operator !=(VarInt left, int right) => !left.Equals(right);
 
         public static VarInt operator ++(VarInt value) => new VarInt(value.ToInt() + 1);
         public static VarInt operator --(VarInt value) => new VarInt(value.ToInt() - 1);
