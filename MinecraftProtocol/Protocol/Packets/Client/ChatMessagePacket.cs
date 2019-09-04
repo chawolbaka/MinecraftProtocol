@@ -22,7 +22,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
              */
             if (protocolVersion >= ProtocolVersionNumbers.V16w38a && message.Length > MaxMessageLength)
                 throw new OverflowException($"message too long, max is {MaxMessageLength}");
-            else if (message.Length > OldMaxMessageLength)
+            else if (protocolVersion < ProtocolVersionNumbers.V16w38a && message.Length > OldMaxMessageLength)
                 throw new OverflowException($"message too long, max is {OldMaxMessageLength}");
             this.ID = GetPacketID(protocolVersion);
             WriteString(message);
