@@ -14,6 +14,8 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         /// <summary>For Old Version(16w38a ago)</summary>
         public const int OldMaxMessageLength = 100;
 
+        public string Message { get; }
+
         public ChatMessagePacket(string message, int protocolVersion)
         {
             /*       
@@ -25,7 +27,20 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             else if (protocolVersion < ProtocolVersionNumbers.V16w38a && message.Length > OldMaxMessageLength)
                 throw new OverflowException($"message too long, max is {OldMaxMessageLength}");
             this.ID = GetPacketID(protocolVersion);
+            this.Message = Message;
             WriteString(message);
+        }
+        public ChatMessagePacket(Packet packet, int protocolVersion)
+        {
+            if (!Verify(packet, protocolVersion))
+                throw new InvalidPacketException(packet);
+            else
+            {
+                this.ID = packet.ID;
+                this.Data = new List<byte>(packet.Data);
+                this.Message = ProtocolHandler.ReadString(packet.Data, 0, true);
+            }
+
         }
         public static int GetPacketID(int protocolVersion)
         {
@@ -61,7 +76,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                     return false;
 
                 List<byte> buffer = new List<byte>(packet.Data);
-                string Message = ProtocolHandler.ReadNextString(buffer);
+                string Message = ProtocolHandler.ReadString(buffer);
                 if (protocolVersion >= ProtocolVersionNumbers.V16w38a && Message.Length > MaxMessageLength)
                     return false;
                 else if (Message.Length > OldMaxMessageLength)

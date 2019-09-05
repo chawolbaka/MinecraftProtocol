@@ -125,10 +125,10 @@ namespace MinecraftProtocol.Utils
             if (PacketLength > 0)
             {
                 List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, socket));
-                int PacketID = ProtocolHandler.ReadNextVarInt(Packet);
+                int PacketID = ProtocolHandler.ReadVarInt(Packet);
                 if (PacketID != PingResponsePacket.PacketID)
                     throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet));
-                JsonResult = ProtocolHandler.ReadNextString(Packet);
+                JsonResult = ProtocolHandler.ReadString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))
                 {
                     PingResult = ResolveJson(JsonResult);
@@ -227,9 +227,9 @@ namespace MinecraftProtocol.Utils
                         ProtocolHandler.ReceiveData(0, PacketLength, socket));
 
                     //校验
-                    if (ProtocolHandler.ReadNextVarInt(ResponesPacket) != 0x01)
+                    if (ProtocolHandler.ReadVarInt(ResponesPacket) != 0x01)
                         return null;
-                    if (ResponesPacket.Count != 8 && ProtocolHandler.ReadNextLong(ResponesPacket) != code)
+                    if (ResponesPacket.Count != 8 && ProtocolHandler.ReadLong(ResponesPacket) != code)
                         return null;
                 }
                 catch

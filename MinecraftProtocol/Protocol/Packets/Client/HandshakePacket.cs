@@ -42,13 +42,12 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         {
             if(HandshakePacket.Verify(handshakePacket))
             {
-                List<byte> buffer = new List<byte>(handshakePacket.Data);
                 this.ID = handshakePacket.ID;
                 this.Data = new List<byte>(handshakePacket.Data);
-                this.ProtocolVersion = ProtocolHandler.ReadNextVarInt(buffer);
-                this.ServerAddress = ProtocolHandler.ReadNextString(buffer);
-                this.ServerPort = ProtocolHandler.ReadNextUnsignedShort(buffer);
-                this.Next = (NextState)ProtocolHandler.ReadNextVarInt(buffer);
+                this.ProtocolVersion = ProtocolHandler.ReadVarInt(handshakePacket.Data, 0, out int offset, true);
+                this.ServerAddress = ProtocolHandler.ReadString(handshakePacket.Data, offset, out offset, true);
+                this.ServerPort = ProtocolHandler.ReadUnsignedShort(handshakePacket.Data, offset, out offset, true);
+                this.Next = (NextState)ProtocolHandler.ReadVarInt(handshakePacket.Data, offset, true);
             }
             else
             {
@@ -65,10 +64,10 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             List<byte> verifyPacket = new List<byte>(packet.Data);
             try
             {
-                ProtocolHandler.ReadNextVarInt(verifyPacket); //Protocol Version
-                ProtocolHandler.ReadNextString(verifyPacket); //Server Address
-                ProtocolHandler.ReadNextUnsignedShort(verifyPacket); //Server Port
-                int Next_State = ProtocolHandler.ReadNextVarInt(verifyPacket);
+                ProtocolHandler.ReadVarInt(verifyPacket); //Protocol Version
+                ProtocolHandler.ReadString(verifyPacket); //Server Address
+                ProtocolHandler.ReadUnsignedShort(verifyPacket); //Server Port
+                int Next_State = ProtocolHandler.ReadVarInt(verifyPacket);
                 if (nextState == -1)
                     return verifyPacket.Count == 0 && (Next_State == (int)NextState.GetStatus || Next_State == (int)NextState.Login);
                 else

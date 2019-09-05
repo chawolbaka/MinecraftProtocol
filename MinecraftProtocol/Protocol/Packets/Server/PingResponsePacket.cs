@@ -20,10 +20,11 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         {
             if (packet.ID != PingResponsePacket.PacketID)
                 return false;
+
             try
             {
                 List<byte> buffer = new List<byte>(packet.Data);
-                ProtocolHandler.ReadNextString(buffer);
+                ProtocolHandler.ReadString(buffer);
                 return buffer.Count == 0;
             }
             catch (ArgumentOutOfRangeException) { return false; }

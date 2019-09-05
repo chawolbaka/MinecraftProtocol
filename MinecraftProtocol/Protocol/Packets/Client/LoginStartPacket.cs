@@ -13,7 +13,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
 
         public LoginStartPacket(string playerName, int protocolVersion)
         {
-            this.ID = PacketType.GetPacketID(PacketType.Client.LoginStart, protocolVersion);
+            this.ID = GetPacketID(protocolVersion);
             this.PlayerName = playerName;
             WriteString(PlayerName);
         }
@@ -23,14 +23,14 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             {
                 this.ID = loginStartPacket.ID;
                 this.Data = new List<byte>(loginStartPacket.Data);
-                this.PlayerName = ProtocolHandler.ReadString(Data);
+                this.PlayerName = ProtocolHandler.ReadString(Data, true);
             }
             else
                 throw new InvalidPacketException("Not a LoginStart Packet", loginStartPacket);
         }
 
         /// <summary>从一个LoginStart包中读取玩家名,如果传入其它包会抛出异常.</summary>
-        public static string GetPlayerName(Packet packet) => ProtocolHandler.ReadString(packet.Data);
+        public static string GetPlayerName(Packet packet) => ProtocolHandler.ReadString(packet.Data, true);
         public static int GetPacketID(int protocolVersion)
         {
             /*
@@ -51,7 +51,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             List<byte> buffer = new List<byte>(packet.Data);
             try
             {
-                ProtocolHandler.ReadNextString(buffer);
+                ProtocolHandler.ReadString(buffer);
                 return buffer.Count == 0;
             }
             catch (ArgumentOutOfRangeException) { return false; }
