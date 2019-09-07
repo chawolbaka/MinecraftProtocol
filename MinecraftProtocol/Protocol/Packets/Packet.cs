@@ -11,17 +11,7 @@ namespace MinecraftProtocol.Protocol.Packets
     {
         public int ID { get; set; }
         public List<byte> Data { get; set; }
-        public int Length {
-            get
-            {
-                uint temp = (uint)ID;
-                if ((temp >> 07) == 0) return 1 + Data.Count;
-                if ((temp >> 14) == 0) return 2 + Data.Count;
-                if ((temp >> 21) == 0) return 3 + Data.Count;
-                if ((temp >> 28) == 0) return 4 + Data.Count;
-                else return 5 + Data.Count;
-            }
-        }
+        public int Length => VarInt.GetLength(ID) + Data.Count;
 
         public Packet() : this(-1) { }
         public Packet(int packetID)
@@ -51,16 +41,16 @@ namespace MinecraftProtocol.Protocol.Packets
         /// <returns></returns>
         public virtual byte[] GetPacket(int compress = -1)
         {
-            byte[] PacketData = ProtocolHandler.ConcatBytes(new VarInt(ID).ToBytes(), this.Data.ToArray());
+            byte[] PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), this.Data.ToArray());
 
             if (compress > 0)
             {
                 if (this.Data.Count >= compress)
-                    PacketData = ProtocolHandler.ConcatBytes(new VarInt(PacketData.Length).ToBytes(), ZlibUtils.Compress(PacketData));
+                    PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), ZlibUtils.Compress(PacketData));
                 else
                     PacketData = ProtocolHandler.ConcatBytes(new byte[] { 0 }, PacketData);
             }
-            return ProtocolHandler.ConcatBytes(new VarInt(PacketData.Length).ToBytes(), PacketData);
+            return ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), PacketData);
         }
 
 
@@ -81,8 +71,8 @@ namespace MinecraftProtocol.Protocol.Packets
         }
         public void WriteString(string value)
         {
-            byte[] tmp = Encoding.UTF8.GetBytes(value);
-            WriteBytes(ProtocolHandler.ConcatBytes(new VarInt(tmp.Length).ToBytes(), tmp));
+            byte[] str = Encoding.UTF8.GetBytes(value);
+            WriteBytes(ProtocolHandler.ConcatBytes(VarInt.GetBytes(str.Length), str));
         }
         public void WriteShort(short value)
         {
@@ -140,13 +130,13 @@ namespace MinecraftProtocol.Protocol.Packets
             Array.Reverse(data);
             WriteBytes(data);
         }
-        public void WriteVarInt(VarInt value)
+        public void WriteVarInt(int value)
         {
-            WriteBytes(value.ToBytes());
+            WriteBytes(VarInt.GetBytes(value));
         }
         public void WriteVarLong(long value)
         {
-            throw new NotImplementedException();
+            WriteBytes(VarLong.GetBytes(value));
         }
         public void WriteUUID(UUID value)
         {
@@ -159,7 +149,7 @@ namespace MinecraftProtocol.Protocol.Packets
         {
             //14w21a: All byte arrays have VarInt length prefixes instead of short
             if (protocolVersion >= ProtocolVersionNumbers.V14w21a)
-                WriteVarInt(new VarInt(array.Length));
+                WriteVarInt(array.Length);
             else
                 WriteShort((short)array.Length);
             WriteBytes(array);

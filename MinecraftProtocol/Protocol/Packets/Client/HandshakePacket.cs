@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using MinecraftProtocol.DataType;
 
 namespace MinecraftProtocol.Protocol.Packets.Client
 {
@@ -33,10 +32,10 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             this.ServerPort = port;
             this.ProtocolVersion = protocolVersion;
             this.Next = nextState;
-            WriteVarInt(new VarInt(protocolVersion));
+            WriteVarInt(protocolVersion);
             WriteString(ServerAddress);
             WriteUnsignedShort(ServerPort);
-            WriteVarInt(new VarInt((int)Next));
+            WriteVarInt((int)Next);
         }
         public HandshakePacket(Packet handshakePacket)
         {

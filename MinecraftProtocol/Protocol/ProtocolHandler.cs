@@ -226,17 +226,22 @@ namespace MinecraftProtocol.Protocol
         public static int ReadVarInt(List<byte> cache, int offset, bool readOnly = false) => ReadVarInt(cache, offset, out _, readOnly);
         public static int ReadVarInt(List<byte> cache, int offset, out int count, bool readOnly = false)
         {
-            VarInt result = new VarInt(cache.ToArray(), offset, out count);
+            int result = VarInt.Read(cache, offset, out int length);
+            count = length + offset;
             if (!readOnly)
-                cache.RemoveRange(offset, count - offset);
-            return result.ToInt();
+                cache.RemoveRange(offset, length);
+            return result;
         }
 
         public static long ReadVarLong(List<byte> cache, bool readOnly = false) => ReadVarLong(cache, 0, out _, readOnly);
         public static long ReadVarLong(List<byte> cache, int offset, bool readOnly = false) => ReadVarLong(cache, offset, out _, readOnly);
         public static long ReadVarLong(List<byte> cache, int offset, out int count, bool readOnly = false)
         {
-            throw new NotImplementedException();
+            long result = VarLong.Read(cache, offset, out int length);
+            count = length + offset;
+            if (!readOnly)
+                cache.RemoveRange(offset, length);
+            return result;
         }
 
         public static UUID ReadUUID(List<byte> cache, bool readOnly = false) => ReadUUID(cache, 0, out _, readOnly);
@@ -265,7 +270,6 @@ namespace MinecraftProtocol.Protocol
                 cache.RemoveRange(offset, ArrayLength+(EndPos-offset));
             return buffer;
         }
-        
         /// <summary>拼接Byte数组</summary>
         public static byte[] ConcatBytes(params byte[][] bytes)
         {

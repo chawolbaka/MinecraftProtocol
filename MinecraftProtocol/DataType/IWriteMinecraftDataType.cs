@@ -48,7 +48,7 @@ namespace MinecraftProtocol.DataType
 
         /// <summary>An integer between -2147483648 and 2147483647</summary>
         /// <remarks>Variable-length data encoding a two's complement signed 32-bit integer</remarks>
-        void WriteVarInt(VarInt value);
+        void WriteVarInt(int value);
 
         /// <summary>An integer between -9223372036854775808 and 9223372036854775807</summary>
         /// <remarks>Variable-length data encoding a two's complement signed 32-bit integer</remarks>

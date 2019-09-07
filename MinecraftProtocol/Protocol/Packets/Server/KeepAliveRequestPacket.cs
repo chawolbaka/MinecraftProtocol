@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using MinecraftProtocol.DataType;
+using MinecraftProtocol.Compression;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol.Packets.Server
@@ -19,7 +19,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                 if (ProtocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1)
                     return BitConverter.ToInt64(Data.ToArray(), 0);
                 else if (ProtocolVersion >= ProtocolVersionNumbers.V14w31a)
-                    return new VarInt(Data.ToArray(), 0).ToInt();
+                    return VarInt.Read(Data);
                 else if (ProtocolVersion < ProtocolVersionNumbers.V14w31a)
                     return BitConverter.ToInt32(Data.ToArray(), 0);
                 else
