@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Ionic.Zlib;
 
-namespace MinecraftProtocol.Protocol
+namespace MinecraftProtocol.Compression
 {
     /// <summary>
     /// Quick Zlib compression handling for network packet compression.

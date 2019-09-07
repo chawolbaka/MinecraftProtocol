@@ -2,6 +2,7 @@
 using System.Text;
 using System.Collections.Generic;
 using MinecraftProtocol.DataType;
+using MinecraftProtocol.Compression;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol.Packets

@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol.Packets;
+using MinecraftProtocol.Compression;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol
