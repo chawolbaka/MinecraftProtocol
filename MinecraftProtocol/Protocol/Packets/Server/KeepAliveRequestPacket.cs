@@ -20,10 +20,8 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                     return BitConverter.ToInt64(Data.ToArray(), 0);
                 else if (ProtocolVersion >= ProtocolVersionNumbers.V14w31a)
                     return VarInt.Read(Data);
-                else if (ProtocolVersion < ProtocolVersionNumbers.V14w31a)
-                    return BitConverter.ToInt32(Data.ToArray(), 0);
                 else
-                    throw new NotSupportedException($"version {ProtocolVersion} not support");
+                    return BitConverter.ToInt32(Data.ToArray(), 0);
             }
         }
         public KeepAliveRequestPacket(List<byte> code, int protocolVersion)
