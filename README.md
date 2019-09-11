@@ -16,6 +16,7 @@ ps:不会排版，英文完全不会，C#只学了一点点(真的非常少,摸�
 编译好后你可以在 "bin\Release\netcoreapp3.0\publish" 里面找到文件
 
 ## 抄袭列表
+https://github.com/Naamloos/Obsidian  
 https://github.com/Nsiso/MinecraftOutClient  
 https://github.com/ORelio/Minecraft-Console-Client  
 https://gist.github.com/csh/2480d14fbbb33b4bbae3  
