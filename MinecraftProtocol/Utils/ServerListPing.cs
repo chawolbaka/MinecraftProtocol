@@ -30,6 +30,7 @@ namespace MinecraftProtocol.Utils
 
         private const string REG_IPv4 = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
 
+        public string Host { get; set; }
         public IPAddress ServerIP { get; set; }
         public ushort ServerPort { get; set; }
         public int ReceiveTimeout { get; set; }
@@ -37,11 +38,12 @@ namespace MinecraftProtocol.Utils
         public bool EnableDnsRoundRobin { get; set; }
 
         private string JsonResult;
-        private string Host;
-        private IPHostEntry IPEntry;
+        private IPAddress[] IPAddressList;
 
-        /// <summary> Warning:don't use this constructor,if you want fast run for your program</summary>
-        /// <param name="host">Server IP Address or Domain Name</param>
+
+        /// <param name="host">服务器IP或域名(如果是域名会被拿去解析IP)</param>
+        /// <param name="port">服务器端口号</param>
+        /// <param name="useDnsRoundRobin">轮流使用解析域名的时候解析到的IP</param>
         /// <exception cref="ArgumentNullException"/>
         /// <exception cref="ArgumentOutOfRangeException"/>
         /// <exception cref="SocketException"/>
@@ -53,12 +55,11 @@ namespace MinecraftProtocol.Utils
                 throw new ArgumentOutOfRangeException(nameof(port), port, "incorrect port supplied");
 
             EnableDnsRoundRobin = useDnsRoundRobin;
-
             if (!Regex.Match(host, REG_IPv4).Success)//域名的正则我写不出来...(这个都是抄来的)
             {
-                IPEntry = Dns.GetHostEntry(host);
-                if (IPEntry.AddressList.Length > 0)
-                    ServerIP = IPEntry.AddressList[0];
+                IPAddressList = (IPAddress[])Dns.GetHostEntry(host).AddressList.Clone();
+                if (IPAddressList.Length > 0)
+                    ServerIP = IPAddressList[0];
                 else //IPv6 or error addr
                     ServerIP = IPAddress.Parse(host);
             }
@@ -69,49 +70,93 @@ namespace MinecraftProtocol.Utils
             Host = host;
             ServerPort = port;
         }
+        /// <param name="host">服务器域名,会被写入握手包用于查询使用了反向代理的服务器(不会被拿去问dns服务器要IP)</param>
+        /// <param name="address">服务器IP地址,用于连接服务器</param>
+        /// <param name="port">服务器端口号</param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentOutOfRangeException"/>
+        public ServerListPing(string host, IPAddress address, ushort port)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+                throw new ArgumentNullException(nameof(host));
+            if (address == null)
+                throw new ArgumentNullException(nameof(address));
+            if (port == 0)
+                throw new ArgumentOutOfRangeException(nameof(port), port, "incorrect port supplied");
+
+            this.ServerIP = new IPAddress(address.GetAddressBytes());
+            this.Host = host;
+            this.ServerPort = port;
+        }
+        /// <param name="host">服务器域名,会被写入握手包用于查询使用了反向代理的服务器(不会被拿去问dns服务器要IP)</param>
+        /// <param name="addressList">服务器地址列表,用于连接服务器(启用DnsRoundRobin会轮流使用里面的IP去连接)</param>
+        /// <param name="port">服务器端口号</param>
+        /// <param name="useDnsRoundRobin">轮流使用服务器地址列表里面的IP地址去查询服务器</param>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="ArgumentOutOfRangeException"/>
+        public ServerListPing(string host, IPAddress[] addressList, ushort port, bool useDnsRoundRobin = false)
+        {
+            if (addressList == null)
+                throw new ArgumentNullException(nameof(addressList));
+            if (string.IsNullOrWhiteSpace(host))
+                throw new ArgumentNullException(nameof(host));
+            if (addressList.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(addressList), "AddressList length is 0");
+            if (port == 0)
+                throw new ArgumentOutOfRangeException(nameof(port), port, "incorrect port supplied");
+
+            this.Host = host;
+            this.IPAddressList = (IPAddress[])addressList.Clone();
+            this.ServerIP = IPAddressList[0];
+            this.ServerPort = port;
+            this.EnableDnsRoundRobin = useDnsRoundRobin;
+        }
         /// <exception cref="ArgumentNullException"/>
         public ServerListPing(IPAddress serverIP, ushort serverPort)
         {
-            ServerIP = serverIP ?? throw new ArgumentNullException(nameof(serverIP));
-            ServerPort = serverPort;
+            this.ServerIP = serverIP ?? throw new ArgumentNullException(nameof(serverIP));
+            this.Host = serverIP.ToString();
+            this.ServerPort = serverPort;
         }
         /// <exception cref="ArgumentNullException"/>
-        public ServerListPing(IPEndPoint ipEndPoint)
+        public ServerListPing(IPEndPoint remoteEP)
         {
-            if (ipEndPoint != null)
-            {
-                ServerIP = ipEndPoint.Address;
-                ServerPort = (ushort)ipEndPoint.Port;
-            }
-            else
-                throw new ArgumentNullException(nameof(ipEndPoint));
+            this.ServerIP = remoteEP.Address ?? throw new ArgumentNullException(nameof(remoteEP));
+            this.Host = remoteEP.Address.ToString();
+            this.ServerPort = (ushort)remoteEP.Port;
         }
-
+        /// <summary>向服务器发送ServerListPing相关的包并解析返回的json</summary>
         /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="InvalidPacketException"/>
+        /// <exception cref="PacketException"/>
         /// <exception cref="SocketException"/>
         /// <exception cref="JsonException"/>
-        /// <exception cref="Exception"/>
         public PingReply Send()
         {
-            using (Socket socket = new TcpClient().Client)
+            using (Socket socket = new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
                 return Send(socket, false);
         }
+        /// <summary>向服务器发送ServerListPing相关的包并解析返回的json</summary>
         /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="InvalidPacketException"/>
         /// <exception cref="SocketException"/>
+        /// <exception cref="PacketException"/>
         /// <exception cref="JsonException"/>
-        /// <exception cref="Exception"/>
-        public PingReply Send(TcpClient tcp)
-        {
-            return Send(tcp.Client, true);
-        }
-        public PingReply Send(Socket socket,bool reuseSocket)
+        public PingReply Send(TcpClient tcp)=>Send(tcp.Client, true);
+        /// <summary>向服务器发送ServerListPing相关的包并解析返回的json</summary>
+        /// <exception cref="ArgumentNullException"/>
+        /// <exception cref="InvalidPacketException"/>
+        /// <exception cref="SocketException"/>
+        /// <exception cref="PacketException"/>
+        /// <exception cref="JsonException"/>
+        public PingReply Send(Socket socket, bool reuseSocket)
         {
             PingReply PingResult;
-            if (EnableDnsRoundRobin&&IPEntry!=null&&IPEntry.AddressList.Length>1)
+            if (EnableDnsRoundRobin&&IPAddressList!=null&&IPAddressList.Length>1)
                 DnsRoundRobinHandler();
             if(!socket.Connected)
                 socket.Connect(ServerIP, this.ServerPort);
-            if (ReceiveTimeout != default(int))
+            if (ReceiveTimeout != default)
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
@@ -142,7 +187,7 @@ namespace MinecraftProtocol.Utils
                 socket.Disconnect(reuseSocket);
             }
             else
-                throw new Exception($"Response Packet Length too Small (PacketLength:{PacketLength})");
+                throw new PacketException($"Response Packet Length too Small (PacketLength:{PacketLength})");
             return PingResult;
         }
 
@@ -249,27 +294,24 @@ namespace MinecraftProtocol.Utils
 
         private void DnsRoundRobinHandler()
         {
-            ServerIP = IPEntry.AddressList[0];
-            if (IPEntry.AddressList.Length == 2)
+            ServerIP = IPAddressList[0];
+            if (IPAddressList.Length == 2)
             {
                 //这边单独处理只有2个地址的情况是因为我产生了这样子效率高一点的错觉
-                IPEntry.AddressList[0] = IPEntry.AddressList[1];
-                IPEntry.AddressList[1] = ServerIP;
+                IPAddressList[0] = IPAddressList[1];
+                IPAddressList[1] = ServerIP;
             }
-            else if (IPEntry.AddressList.Length > 1)
+            else if (IPAddressList.Length > 1)
             {
-                for (int i = 0; i < IPEntry.AddressList.Length - 1; i++)
+                for (int i = 0; i < IPAddressList.Length - 1; i++)
                 {
-                    IPEntry.AddressList[i] = IPEntry.AddressList[i + 1];
+                    IPAddressList[i] = IPAddressList[i + 1];
                 }
-                IPEntry.AddressList[IPEntry.AddressList.Length - 1] = ServerIP;
+                IPAddressList[IPAddressList.Length - 1] = ServerIP;
             }
         }
 
-
-        /// <summary>
-        /// Return json(if it exists)
-        /// </summary>
+        /// <summary>返回使用了Send方法后接收到的json</summary>
         public override string ToString()
         {
             return JsonResult;
