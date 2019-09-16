@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Text;
 using System.Security.Cryptography;
-using MinecraftProtocol.API;
+using System.Net.Http;
+using Newtonsoft.Json.Linq;
 
 namespace MinecraftProtocol.DataType
 {
@@ -29,8 +30,24 @@ namespace MinecraftProtocol.DataType
         /// 从MojangAPI获取正版玩家的UUID
         /// </summary>
         /// <exception cref="ArgumentNullException"/>
-        /// <exception cref="MojangAPIException"/>
-        public static UUID GetFromMojangAPI(string playerName)=>MojangAPI.GetUUID(playerName);
+        public static UUID? GetFromMojangAPI(string playerName)
+        {
+            if (string.IsNullOrWhiteSpace(playerName))
+                throw new ArgumentNullException(nameof(playerName));
+
+            HttpClient hc = new HttpClient();
+            var HttpResponse = hc.GetAsync("https://api.mojang.com/users/profiles/minecraft/" + playerName).Result;
+            string json = HttpResponse.Content.ReadAsStringAsync().Result;
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                string id = JObject.Parse(json)["id"].ToString();
+                if (string.IsNullOrWhiteSpace(id))
+                    throw new Exception("MojangAPI返回了空uuid");
+                else
+                    return new UUID(Guid.Parse(id));
+            }
+            return null;
+        }
         public static UUID GetFromPlayerName(string playerName)
         {
             if (string.IsNullOrEmpty(playerName))
@@ -67,7 +84,9 @@ namespace MinecraftProtocol.DataType
         public static explicit operator string(UUID uuid) => uuid.ToString();
         public static explicit operator Guid(UUID uuid) => uuid.ToGuid();
 
-        public bool Equals(UUID other) => this._uuid.Equals(other.ToGuid());
+        public static bool operator ==(UUID left, UUID right) => left.Equals(right);
+        public static bool operator !=(UUID left, UUID right) => !(left == right);
+        public bool Equals(UUID other) => this._uuid.Equals(other._uuid);
         public override bool Equals(object obj)
         {
             if (obj == null || !(obj is UUID id))
