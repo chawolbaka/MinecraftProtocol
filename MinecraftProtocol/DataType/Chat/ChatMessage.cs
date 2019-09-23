@@ -66,69 +66,79 @@ namespace MinecraftProtocol.DataType.Chat
 
 
         public ChatMessage() { }
-        public ChatMessage(string message, char mark = '§',bool compressExtra = true)
+        public ChatMessage(string text) { this.Text = text; }
+        public ChatMessage(string text, ChatColor color) { this.Text = text; this.Color = color.ToString(); }
+
+
+        /// <summary>
+        /// 把含有样式代码的聊天信息转换为<c>ChatMessage</c>
+        /// </summary>
+        /// <param name="message">含有样式代码的聊天信息(不包含应该也能用)</param>
+        /// <param name="sectionSign">分节符号</param>
+        /// <param name="compressExtra">清除那些看不见的空格</param>
+        public static ChatMessage Parse(string message, char sectionSign = '§', bool compressExtra = true)
         {
             if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException(nameof(message));
-            if (message[0]!=mark&&message.Length<3)
-                this.Text = message;
-            else
-            {
-                this.Text = ""; //防止空json,好像MC至少需要有个Text组件
-                StringBuilder sb = new StringBuilder();
-                ChatMessage ChatComponet = new ChatMessage();
-                bool LastIsFormatCode = false;//用于样式代码的叠加，变量名乱写的。
+            
 
-                for (int i = 0; i < message.Length; i++)
+            if (message[0] != sectionSign && message.Length < 3)
+                return new ChatMessage(message);
+
+            ChatMessage result = new ChatMessage("");//防止空json,好像MC至少需要有个Text组件
+            ChatMessage ChatComponet = new ChatMessage();
+            StringBuilder sb = new StringBuilder();
+            bool LastIsFormatCode = false;//用于样式代码的叠加，变量名乱写的。
+
+            for (int i = 0; i < message.Length; i++)
+            {
+                if (message[i] == sectionSign && i + 1 < message.Length)
                 {
-                    if (message[i] == mark && i+1 < message.Length)
+                    //转义符
+                    if (i + 2 < message.Length && message[i + 1] == sectionSign && FormattingCodes.ContainsKey(message[i + 2]))
                     {
-                        //转义符
-                        if (i+2 < message.Length&&message[i+1]==mark&& FormattingCodes.ContainsKey(message[i+2]))
+                        sb.Append(message[++i]);
+                        sb.Append(message[++i]);
+                    }
+                    else if (FormattingCodes.ContainsKey(message[i + 1]))
+                    {
+                        /*
+                         * 如果前面已经有字了但是又没设置过颜色或者样式就先建立一个纯文本的Extra然后清空StringBuilder再设置样式或者颜色
+                         * 如果前面已经有字并且设置过颜色或者样式了就开始叠加样式代码和覆盖颜色
+                         * &c&n可以叠加,&nxxxx&exxxx不能叠加,它们会被分割成
+                         * Extra[0] = &nxxxx
+                         * Extra[1] = &exxxx
+                         */
+                        if ((!string.IsNullOrWhiteSpace(sb.ToString()) && !(ChatComponet.HasColorCode || ChatComponet.HasFormatCode)) ||
+                            !LastIsFormatCode && sb.Length > 0)
                         {
-                            sb.Append(message[++i]);
-                            sb.Append(message[++i]);
+                            ChatComponet.Text = sb.ToString();
+                            result.AddExtra(ChatComponet); sb.Clear();
+                            ChatComponet = new ChatMessage();
+                            LastIsFormatCode = true;
                         }
-                        else if(FormattingCodes.ContainsKey(message[i+1]))
-                        {
-                            /*
-                             * 如果前面已经有字了但是又没设置过颜色或者样式就先建立一个纯文本的Extra然后清空StringBuilder再设置样式或者颜色
-                             * 如果前面已经有字并且设置过颜色或者样式了就开始叠加样式代码和覆盖颜色
-                             * &c&n可以叠加,&nxxxx&exxxx不能叠加,它们会被分割成
-                             * Extra[0] = &nxxxx
-                             * Extra[1] = &exxxx
-                             */
-                            if ((!string.IsNullOrWhiteSpace(sb.ToString())&&!(ChatComponet.HasColorCode||ChatComponet.HasFormatCode))||
-                                !LastIsFormatCode&&sb.Length>0)
-                            {
-                                ChatComponet.Text = sb.ToString();
-                                AddExtra(ChatComponet); sb.Clear();
-                                ChatComponet = new ChatMessage();
-                                LastIsFormatCode = true;
-                            }
-                            ChatComponet.SetFormat(message[++i]);
-                        }
-                        else
-                        {
-                            sb.Append(message[i]);
-                        }
+                        ChatComponet.SetFormat(message[++i]);
                     }
                     else
                     {
                         sb.Append(message[i]);
-                        LastIsFormatCode = false;
                     }
                 }
-                if((sb.Length>0&&ChatComponet.HasFormatCode)||!string.IsNullOrWhiteSpace(sb.ToString()))
+                else
                 {
-                    ChatComponet.Text = sb.ToString();
-                    AddExtra(ChatComponet);
+                    sb.Append(message[i]);
+                    LastIsFormatCode = false;
                 }
-                if (compressExtra)
-                    CompressExtra();
             }
+            if ((sb.Length > 0 && ChatComponet.HasFormatCode) || !string.IsNullOrWhiteSpace(sb.ToString()))
+            {
+                ChatComponet.Text = sb.ToString();
+                result.AddExtra(ChatComponet);
+            }
+            if (compressExtra)
+               result.CompressExtra();
+            return result;
         }
-
 
         /// <summary>
         /// 重置样式和颜色(不会处理Extra和With里面的)
@@ -353,7 +363,6 @@ namespace MinecraftProtocol.DataType.Chat
             }
         }
 
-
         private void SetFormat(char code)
         {
             switch (code)
@@ -430,13 +439,13 @@ namespace MinecraftProtocol.DataType.Chat
             { "commands.message.sameTarget","You can't send a private message to yourself!" },
             { "commands.message.display.incoming","%s whispers to you: %s" },
             { "commands.message.display.outgoing","You whisper to %s: %s" },
-            { "commands.tp.success","Teleported %s to %s" },
             { "commands.save.start","Saving..."},
             { "commands.save.success","Saved the world"},
             { "commands.save.failed","Saving failed: %s"},
             { "commands.save.flushStart","Flushing all saves..."},
             { "commands.save.flushEnd","Flushing completed"},
             { "commands.stop.start","Stopping the server"},
+            { "commands.tp.success","Teleported %s to %s" },
             { "commands.tp.success.coordinates","Teleported %s to %s, %s, %s"},
             { "commands.teleport.success.coordinates","Teleported %s to %s, %s, %s"},
             { "commands.tp.notSameDimension","Unable to teleport because players are not in the same dimension"},
