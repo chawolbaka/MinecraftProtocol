@@ -14,37 +14,14 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
         public override string ToString() => this.Translate;
-        public string ToString(Dictionary<string, string> lang) => ToString(lang, ITranslation.DefaultOption);
-        public string ToString(Dictionary<string, string> lang, TranslationOptions option)
-        {
-            try
-            {
-                return lang[Translate];
-            }
-            catch (KeyNotFoundException knfe)
-            {
-                switch (option)
-                {
-                    case TranslationOptions.WriteEmpty: return string.Empty;
-                    case TranslationOptions.WriteOriginal: return Translate;
-                    case TranslationOptions.ThrowException: throw;
-                    case TranslationOptions.WriteExceptionMessage: return knfe.Message;
-                    default: throw new InvalidCastException();
-                }
-            }
-        }
+        public string ToString(Dictionary<string, string> lang) => lang.ContainsKey(Translate) ? lang[Translate] : Translate;
 
         public static bool operator ==(TranslationComponent left, TranslationComponent right) => left.Equals(right);
         public static bool operator !=(TranslationComponent left, TranslationComponent right) => !(left == right);
         public override bool Equals(object obj) => obj is TranslationComponent component && Equals(component);
-        public bool Equals(TranslationComponent other)
-        {
-            return Translate == other.Translate;
-        }
+        public bool Equals(TranslationComponent other) => Translate == other.Translate;
 
-        public override int GetHashCode()
-        {
-            return Translate.GetHashCode();
-        }
+        public override int GetHashCode() => Translate.GetHashCode();
+        
     }
 }

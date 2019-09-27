@@ -242,8 +242,7 @@ namespace MinecraftProtocol.DataType.Chat
 
 
         public override string ToString() => ToString(DefaultTranslation);
-        public string ToString(Dictionary<string, string> lang) => ToString(lang, ITranslation.DefaultOption);
-        public string ToString(Dictionary<string, string> lang, TranslationOptions option)
+        public string ToString(Dictionary<string, string> lang)
         {
             StringBuilder sb = new StringBuilder();
             if (this.Bold)              sb.Append("§l");
@@ -253,7 +252,7 @@ namespace MinecraftProtocol.DataType.Chat
             if (this.Obfuscated)        sb.Append("§k");
             if (!string.IsNullOrEmpty(Color))       sb.Append(GetColorCode(Color));
             if (!string.IsNullOrEmpty(Text))        sb.Append(Text);
-            if (!string.IsNullOrEmpty(Translate))   ResolveTranslate(Translate, lang, With, option, ref sb);
+            if (!string.IsNullOrEmpty(Translate))   ResolveTranslate(Translate, lang, With, ref sb);
             if (Extra != null && Extra.Count > 0)
             {
                 /*
@@ -286,7 +285,7 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
 
-        private void ResolveTranslate(string translate, Dictionary<string, string> lang, ArrayList with, TranslationOptions option, ref StringBuilder sb)
+        private void ResolveTranslate(string translate, Dictionary<string, string> lang, ArrayList with, ref StringBuilder sb)
         {
             /*
              * 这东西的结构大概是这样的:
@@ -300,65 +299,65 @@ namespace MinecraftProtocol.DataType.Chat
              * 第二个%s取with[1]的内容替换掉
              * 
              */
-            try
+            String text = lang.ContainsKey(translate) ? lang[translate] : translate;
+
+            //纯翻译,没有%s的那种
+            if (with == null || with.Count == 0) { sb.Append(text); return; }
+
+            int WithCount = 0;
+            for (int i = 0; i < text.Length; i++)
             {
-                String buffer = lang[translate];
-                //纯翻译,没有%s的那种
-                if (with == null || with.Count == 0) {
-                    sb.Append(buffer); return;
-                }
-                
-                int WithCount = 0;
-                for (int i = 0; i < buffer.Length; i++)
+                if (text[i] == '%' && i + 1 != text.Length)
                 {
-                    if(buffer[i]=='%'&&i+1!=buffer.Length)
+                    //这个%d是在forge的语言文件里面看见的,原版好像没有?
+                    if (text[i + 1] == 's'|| text[i + 1] == 'd')
                     {
-                        if(buffer[i+1] == 's')
-                        {
-                            object obj = with[WithCount++];
-                            if (obj is ITranslation translation)
-                                sb.Append(translation.ToString(lang));
-                            else
-                                sb.Append(obj.ToString());
-                            i++;
-                        }
-                        else if(buffer[i+1] == '%')
-                        {
-                            //%%是转义符,用来表示这是一个百分比号
-                            sb.Append('%'); i++;
-                        }
-                        else if(byte.TryParse(buffer[i+1].ToString(),out byte number)&&i+3!=buffer.Length&&buffer[i+2]== '$'&&buffer[i+3]=='s')
-                        {
-                            //处理类型的: 给予%4$s时长为%5$s秒的%1$s（ID %2$s）*%3$s效果
-                            //由于最高我只找到%5所以我不清楚这是16进制还是10进制,我暂时当成10进制处理了
-                            //(还是最小只能9的10进制,超过9就解析不到了)
-                            object obj = with[number-1];
-                            if (obj is ITranslation translation)
-                                sb.Append(translation.ToString(lang));
-                            else
-                                sb.Append(obj.ToString());
-                            i += 3;
-                        }
+                        object obj = with[WithCount++];
+                        if (obj is ITranslation translation)
+                            sb.Append(translation.ToString(lang));
                         else
-                        {
-                            sb.Append(buffer[i]);
-                        }
+                            sb.Append(obj.ToString());
+                        i++;
+                    }
+                    else if (text[i + 1] == '%')
+                    {
+                        //%%是转义符,用来表示这是一个百分比号
+                        sb.Append('%'); i++;
+                    }
+                    else if (byte.TryParse(text[i + 1].ToString(), out byte number) && i + 3 != text.Length && text[i + 2] == '$' && text[i + 3] == 's')
+                    {
+                        //处理类型的: 给予%4$s时长为%5$s秒的%1$s（ID %2$s）*%3$s效果
+                        //由于最高我只找到%5所以我不清楚这是16进制还是10进制,我暂时当成10进制处理了
+                        //(还是最小只能9的10进制,超过9就解析不到了)
+                        object obj = with[number - 1];
+                        if (obj is ITranslation translation)
+                            sb.Append(translation.ToString(lang));
+                        else
+                            sb.Append(obj.ToString());
+                        i += 3;
                     }
                     else
                     {
-                        sb.Append(buffer[i]);
+                        sb.Append(text[i]);
                     }
                 }
-            }
-            catch (KeyNotFoundException knfe)
-            {
-                switch (option)
+                else if (
+                    text[i] == '{' &&
+                    i+2<text.Length&&
+                    int.TryParse(text[i+1].ToString(), out int index)&&
+                    index<with.Count&&
+                    text[i+2] == '}')
                 {
-                    case TranslationOptions.WriteExceptionMessage: sb.Append(knfe.Message); break;
-                    case TranslationOptions.WriteOriginal: sb.Append(translate); break;
-                    case TranslationOptions.ThrowException: throw;
-                    case TranslationOptions.WriteEmpty: break;
-                    default: throw new InvalidCastException();
+                    object obj = with[index];
+                    if (obj is ITranslation translation)
+                        sb.Append(translation.ToString(lang));
+                    else
+                        sb.Append(obj.ToString());
+                    i += 2;
+                }
+                else
+                {
+                    sb.Append(text[i]);
                 }
             }
         }
@@ -394,9 +393,9 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
         /// <summary>
-        /// 翻译字典(部分)
+        /// 翻译表(英文,默认只有少部分)
         /// </summary>
-        private static readonly Dictionary<string, string> DefaultTranslation = new Dictionary<string, string>(){
+        public static readonly Dictionary<string, string> DefaultTranslation = new Dictionary<string, string>(){
 
             { "chat.type.text","<%s> %s"},
             { "chat.type.text.narrate","%s says %s"},
