@@ -1,4 +1,6 @@
 # Minecraft Protocol
+![](https://github.com/chawolbaka/MinecraftProtocol/workflows/build/badge.svg)  
+
 这个项目是给我的其它软件使用的,所以不会兼容全部版本,不会支持所有包。
 我其它的软件用到了什么就去研究那部分要怎么写,如果发现写不出来就暂时放置写点其它的试试看。  
   
