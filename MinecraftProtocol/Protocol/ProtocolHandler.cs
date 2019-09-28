@@ -270,18 +270,90 @@ namespace MinecraftProtocol.Protocol
                 cache.RemoveRange(offset, ArrayLength+(EndPos-offset));
             return buffer;
         }
-        /// <summary>拼接Byte数组</summary>
-        public static byte[] ConcatBytes(params byte[][] bytes)
+        public static byte GetBytes(bool value) => (byte)(value ? 1 : 0);
+        public static byte[] GetBytes(short value)
+        {
+            byte[] data = new byte[sizeof(short)];
+            for (int i = data.Length; i > 0; i--)
+            {
+                data[i - 1] |= (byte)value;
+                value >>= 8;
+            }
+            return data;
+        }
+        public static byte[] GetBytes(ushort value)
+        {
+            byte[] data = new byte[sizeof(ushort)];
+            for (int i = data.Length; i > 0; i--)
+            {
+                data[i - 1] |= (byte)value;
+                value >>= 8;
+            }
+            return data;
+        }
+        public static byte[] GetBytes(int value)
+        {
+            byte[] data = new byte[sizeof(int)];
+            for (int i = data.Length; i > 0; i--)
+            {
+                data[i - 1] |= (byte)value;
+                value >>= 8;
+            }
+            return data;
+        }
+        public static byte[] GetBytes(long value, int offset)
+        {
+            byte[] data = new byte[sizeof(long)];
+            for (int i = data.Length + offset; i > offset; i--)
+            {
+                data[i - 1] |= (byte)value;
+                value >>= 8;
+            }
+            return data;
+        }
+        public static byte[] GetBytes(string value)
+        {
+            byte[] str = Encoding.UTF8.GetBytes(value);
+            return ConcatBytes(VarInt.GetBytes(str.Length), str);
+        }
+
+
+
+        /// <summary>
+        /// 拼接Byte数组
+        /// </summary>
+        public static byte[] ConcatBytes(params IEnumerable<byte>[] bytes)
         {
             List<byte> buffer = new List<byte>();
-            foreach (byte[] array in bytes)
+            foreach (var array in bytes)
             {
-                if (array == null)
-                    continue;
-                else
+                if (array != null)
                     buffer.AddRange(array);
             }
             return buffer.ToArray();
+        }
+        /// <summary>
+        /// 拼接Byte
+        /// </summary>
+        public static byte[] ConcatBytes(params byte[] bytes)
+        {
+            List<byte> buffer = new List<byte>();
+            foreach (byte array in bytes)
+                buffer.Add(array);
+            return buffer.ToArray();
+        }
+        /// <summary>
+        /// 对比两个Byte数组的值是否相等
+        /// </summary>
+        public static bool Compare(byte[] b1, byte[] b2)
+        {
+            if (b1 != null && b2 != null && b1.Length != b2.Length)
+                return false;
+            if (object.ReferenceEquals(b1, b2))
+                return true;
+            for (int i = 0; i < b1.Length; i++)
+                if (b1[i] != b2[i]) return false;
+            return true;
         }
     }
 }

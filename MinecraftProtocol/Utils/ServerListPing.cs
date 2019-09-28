@@ -171,7 +171,7 @@ namespace MinecraftProtocol.Utils
             {
                 List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, socket));
                 int PacketID = ProtocolHandler.ReadVarInt(Packet);
-                if (PacketID != PingResponsePacket.PacketID)
+                if (PacketID != PingResponsePacket.GetPacketID())
                     throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet));
                 JsonResult = ProtocolHandler.ReadString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))
