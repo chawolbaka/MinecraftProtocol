@@ -11,7 +11,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     {
         //握手包永远不会变ID(大概)
         private const int id = 0x00;
-        public enum NextState : int
+        public enum State : int
         {
             GetStatus = 1,
             Login = 2
@@ -19,20 +19,20 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         public int ProtocolVersion { get; }
         public string ServerAddress { get; }
         public ushort ServerPort { get; }
-        public NextState Next { get; }
+        public State NextState { get; }
 
-        private HandshakePacket(Packet packet, string serverAddress, ushort port, int protocolVersion, NextState nextState) : base(packet.ID, packet.Data)
+        private HandshakePacket(Packet packet, string serverAddress, ushort port, int protocolVersion, State nextState) : base(packet.ID, packet.Data)
         {
             this.ServerAddress = serverAddress;
             this.ServerPort = port;
             this.ProtocolVersion = protocolVersion;
-            this.Next = nextState;
+            this.NextState = nextState;
         }
         /// <param name="protocolVersion">
         /// The version that the client plans on using to connect to the server (which is not important for the ping).
         /// If the client is pinging to determine what version to use, by convention -1 should be set.
         /// </param>
-        public HandshakePacket(string serverAddress, ushort port, int protocolVersion, NextState nextState) : base(id)
+        public HandshakePacket(string serverAddress, ushort port, int protocolVersion, State nextState) : base(id)
         {
             if (string.IsNullOrEmpty(serverAddress))
                 throw new ArgumentNullException(nameof(serverAddress));     
@@ -40,7 +40,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             this.ServerAddress = serverAddress;
             this.ServerPort = port;
             this.ProtocolVersion = protocolVersion;
-            this.Next = nextState;
+            this.NextState = nextState;
             WriteVarInt(protocolVersion);
             WriteString(serverAddress);
             WriteUnsignedShort(port);
@@ -64,7 +64,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                 int NextState = ProtocolHandler.ReadVarInt(packet.Data, offset, out offset, true);
 
                 if (packet.Data.Count == offset)
-                    hp = new HandshakePacket(packet, ServerAddress, ServerPort, ProtocolVersion, (NextState)NextState);
+                    hp = new HandshakePacket(packet, ServerAddress, ServerPort, ProtocolVersion, (State)NextState);
                 return !(hp is null);
             }
             catch (ArgumentOutOfRangeException) { return false; }

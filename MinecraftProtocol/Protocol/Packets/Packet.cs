@@ -5,6 +5,8 @@ using MinecraftProtocol.DataType;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.Protocol.VersionCompatible;
 using System.Collections;
+using System.IO;
+using Ionic.Zlib;
 
 namespace MinecraftProtocol.Protocol.Packets
 {
@@ -26,18 +28,17 @@ namespace MinecraftProtocol.Protocol.Packets
             this.Data = new List<byte>(packetData);
         }
 
-        protected virtual byte[] ConcatPacket() => ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), this.Data.ToArray());
         /// <summary>
-        /// 获取可以用于发送的完整包
+        /// 生成发送给服务端的包
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
-        public virtual byte[] GetPacket(int compress = -1)
+        public virtual byte[] ToBytes(int compress = -1)
         {
-            byte[] PacketData = ConcatPacket();
+            byte[] PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), Data.ToArray());
 
             if (compress > 0)
             {
-                if (this.Data.Count >= compress)
+                if (Data.Count >= compress)
                     PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), ZlibUtils.Compress(PacketData));
                 else
                     PacketData = ProtocolHandler.ConcatBytes(new byte[] { 0 }, PacketData);

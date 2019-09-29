@@ -160,10 +160,10 @@ namespace MinecraftProtocol.Utils
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, this.ServerPort, -1, HandshakePacket.NextState.GetStatus);
-            socket.Send(Handshake.GetPacket());
+            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, this.ServerPort, -1, HandshakePacket.State.GetStatus);
+            socket.Send(Handshake.ToBytes());
             Packet PingRequest = new PingRequestPacket();
-            socket.Send(PingRequest.GetPacket());
+            socket.Send(PingRequest.ToBytes());
 
             //Receive Packet
             int PacketLength = ProtocolHandler.GetPacketLength(socket);
@@ -177,7 +177,7 @@ namespace MinecraftProtocol.Utils
                 if (!string.IsNullOrWhiteSpace(JsonResult))
                 {
                     PingResult = ResolveJson(JsonResult);
-                    PingResult.Time = EnableDelayDetect ? GetTime(socket) : null;
+                    PingResult.ElapsedMicroseconds = EnableDelayDetect ? GetTime(socket) : null;
                 }
                 else
                 {
@@ -263,7 +263,7 @@ namespace MinecraftProtocol.Utils
                     RequestPacket.ID = 0x01;
                     RequestPacket.WriteLong(code);
                     DateTime StartTime = DateTime.Now;
-                    socket.Send(RequestPacket.GetPacket());
+                    socket.Send(RequestPacket.ToBytes());
 
                     //http://wiki.vg/Server_List_Ping#Pong
                     int PacketLength = ProtocolHandler.GetPacketLength(socket);
