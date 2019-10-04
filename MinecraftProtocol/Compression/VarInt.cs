@@ -73,15 +73,32 @@ namespace MinecraftProtocol.Compression
             int result = 0;
             for (int i = 0; i < 5; i++)
             {
-                result |= (bytes[offset+i] & MaskValue) << i * 7;
-                if ((bytes[offset+i] & MaskByteSigned) == 0)
+                result |= (bytes[offset + i] & MaskValue) << i * 7;
+                if ((bytes[offset + i] & MaskByteSigned) == 0)
                 {
-                    length = i+1;
+                    length = i + 1;
                     return result;
                 }
             }
             throw new OverflowException("VarInt too big");
         }
+        public static int Read(ReadOnlySpan<byte> bytes) => Read(bytes, 0, out _);
+        public static int Read(ReadOnlySpan<byte> bytes, int offset) => Read(bytes, offset, out _);
+        public static int Read(ReadOnlySpan<byte> bytes, int offset, out int length)
+        {
+            int result = 0;
+            for (int i = 0; i < 5; i++)
+            {
+                result |= (bytes[offset + i] & MaskValue) << i * 7;
+                if ((bytes[offset + i] & MaskByteSigned) == 0)
+                {
+                    length = i + 1;
+                    return result;
+                }
+            }
+            throw new OverflowException("VarInt too big");
+        }
+
         public static byte[] GetBytes(int value)
         {
             List<byte> bytes = new List<byte>();
@@ -93,10 +110,46 @@ namespace MinecraftProtocol.Compression
             bytes.Add((byte)value);
             return bytes.ToArray();
         }
+
+
+        public static int WriteTo(int value, byte[] dest)
+        {
+            int offset = 0;
+            while ((value & -128) != 0)
+            {
+                dest[offset++] = ((byte)(value & 127 | 128));
+                value = (int)(((uint)value) >> 7);
+            }
+            dest[offset++] = (byte)value;
+            return offset;
+        }
+        public static int WriteTo(int value, Span<byte> dest)
+        {
+            int offset = 0;
+            while ((value & -128) != 0)
+            {
+                dest[offset++] = ((byte)(value & 127 | 128));
+                value = (int)(((uint)value) >> 7);
+            }
+            dest[offset++] = (byte)value;
+            return offset;
+        }
+        public static int WriteTo(int value, List<byte> dest)
+        {
+            int offset = 0;
+            while ((value & -128) != 0)
+            {
+                dest[offset++] = ((byte)(value & 127 | 128));
+                value = (int)(((uint)value) >> 7);
+            }
+            dest[offset++] = (byte)value;
+            return offset;
+        }
+
         public static int GetLength(int value)
         {
             uint temp = (uint)value;
-            if ((temp >> 07) == 0) return 1;
+            if ((temp & 0xFFFFFFF80) == 0) return 1;
             if ((temp >> 14) == 0) return 2;
             if ((temp >> 21) == 0) return 3;
             if ((temp >> 28) == 0) return 4;

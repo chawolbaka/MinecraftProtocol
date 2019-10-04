@@ -84,6 +84,22 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarLong too big");
         }
+        public static long Read(ReadOnlySpan<byte> bytes) => Read(bytes, 0, out _);
+        public static long Read(ReadOnlySpan<byte> bytes, int offset) => Read(bytes, offset, out _);
+        public static long Read(ReadOnlySpan<byte> bytes, int offset, out int length)
+        {
+            long result = 0;
+            for (int i = 0; i < 10; i++)
+            {
+                result |= (long)(bytes[offset + i] & MaskValue) << i * 7;
+                if ((bytes[offset + i] & MaskByteSigned) == 0)
+                {
+                    length = i + 1;
+                    return result;
+                }
+            }
+            throw new OverflowException("VarLong too big");
+        }
         public static byte[] GetBytes(long value)
         {
             List<byte> bytes = new List<byte>();
@@ -92,13 +108,56 @@ namespace MinecraftProtocol.Compression
             {
                 byte temp = (byte)(Value&MaskValue);
                 Value >>= 7;
-                if (Value != 0)
-                    temp |= MaskByteSigned;
+                if (Value != 0) temp |= MaskByteSigned;
                 bytes.Add(temp);
 
             } while (Value!=0);
             return bytes.ToArray();
         }
+        public static int WriteTo(long value, byte[] dest)
+        {
+            ulong Value = (ulong)value;
+            int offset = 0;
+            do
+            {
+                byte temp = (byte)(Value & MaskValue);
+                Value >>= 7;
+                if (Value != 0) temp |= MaskByteSigned;
+                dest[offset++] = temp;
+
+            } while (Value != 0);
+            return offset;
+        }
+        public static int WriteTo(long value, Span<byte> dest)
+        {
+            ulong Value = (ulong)value;
+            int offset = 0;
+            do
+            {
+                byte temp = (byte)(Value & MaskValue);
+                Value >>= 7;
+                if (Value != 0) temp |= MaskByteSigned;
+                dest[offset++] = temp;
+
+            } while (Value != 0);
+            return offset;
+        }
+        public static int WriteTo(long value, List<byte> dest)
+        {
+            ulong Value = (ulong)value;
+            int offset = 0;
+            do
+            {
+                byte temp = (byte)(Value & MaskValue);
+                Value >>= 7;
+                if (Value != 0) temp |= MaskByteSigned;
+                dest[offset++] = temp;
+
+            } while (Value != 0);
+            return offset;
+        }
+
+
         public static int GetLength(long value)
         {
             ulong temp = (ulong)value;
