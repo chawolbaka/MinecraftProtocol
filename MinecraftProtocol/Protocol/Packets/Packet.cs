@@ -54,7 +54,7 @@ namespace MinecraftProtocol.Protocol.Packets
                     PacketData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressed.Length) + compressed.Length) + VarInt.GetLength(uncompressed.Length) + compressed.Length];
                     //写入第一个VarInt(解压长度+压缩后的长度）
                     int offset = VarInt.WriteTo(VarInt.GetLength(uncompressed.Length) + compressed.Length, PacketData);
-                    //写入第二VarInt(未压缩长度)
+                    //写入第二个VarInt(未压缩长度)
                     offset += VarInt.WriteTo(uncompressed.Length, PacketData.AsSpan().Slice(offset));
                     //写入被压缩的数据
                     compressed.CopyTo(PacketData, offset);
@@ -65,8 +65,8 @@ namespace MinecraftProtocol.Protocol.Packets
                     int offset = VarInt.WriteTo(Length + 1, PacketData);
                     PacketData[offset++] = 0;
                     offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
-                    if(Data.Count>0)
-                    Data.CopyTo(PacketData, offset);
+                    if (Data.Count > 0)
+                        Data.CopyTo(PacketData, offset);
                 }
             }
             else
@@ -74,7 +74,8 @@ namespace MinecraftProtocol.Protocol.Packets
                 PacketData = new byte[VarInt.GetLength(Length) + Length];
                 int offset = VarInt.WriteTo(Length, PacketData);
                 offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
-                Data.CopyTo(PacketData, offset);
+                if (Data.Count > 0)
+                    Data.CopyTo(PacketData, offset);
             }
             return PacketData;
         }
@@ -198,8 +199,8 @@ namespace MinecraftProtocol.Protocol.Packets
         }
         public virtual void WriteUUID(UUID value)
         {
-            Guid uuid = value.ToGuid();
-            WriteBytes(uuid.ToByteArray());
+            WriteLong(value.Most);
+            WriteLong(value.Least);
         }
         public virtual void WriteBytes(IEnumerable<byte> value) => Data.AddRange(value);
         public virtual void WriteBytes(params byte[] value) => Data.AddRange(value);
@@ -234,6 +235,7 @@ namespace MinecraftProtocol.Protocol.Packets
         public static bool operator !=(Packet left, Packet right) => !(left == right);
         public bool Equals(Packet packet)
         {
+            if (packet is null) return false;
             if (this.ID != packet.ID) return false;
             if (this.Data.Count != packet.Data.Count) return false;
             if (object.ReferenceEquals(this, packet)) return true;

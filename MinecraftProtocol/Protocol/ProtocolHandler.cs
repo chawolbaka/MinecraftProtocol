@@ -248,7 +248,9 @@ namespace MinecraftProtocol.Protocol
         public static UUID ReadUUID(List<byte> cache, int offset, bool readOnly = false) => ReadUUID(cache, offset, out _, readOnly);
         public static UUID ReadUUID(List<byte> cache, int offset, out int count, bool readOnly = false)
         {
-            throw new NotImplementedException();
+            return new UUID(
+                ReadLong(cache, offset, out offset, readOnly),
+                ReadLong(cache, offset, out count, readOnly));
         }
 
         public static byte[] ReadByteArray(List<byte> cache, int protocolVersion, bool readOnly = false) => ReadByteArray(cache, protocolVersion, 0, out _, readOnly);
@@ -301,10 +303,10 @@ namespace MinecraftProtocol.Protocol
             }
             return data;
         }
-        public static byte[] GetBytes(long value, int offset)
+        public static byte[] GetBytes(long value)
         {
             byte[] data = new byte[sizeof(long)];
-            for (int i = data.Length + offset; i > offset; i--)
+            for (int i = data.Length; i > 0; i--)
             {
                 data[i - 1] |= (byte)value;
                 value >>= 8;
