@@ -8,7 +8,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
     {
         public int Threshold { get; }
 
-        private SetCompressionPacket(Packet packet, int threshold) : base(packet.ID, packet.Data) { this.Threshold = threshold; }
+        private SetCompressionPacket(ReadOnlyPacket packet, int threshold) : base(packet) { this.Threshold = threshold; }
         public SetCompressionPacket(int threshold, int protocolVersion)
         {
             this.ID = GetPacketID(protocolVersion);
@@ -50,16 +50,21 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                 throw new PacketNotFoundException($"协议版本\"{protocolVersion}\"中不存在数据包压缩包(需要14w28a以上的版本才有)");
         }
 
-        public static bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion, out int? _);
-        public static bool Verify(Packet packet, int protocolVersion, out SetCompressionPacket scp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out int? _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out SetCompressionPacket scp)
         {
             scp = null;
             if (Verify(packet, protocolVersion, out int? threshold))
                 scp = new SetCompressionPacket(packet, threshold.Value);
             return !(scp is null);
         }
-        public static bool Verify(Packet packet, int protocolVersion, out int? threshold)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out int? threshold)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             threshold = null;
             if (protocolVersion < ProtocolVersionNumbers.V14w28a)
                 return false;
@@ -69,8 +74,8 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                 if (packet.ID != GetPacketID(protocolVersion))
                     return false;
 
-                threshold = VarInt.Read(packet.Data, 0, out int VarIntLength);
-                return VarIntLength == packet.Data.Count;
+                threshold = packet.ReadVarInt();
+                return packet.IsReadToEnd;
             }
             catch (PacketNotFoundException) { return false; }
             catch (ArgumentOutOfRangeException) { return false; }

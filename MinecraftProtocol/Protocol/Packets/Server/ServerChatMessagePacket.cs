@@ -18,7 +18,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         public byte? Position { get; }
         private ChatMessage _message;
 
-        private ServerChatMessagePacket(Packet packet,string json, byte? position) : base(packet.ID,packet.Data)
+        private ServerChatMessagePacket(ReadOnlyPacket packet,string json, byte? position) : base(packet)
         {
             this.Json = json;
             this.Position = position;
@@ -59,8 +59,13 @@ namespace MinecraftProtocol.Protocol.Packets.Server
             else                                                        return 0x02;
 
         }
-        public static bool Verify(Packet packet, int protocolVersion, out ServerChatMessagePacket scmp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out ServerChatMessagePacket scmp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             scmp = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
@@ -69,11 +74,11 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                 if (packet.Data.Count > 32767)
                     return false;
 
-                string Json = ProtocolHandler.ReadString(packet.Data, 0, out int offset, true);
+                string Json = packet.ReadString();
                 byte? Position = null;
-                if (protocolVersion >= ProtocolVersionNumbers.V14w02a && packet.Data.Count == offset + 1)
-                    Position = ProtocolHandler.ReadUnsignedByte(packet.Data, offset, out offset, true);
-                if (packet.Data.Count == offset)
+                if (protocolVersion >= ProtocolVersionNumbers.V14w02a && !packet.IsReadToEnd)
+                    Position = packet.ReadUnsignedByte();
+                if (packet.IsReadToEnd)
                     scmp = new ServerChatMessagePacket(packet, Json, Position);
                 return !(scmp is null);
             }

@@ -14,6 +14,7 @@ namespace MinecraftProtocol.Protocol.Packets
         public virtual int Length => VarInt.GetLength(ID) + Data.Count;
 
         public Packet() : this(-1) { }
+        public Packet(ReadOnlyPacket readOnlyPacket) : this(readOnlyPacket.ID, readOnlyPacket.Data) { }
         public Packet(int packetID)
         {
             this.ID = packetID;
@@ -23,6 +24,12 @@ namespace MinecraftProtocol.Protocol.Packets
         {
             this.ID = packetID;
             this.Data = new List<byte>(packetData);
+        }
+        public Packet(int packetID, ReadOnlySpan<byte> packetData):this(packetID)
+        {
+            Data.Capacity += packetData.Length;
+            for (int i = 0; i < packetData.Length; i++)
+                Data.Add(packetData[i]);
         }
 
         /// <summary>
@@ -79,6 +86,7 @@ namespace MinecraftProtocol.Protocol.Packets
             }
             return PacketData;
         }
+
         /// <summary>
         /// 生成发送给服务端的包
         /// </summary>
@@ -116,7 +124,8 @@ namespace MinecraftProtocol.Protocol.Packets
             }
             return PacketData;
         }
-        
+
+
         public virtual void WriteBoolean(bool boolean)
         {
             if (boolean)
@@ -213,6 +222,9 @@ namespace MinecraftProtocol.Protocol.Packets
                 WriteShort((short)array.Length);
             WriteBytes(array);
         }
+
+        public static implicit operator ReadOnlyPacket(Packet packet) => new ReadOnlyPacket(packet);
+        public virtual ReadOnlyPacket AsReadOnly() => new ReadOnlyPacket(this);
 
         public override string ToString()
         {

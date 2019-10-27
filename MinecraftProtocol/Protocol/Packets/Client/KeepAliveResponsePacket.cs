@@ -28,7 +28,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                     return ProtocolHandler.ReadInt(Data, true);
             }
         }
-        private KeepAliveResponsePacket(Packet packet, int protocolVersion) : base(packet.ID, packet.Data)
+        private KeepAliveResponsePacket(ReadOnlyPacket packet, int protocolVersion) : base(packet)
         {
             this.ProtocolVersion = protocolVersion;
         }
@@ -69,16 +69,21 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             else if (protocolVersion >= ProtocolVersionNumbers.V15w36a)         return 0x0A;
             else                                                                return 0x00;
         }
-        public static bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion,out byte[] _);
-        public static bool Verify(Packet packet, int protocolVersion, out KeepAliveResponsePacket karp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out byte[] _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out KeepAliveResponsePacket karp)
         {
             karp = null;
             if (Verify(packet, protocolVersion))
                 karp = new KeepAliveResponsePacket(packet, protocolVersion);
             return karp == null;
         }
-        public static bool Verify(Packet packet, int protocolVersion, out byte[] code)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out byte[] code)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             code = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;

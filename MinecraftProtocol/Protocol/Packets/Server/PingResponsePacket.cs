@@ -11,7 +11,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         private const int id = 0x00;
         public string Json { get; }
 
-        private PingResponsePacket(Packet packet, string json) : base(id, packet.Data) { this.Json = json; }
+        private PingResponsePacket(ReadOnlyPacket packet, string json) : base(id, packet.Data) { this.Json = json; }
         public PingResponsePacket(string json) : base(id)
         {
             if (string.IsNullOrEmpty(json))
@@ -21,16 +21,19 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         }
         public static int GetPacketID() => id;
 
-        public static bool Verify(Packet packet,out PingResponsePacket prp)
+        public static bool Verify(ReadOnlyPacket packet,out PingResponsePacket prp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+
             prp = null;
             if (packet.ID != id)
                 return false;
 
             try
             {
-                string ResponseJson = ProtocolHandler.ReadString(packet.Data,0,out int count,true);
-                if (packet.Data.Count == count)
+                string ResponseJson = packet.ReadString();
+                if (packet.IsReadToEnd)
                     prp = new PingResponsePacket(packet, ResponseJson);
                 return !(prp is null);
             }

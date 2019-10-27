@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     {
         private const int id = 0x01;
         public long Code { get; }
-        private PingPacket(Packet packet,long code) : base(packet.ID, packet.Data) { Code = Code; }
+        private PingPacket(ReadOnlyPacket packet, long code) : base(packet) { Code = code; }
         public PingPacket(long code) : base(id)
         {
             this.Code = code;;
@@ -17,19 +17,22 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         }
         public static int GetPacketID() => id;
 
-        public static bool Verify(Packet packet) => Verify(packet, out long? _);
-        public static bool Verify(Packet packet, out PingPacket pp)
+        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out long? _);
+        public static bool Verify(ReadOnlyPacket packet, out PingPacket pp)
         {
             pp = null;
             if (Verify(packet, out long? code))
                 pp = new PingPacket(packet, code.Value);
             return !(pp is null);
         }
-        public static bool Verify(Packet packet,out long? code)
+        public static bool Verify(ReadOnlyPacket packet, out long? code)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+
             code = null;
-            if (packet.ID == id&&packet.Data.Count == 8)
-                code = ProtocolHandler.ReadLong(packet.Data, true);
+            if (packet.ID == id && packet.Data.Count == 8)
+                code = packet.ReadLong();
             return !(code is null);
         }
     }

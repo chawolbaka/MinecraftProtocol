@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         public string PlayerName { get; }
         public string PlayerUUID { get; }
 
-        private LoginSuccessPacket(Packet packet,string uuid, string name):base(packet.ID,packet.Data)
+        private LoginSuccessPacket(ReadOnlyPacket packet,string uuid, string name):base(packet)
         {
             this.PlayerName = name;
             this.PlayerUUID = uuid;
@@ -17,7 +17,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         public LoginSuccessPacket(string uuid,string playerName, int protocolVersion)
         {
             if (uuid.Length > 32)
-                throw new ArgumentOutOfRangeException(nameof(uuid), 32, "UUID Max length is 32");
+                throw new ArgumentOutOfRangeException(nameof(uuid), 32, "UUID max length is 32");
             if (playerName.Length > 16)
                 throw new ArgumentOutOfRangeException(nameof(playerName), 16, "Player name too long, max is 16");
             this.ID = GetPacketID(protocolVersion);
@@ -43,9 +43,14 @@ namespace MinecraftProtocol.Protocol.Packets.Server
             return 0x02;
 #endif
         }
-        public static bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
-        public static bool Verify(Packet packet, int protocolVersion, out LoginSuccessPacket lsp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out LoginSuccessPacket lsp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             lsp = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
@@ -54,9 +59,9 @@ namespace MinecraftProtocol.Protocol.Packets.Server
 
             try
             {
-                string UUID = ProtocolHandler.ReadString(packet.Data, 0, out int offset, true);
-                string Name = ProtocolHandler.ReadString(packet.Data, offset, out offset, true);
-                if (packet.Data.Count == offset)
+                string UUID = packet.ReadString();
+                string Name = packet.ReadString();
+                if (packet.IsReadToEnd)
                     lsp = new LoginSuccessPacket(packet, UUID, Name);
 
                 return !(lsp is null);

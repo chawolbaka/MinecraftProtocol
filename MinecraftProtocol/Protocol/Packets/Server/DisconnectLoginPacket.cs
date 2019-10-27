@@ -14,7 +14,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         public string Json { get; private set; }
         private ChatMessage _reason;
 
-        private DisconnectLoginPacket(Packet packet, string json) : base(packet.ID,packet.Data) { this.Json = json; }
+        private DisconnectLoginPacket(ReadOnlyPacket packet, string json) : base(packet) { this.Json = json; }
         public DisconnectLoginPacket(ChatMessage reason, int protocolVersion) : base(GetPacketID(protocolVersion))
         {
             this._reason = reason ?? throw new ArgumentNullException(nameof(reason));
@@ -46,17 +46,22 @@ namespace MinecraftProtocol.Protocol.Packets.Server
 #endif
         }
 
-        public static bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
-        public static bool Verify(Packet packet, int protocolVersion, out DisconnectLoginPacket dlp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out DisconnectLoginPacket dlp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             dlp = null;
             if (packet.ID!= GetPacketID(protocolVersion))
                 return false;
 
             try
             {
-                string json = ProtocolHandler.ReadString(packet.Data, 0, out int count, true);
-                if (count == packet.Data.Count)
+                string json = packet.ReadString();
+                if (packet.IsReadToEnd)
                     dlp = new DisconnectLoginPacket(packet,json);
                 return !(dlp is null);
             }

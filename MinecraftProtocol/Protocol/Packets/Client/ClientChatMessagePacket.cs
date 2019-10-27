@@ -16,7 +16,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
 
         public string Message { get; }
 
-        private ClientChatMessagePacket(Packet packet, string message) : base(packet.ID, packet.Data)
+        private ClientChatMessagePacket(ReadOnlyPacket packet, string message) : base(packet)
         {
             Message = message;
         }
@@ -64,21 +64,26 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x02;
             else return 0x01;
         }
-        public static bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
-        public static bool Verify(Packet packet, int protocolVersion, out ClientChatMessagePacket ccmp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out ClientChatMessagePacket ccmp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             ccmp = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
             try
             {
-                string Message = ProtocolHandler.ReadString(packet.Data,0,out int offset, true);
+                string Message = packet.ReadString();
                 if (protocolVersion >= ProtocolVersionNumbers.V16w38a && Message.Length > MaxMessageLength)
                     return false;
                 else if (Message.Length > OldMaxMessageLength)
                     return false;
-                if (packet.Data.Count == offset)
+                if (packet.IsReadToEnd)
                     ccmp = new ClientChatMessagePacket(packet, Message);
                 return !(ccmp is null);
             }

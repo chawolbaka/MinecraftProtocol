@@ -10,7 +10,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         public byte[] VerifyToken { get; }
 
 
-        private EncryptionResponsePacket(Packet packet, byte[] sharedSecret, byte[] verifyToken) : base(packet.ID, packet.Data)
+        private EncryptionResponsePacket(ReadOnlyPacket packet, byte[] sharedSecret, byte[] verifyToken) : base(packet)
         {
             SharedSecret = sharedSecret;
             VerifyToken = verifyToken;
@@ -45,18 +45,23 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             return 0x01;
 #endif
         }
-        public bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
-        public bool Verify(Packet packet, int protocolVersion,out EncryptionResponsePacket erp)
+        public bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
+        public bool Verify(ReadOnlyPacket packet, int protocolVersion,out EncryptionResponsePacket erp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             erp = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
             try
             {
-                byte[] SharedSecret = ProtocolHandler.ReadByteArray(packet.Data, protocolVersion, 0, out int offset, true);
-                byte[] VerifyToken = ProtocolHandler.ReadByteArray(packet.Data, protocolVersion, offset, out offset, true);
-                if (offset == packet.Data.Count)
+                byte[] SharedSecret = packet.ReadByteArray(protocolVersion);
+                byte[] VerifyToken = packet.ReadByteArray(protocolVersion);
+                if (packet.IsReadToEnd)
                     erp = new EncryptionResponsePacket(packet, SharedSecret, VerifyToken);
                 return !(erp is null);
             }

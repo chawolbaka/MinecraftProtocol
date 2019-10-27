@@ -11,7 +11,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     {
         public string PlayerName { get; }
 
-        private LoginStartPacket(Packet packet, string name) : base(packet.ID, packet.Data)
+        private LoginStartPacket(ReadOnlyPacket packet, string name) : base(packet)
         {
             this.PlayerName = name;
         }
@@ -30,7 +30,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
 
 
         /// <summary>从一个LoginStart包中读取玩家名,如果传入其它包会抛出异常.</summary>
-        public static string GetPlayerName(Packet packet) => ProtocolHandler.ReadString(packet.Data, true);
+        public static string GetPlayerName(ReadOnlyPacket packet) => packet.ReadString();
         public static int GetPacketID(int protocolVersion)
         {
             /*
@@ -49,24 +49,28 @@ namespace MinecraftProtocol.Protocol.Packets.Client
 #endif
         }
 
-        public static bool Verify(Packet packet, int protocolVersion, out LoginStartPacket lsp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out LoginStartPacket lsp)
         {
             lsp = null;
             if(Verify(packet,protocolVersion,out string name))
                 lsp = new LoginStartPacket(packet, name);
             return lsp == null;
         }
-        public static bool Verify(Packet packet, int protocolVersion, out string playerName)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out string playerName)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             playerName = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
-            List<byte> buffer = new List<byte>(packet.Data);
             try
             {
-                string name = ProtocolHandler.ReadString(buffer,0,out int offset);
-                if (packet.Data.Count == offset)
+                string name = packet.ReadString();
+                if (packet.IsReadToEnd)
                     playerName = name;
                 return !string.IsNullOrEmpty(playerName);
             }

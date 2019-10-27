@@ -21,7 +21,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         public ushort ServerPort { get; }
         public State NextState { get; }
 
-        private HandshakePacket(Packet packet, string serverAddress, ushort port, int protocolVersion, State nextState) : base(packet.ID, packet.Data)
+        private HandshakePacket(ReadOnlyPacket packet, string serverAddress, ushort port, int protocolVersion, State nextState) : base(packet)
         {
             this.ServerAddress = serverAddress;
             this.ServerPort = port;
@@ -49,21 +49,24 @@ namespace MinecraftProtocol.Protocol.Packets.Client
 
         public static int GetPacketID() => id;
 
-        public static bool Verify(Packet packet) => Verify(packet, out _);
-        public static bool Verify(Packet packet, out HandshakePacket hp)
+        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out _);
+        public static bool Verify(ReadOnlyPacket packet, out HandshakePacket hp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+
             hp = null;
             if (packet.ID != id)
                 return false;
 
             try
             {
-                int ProtocolVersion = ProtocolHandler.ReadVarInt(packet.Data, 0, out int offset, true);
-                string ServerAddress = ProtocolHandler.ReadString(packet.Data, offset, out offset, true);
-                ushort ServerPort = ProtocolHandler.ReadUnsignedShort(packet.Data, offset, out offset, true);
-                int NextState = ProtocolHandler.ReadVarInt(packet.Data, offset, out offset, true);
+                int ProtocolVersion = packet.ReadVarInt();
+                string ServerAddress = packet.ReadString();
+                ushort ServerPort = packet.ReadUnsignedShort();
+                int NextState = packet.ReadVarInt();
 
-                if (packet.Data.Count == offset)
+                if (packet.IsReadToEnd)
                     hp = new HandshakePacket(packet, ServerAddress, ServerPort, ProtocolVersion, (State)NextState);
                 return !(hp is null);
             }

@@ -12,7 +12,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         public byte[] PublicKey { get; }
         public byte[] VerifyToken { get; }
 
-        private EncryptionRequestPacket(Packet packet, string serverID, byte[] publicKey, byte[] verifyToken) : base(packet.ID, packet.Data)
+        private EncryptionRequestPacket(ReadOnlyPacket packet, string serverID, byte[] publicKey, byte[] verifyToken) : base(packet)
         {
             this.ServerID = serverID;
             this.PublicKey = publicKey;
@@ -46,19 +46,24 @@ namespace MinecraftProtocol.Protocol.Packets.Server
             return 0x01;
 #endif
         }
-        public static bool Verify(Packet packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
-        public static bool Verify(Packet packet, int protocolVersion, out EncryptionRequestPacket erp)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out EncryptionRequestPacket erp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
             erp = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
             try
             {
-                string ServerID = ProtocolHandler.ReadString(packet.Data, 0, out int offset, true);
-                byte[] PublicKey = ProtocolHandler.ReadByteArray(packet.Data, protocolVersion, offset, out offset, true);
-                byte[] VerifyToken = ProtocolHandler.ReadByteArray(packet.Data, protocolVersion, offset, out offset, true);
-                if (packet.Data.Count == offset)
+                string ServerID = packet.ReadString();
+                byte[] PublicKey = packet.ReadByteArray(protocolVersion);
+                byte[] VerifyToken = packet.ReadByteArray(protocolVersion);
+                if (packet.IsReadToEnd)
                     erp = new EncryptionRequestPacket(packet, ServerID, PublicKey, VerifyToken);
                 return !(erp is null);
             }
