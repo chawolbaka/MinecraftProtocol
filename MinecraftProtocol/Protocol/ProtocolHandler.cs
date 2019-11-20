@@ -215,10 +215,21 @@ namespace MinecraftProtocol.Protocol
             byte[] buffer = new byte[length];
             for (int i = EndPos; i < length + EndPos; i++)
                 buffer[i - EndPos] = cache[i];
-            string result = Encoding.UTF8.GetString(buffer.ToArray());
+            string result = Encoding.UTF8.GetString(buffer);
             count = EndPos + length;
             if (!readOnly)
                 cache.RemoveRange(offset, length + (EndPos - offset));
+            return result;
+        }
+
+        public static int ReadVarShort(List<byte> cache, bool readOnly = false) => ReadVarShort(cache, 0, out _, readOnly);
+        public static int ReadVarShort(List<byte> cache, int offset, bool readOnly = false) => ReadVarShort(cache, offset, out _, readOnly);
+        public static int ReadVarShort(List<byte> cache, int offset, out int count, bool readOnly = false)
+        {
+            int result = VarShort.Read(cache, offset, out int length);
+            count = length + offset;
+            if (!readOnly)
+                cache.RemoveRange(offset, length);
             return result;
         }
 
@@ -351,7 +362,7 @@ namespace MinecraftProtocol.Protocol
         {
             if (b1 != null && b2 != null && b1.Length != b2.Length)
                 return false;
-            if (object.ReferenceEquals(b1, b2))
+            if (ReferenceEquals(b1, b2))
                 return true;
             for (int i = 0; i < b1.Length; i++)
                 if (b1[i] != b2[i]) return false;

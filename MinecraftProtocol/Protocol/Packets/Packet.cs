@@ -12,6 +12,7 @@ namespace MinecraftProtocol.Protocol.Packets
         public virtual int ID { get; set; }
         public virtual List<byte> Data { get; set; }
         public virtual int Length => VarInt.GetLength(ID) + Data.Count;
+        public virtual bool Empty => ID < 0 || Data is null;
 
         public Packet() : this(-1) { }
         public Packet(ReadOnlyPacket readOnlyPacket) : this(readOnlyPacket.ID, readOnlyPacket.Data) { }
@@ -25,7 +26,7 @@ namespace MinecraftProtocol.Protocol.Packets
             this.ID = packetID;
             this.Data = new List<byte>(packetData);
         }
-        public Packet(int packetID, ReadOnlySpan<byte> packetData):this(packetID)
+        public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID)
         {
             Data.Capacity += packetData.Length;
             for (int i = 0; i < packetData.Length; i++)
@@ -40,6 +41,9 @@ namespace MinecraftProtocol.Protocol.Packets
         /// <exception cref="IndexOutOfRangeException"></exception>
         public virtual byte[] ToBytes(int compress = -1)
         {
+            if (Empty)
+                throw new PacketException("Packet is empty");
+
             byte[] PacketData;
             if (compress > 0)
             {
@@ -94,7 +98,11 @@ namespace MinecraftProtocol.Protocol.Packets
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public virtual List<byte> ToList(int compress = -1)
         {
+            if (Empty)
+                throw new PacketException("Packet is empty");
+
             List<byte> PacketData = new List<byte>();
+            PacketData.Capacity = Length;
             if (compress > 0)
             {
                 if (Data.Count >= compress)
@@ -144,7 +152,8 @@ namespace MinecraftProtocol.Protocol.Packets
         public virtual void WriteString(string value)
         {
             byte[] str = Encoding.UTF8.GetBytes(value);
-            WriteBytes(ProtocolHandler.ConcatBytes(VarInt.GetBytes(str.Length), str));
+            WriteVarInt(str.Length);
+            WriteBytes(str);
         }
         public virtual void WriteShort(short value)
         {
@@ -198,6 +207,10 @@ namespace MinecraftProtocol.Protocol.Packets
             Array.Reverse(data);
             WriteBytes(data);
         }
+        public virtual void WriteVarShort(int value)
+        {
+            WriteBytes(VarShort.GetBytes(value));
+        }
         public virtual void WriteVarInt(int value)
         {
             WriteBytes(VarInt.GetBytes(value));
@@ -223,7 +236,7 @@ namespace MinecraftProtocol.Protocol.Packets
             WriteBytes(array);
         }
 
-        public static implicit operator ReadOnlyPacket(Packet packet) => new ReadOnlyPacket(packet);
+        public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
         public virtual ReadOnlyPacket AsReadOnly() => new ReadOnlyPacket(this);
 
         public override string ToString()

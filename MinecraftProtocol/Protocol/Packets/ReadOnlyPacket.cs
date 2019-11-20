@@ -13,11 +13,10 @@ namespace MinecraftProtocol.Protocol.Packets
         public int ID => _packet.ID;
         public ReadOnlyPacketData Data { get; }
         public int Length => _packet.Length;
-
         private Packet _packet;
 
-        public bool IsReadToEnd => offset >= Data.Count;
 
+        public bool IsReadToEnd => offset >= Data.Count;
         public int Position
         {
             get => offset;
@@ -92,6 +91,13 @@ namespace MinecraftProtocol.Protocol.Packets
         {
             int length = ReadVarInt();
             string result = Encoding.UTF8.GetString(Data.Slice(offset, length));
+            offset += length;
+            return result;
+        }
+
+        public int ReadVarShort()
+        {
+            int result = VarShort.Read(Data.ToSpan(), offset, out int length);
             offset += length;
             return result;
         }
