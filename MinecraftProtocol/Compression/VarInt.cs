@@ -12,7 +12,8 @@ namespace MinecraftProtocol.Compression
         private const byte MaskByteSigned = 0b1000_0000;
         private const byte MaskValue = 0b0111_1111;
 
-        public static int Convert(byte[] bytes) => Read(bytes, 0, out _);
+        public static int Convert(ReadOnlySpan<byte> bytes) => Read(bytes,out _);
+        public static int Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes, out length);
         public static int Convert(byte[] bytes, int offset) => Read(bytes, offset, out _);
         public static int Convert(byte[] bytes, int offset, out int end) => Read(bytes, offset, out end);
         public static int Convert(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
@@ -66,7 +67,6 @@ namespace MinecraftProtocol.Compression
         public static int Read(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
         public static int Read(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
         public static int Read(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
-        public static int Read(byte[] bytes) => Read(bytes, 0, out _);
         public static int Read(byte[] bytes, int offset) => Read(bytes, offset, out _);
         public static int Read(byte[] bytes, int offset, out int length)
         {
@@ -82,15 +82,14 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarInt too big");
         }
-        public static int Read(ReadOnlySpan<byte> bytes) => Read(bytes, 0, out _);
-        public static int Read(ReadOnlySpan<byte> bytes, int offset) => Read(bytes, offset, out _);
-        public static int Read(ReadOnlySpan<byte> bytes, int offset, out int length)
+        public static int Read(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
+        public static int Read(ReadOnlySpan<byte> bytes, out int length)
         {
             int result = 0;
             for (int i = 0; i < 5; i++)
             {
-                result |= (bytes[offset + i] & MaskValue) << i * 7;
-                if ((bytes[offset + i] & MaskByteSigned) == 0)
+                result |= (bytes[i] & MaskValue) << i * 7;
+                if ((bytes[i] & MaskByteSigned) == 0)
                 {
                     length = i + 1;
                     return result;
@@ -110,7 +109,7 @@ namespace MinecraftProtocol.Compression
             bytes.Add((byte)value);
             return bytes.ToArray();
         }
-
+        
 
         public static int WriteTo(int value, byte[] dest)
         {

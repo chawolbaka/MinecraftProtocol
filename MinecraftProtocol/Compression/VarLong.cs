@@ -12,12 +12,13 @@ namespace MinecraftProtocol.Compression
         private const byte MaskByteSigned = 0b1000_0000;
         private const byte MaskValue = 0b0111_1111;
 
-        public static long Convert(byte[] bytes) => Read(bytes, 0, out _);
+        public static long Convert(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
+        public static long Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes, out length);
         public static long Convert(byte[] bytes, int offset) => Read(bytes, offset, out _);
-        public static long Convert(byte[] bytes, int offset, out int end) => Read(bytes, offset, out end);
+        public static long Convert(byte[] bytes, int offset, out int length) => Read(bytes, offset, out length);
         public static long Convert(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
         public static long Convert(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
-        public static long Convert(List<byte> bytes, int offset, out int end) => Read(bytes.ToArray(), offset, out end);
+        public static long Convert(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
         public static byte[] Convert(long value) => GetBytes(value);
 
 
@@ -68,7 +69,6 @@ namespace MinecraftProtocol.Compression
         public static long Read(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
         public static long Read(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
         public static long Read(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
-        public static long Read(byte[] bytes) => Read(bytes, 0, out _);
         public static long Read(byte[] bytes, int offset) => Read(bytes, offset, out _);
         public static long Read(byte[] bytes, int offset, out int length)
         {
@@ -84,15 +84,14 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarLong too big");
         }
-        public static long Read(ReadOnlySpan<byte> bytes) => Read(bytes, 0, out _);
-        public static long Read(ReadOnlySpan<byte> bytes, int offset) => Read(bytes, offset, out _);
-        public static long Read(ReadOnlySpan<byte> bytes, int offset, out int length)
+        public static long Read(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
+        public static long Read(ReadOnlySpan<byte> bytes, out int length)
         {
             long result = 0;
             for (int i = 0; i < 10; i++)
             {
-                result |= (long)(bytes[offset + i] & MaskValue) << i * 7;
-                if ((bytes[offset + i] & MaskByteSigned) == 0)
+                result |= (long)(bytes[i] & MaskValue) << i * 7;
+                if ((bytes[i] & MaskByteSigned) == 0)
                 {
                     length = i + 1;
                     return result;

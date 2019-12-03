@@ -97,21 +97,21 @@ namespace MinecraftProtocol.Protocol.Packets
 
         public int ReadVarShort()
         {
-            int result = VarShort.Read(Data.ToSpan(), offset, out int length);
+            int result = VarShort.Read(Data.ToSpan().Slice(offset), out int length);
             offset += length;
             return result;
         }
 
         public int ReadVarInt()
         {
-            int result = VarInt.Read(Data.ToSpan(), offset, out int length);
+            int result = VarInt.Read(Data.ToSpan().Slice(offset), out int length);
             offset += length;
             return result;
         }
 
         public long ReadVarLong()
         {
-            long result = VarLong.Read(Data.ToSpan(), offset, out int length);
+            long result = VarLong.Read(Data.ToSpan().Slice(offset), out int length);
             offset += length;
             return result;
         }

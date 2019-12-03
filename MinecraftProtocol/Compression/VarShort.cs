@@ -10,12 +10,13 @@ namespace MinecraftProtocol.Compression
     /// </summary>
     public static class VarShort
     {
-        public static int Convert(ReadOnlySpan<byte> bytes) => Read(bytes, 0, out _);
-        public static int Convert(ReadOnlySpan<byte> bytes, int offset) => Read(bytes, offset, out _);
-        public static int Convert(ReadOnlySpan<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
+        public static int Convert(ReadOnlySpan<byte> bytes) => Read(bytes,out _);
+        public static int Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes,out length);
+        public static int Convert(byte[] bytes, int offset) => Read(bytes, offset, out _);
+        public static int Convert(byte[] bytes, int offset, out int length) => Read(bytes, offset, out length);
         public static int Convert(List<byte> bytes) => Read(bytes, 0, out _);
         public static int Convert(List<byte> bytes, int offset) => Read(bytes, offset, out _);
-        public static int Convert(List<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
+        public static int Convert(List<byte> bytes, int offset, out int length) => Read(bytes, offset, out length);
         public static byte[] Convert(int value) => GetBytes(value);
 
         public static int Read(Stream stream) => Read(stream, out _);
@@ -61,9 +62,8 @@ namespace MinecraftProtocol.Compression
         public static int Read(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
         public static int Read(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
         public static int Read(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
-        public static int Read(ReadOnlySpan<byte> bytes) => Read(bytes, 0, out _);
-        public static int Read(ReadOnlySpan<byte> bytes, int offset) => Read(bytes, offset, out _);
-        public static int Read(ReadOnlySpan<byte> bytes, int offset, out int length)
+        public static int Read(byte[] bytes, int offset) => Read(bytes, offset, out _);
+        public static int Read(byte[] bytes, int offset, out int length)
         {
             length = 2;
             ushort low = (ushort)(bytes[offset] << 8 | bytes[offset + 1]);
@@ -72,6 +72,20 @@ namespace MinecraftProtocol.Compression
             {
                 low &= 0x7FFF;
                 high = bytes[offset + 2];
+                length++;
+            }
+            return ((high & 0xFF) << 15) | low;
+        }
+        public static int Read(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
+        public static int Read(ReadOnlySpan<byte> bytes, out int length)
+        {
+            length = 2;
+            ushort low = (ushort)(bytes[0] << 8 | bytes[1]);
+            byte high = 0;
+            if ((low & 0x8000) != 0)
+            {
+                low &= 0x7FFF;
+                high = bytes[2];
                 length++;
             }
             return ((high & 0xFF) << 15) | low;
