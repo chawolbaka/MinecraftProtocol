@@ -30,9 +30,10 @@ namespace MinecraftProtocol.Protocol
          * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
          */
 
-        public static int GetPacketLength(TcpClient session) => GetPacketLength(session.Client);
         /// <summary>获取数据包的长度</summary>
-        public static int GetPacketLength(Socket session)
+        public static int GetPacketLength(TcpClient tcp) => GetPacketLength(tcp.Client);
+        /// <summary>获取数据包的长度</summary>
+        public static int GetPacketLength(Socket tcp)
         {
             //0x7F=127 0x80=128
             int length = 0;
@@ -40,26 +41,25 @@ namespace MinecraftProtocol.Protocol
             byte[] tmp = new byte[1];
             while (true)
             {
-                Receive(tmp, 0, 1, SocketFlags.None, session);
+                Receive(tmp, 0, 1, SocketFlags.None, tcp);
                 length |= (tmp[0] & 0x7F) << readCount++ * 7;
                 if (readCount > 5) throw new OverflowException("VarInt too big");
                 if ((tmp[0] & 0x80) != 128) break;
             }
             return length;
         }
-        public static byte[] ReceiveData(int start, int offset, Socket socket)
+
+        public static byte[] ReceiveData(int start, int offset, Socket tcp)
         {
             byte[] buffer = new byte[offset - start];
-            Receive(buffer, start, offset, SocketFlags.None, socket);
+            Receive(buffer, start, offset, SocketFlags.None, tcp);
             return buffer;
         }
-        public static Packet ReceivePacket(Socket session,int compressionThreshold)
+        public static Packet ReceivePacket(Socket tcp,int compressionThreshold)
         {
-            //写这个方法的时候Data属性暂时改成了可写的,我当初是为了什么设置成只读的?
-            //先去睡觉了,醒来后想想看要不要改回去,为什么要只读这两个问题
             Packet recPacket = new Packet();
-            int PacketLength = ProtocolHandler.GetPacketLength(session);
-            recPacket.WriteBytes(ReceiveData(0, PacketLength, session));
+            int PacketLength = ProtocolHandler.GetPacketLength(tcp);
+            recPacket.WriteBytes(ReceiveData(0, PacketLength, tcp));
             if (compressionThreshold > 0)
             {
                 int DataLength = ReadVarInt(recPacket.Data);
@@ -73,12 +73,6 @@ namespace MinecraftProtocol.Protocol
             recPacket.ID = ReadVarInt(recPacket.Data);
             return recPacket;
         }
-        /// <summary>
-        /// 从TCP在协议栈里面的缓存中取出数据
-        /// </summary>
-        /// <param name="buffer">取出来的数据</param>
-        /// <param name="start">从x开始读取</param>
-        /// <param name="offset">读取到x结束</param>
         private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, Socket tcp)
         {
             int read = 0;
@@ -330,8 +324,6 @@ namespace MinecraftProtocol.Protocol
             return ConcatBytes(VarInt.GetBytes(str.Length), str);
         }
 
-
-
         /// <summary>
         /// 拼接Byte数组
         /// </summary>
@@ -346,14 +338,46 @@ namespace MinecraftProtocol.Protocol
             return buffer.ToArray();
         }
         /// <summary>
-        /// 拼接Byte
+        /// 对比两个Dictionary的值是否相等
         /// </summary>
-        public static byte[] ConcatBytes(params byte[] bytes)
+        public static bool Compare<K, V>(IDictionary<K, V> a, IDictionary<K, V> b)
         {
-            List<byte> buffer = new List<byte>();
-            foreach (byte array in bytes)
-                buffer.Add(array);
-            return buffer.ToArray();
+            if (a is null && b is null || ReferenceEquals(a, b)) return true;
+            if ((a is null && b != null) || (a != null && b is null)) return false;
+            if (a.Count != b.Count) return false;
+            if (a.Count == 0 && b.Count == 0) return true;
+            if (a.GetEnumerator().Current is IEquatable<V>&& b.GetEnumerator().Current is IEquatable<V>)
+            {
+                foreach (var value in a)
+                    if (!b.ContainsKey(value.Key) || !((IEquatable<V>)b[value.Key]).Equals(value.Value)) return false;
+            }
+            else
+            {
+                foreach (var value in a)
+                    if (!b.ContainsKey(value.Key) || !b[value.Key].Equals(value.Value)) return false;
+            }
+            return true;
+        }
+        /// <summary>
+        /// 对比两个集合的值是否相等
+        /// </summary>
+        public static bool Compare<T>(IList<T> a, IList<T> b)
+        {
+            if (a is null && b is null || ReferenceEquals(a, b)) return true;
+            if ((a is null && b != null) || (a != null && b is null)) return false;
+            if (a.Count != b.Count) return false;
+            if (a.Count == 0 && b.Count == 0) return true;
+            if (a[0] is IEquatable<T> && b[0] is IEquatable<T>)
+            {
+                for (int i = 0; i < a.Count; i++)
+                    if (!((IEquatable<T>)a[i]).Equals(b[i])) return false;
+            }
+            else
+            {
+                for (int i = 0; i < a.Count; i++)
+                    if (!a[i].Equals(b[i])) return false;
+            }
+            return true;
         }
         /// <summary>
         /// 对比两个Byte数组的值是否相等
@@ -362,7 +386,7 @@ namespace MinecraftProtocol.Protocol
         {
             if (b1 != null && b2 != null && b1.Length != b2.Length)
                 return false;
-            if (ReferenceEquals(b1, b2))
+            if (ReferenceEquals(b1, b2) || (b1.Length == 0 && b2.Length == 0))
                 return true;
             for (int i = 0; i < b1.Length; i++)
                 if (b1[i] != b2[i]) return false;

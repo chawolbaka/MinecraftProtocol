@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
+using System.Collections.Generic;
 using Newtonsoft.Json;
+using MinecraftProtocol.DataType.Forge;
 
 namespace MinecraftProtocol.DataType
 {
@@ -33,7 +34,7 @@ namespace MinecraftProtocol.DataType
             public string Type { get; set; }
 
             [JsonProperty(PropertyName = "modList")]
-            public List<Forge.ForgeInfo> ModList { get; set; }
+            public List<ModInfo> ModList { get; set; }
 
         }
         public class VersionPayload
