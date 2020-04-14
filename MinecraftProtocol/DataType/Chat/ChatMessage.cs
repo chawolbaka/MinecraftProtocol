@@ -17,6 +17,8 @@ namespace MinecraftProtocol.DataType.Chat
         public bool HasColorCode => !string.IsNullOrEmpty(Color);
         [JsonIgnore]
         public bool HasFormatCode => Bold || Italic || Underline || Strikethrough || Obfuscated;
+        [JsonIgnore]
+        public bool IsSimpleText =>  !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && With == null && HoverEvent == null && ClickEvent == null && Insertion == null;
 
         /// <summary>粗体</summary>
         [JsonProperty("bold", DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -66,7 +68,29 @@ namespace MinecraftProtocol.DataType.Chat
 
         public ChatMessage() { }
         public ChatMessage(string text) { this.Text = text; }
-        public ChatMessage(string text, ChatColor color) { this.Text = text; this.Color = color.ToString(); }
+        public ChatMessage(string text, ChatColor color) : this(text) { this.Color = color.ToString(); }
+        public ChatMessage(string text, ChatColor color, ChatFormat format) : this(text, format) { this.Color = color.ToString(); }
+        public ChatMessage(string text, ChatFormat format) : this(text)
+        {
+            if (text.Length <= 0)
+                throw new ArgumentOutOfRangeException(nameof(text), "使用样式代码的情况下必须要有文字.");
+
+            if (format.HasFlag(ChatFormat.Bold))
+                this.Bold = true;
+            if (format.HasFlag(ChatFormat.Italic))
+                this.Italic = true;
+            if (format.HasFlag(ChatFormat.Underline))
+                this.Underline = true;
+            if (format.HasFlag(ChatFormat.Strikethrough))
+                this.Strikethrough = true;
+            if (format.HasFlag(ChatFormat.Obfuscated))
+                this.Obfuscated = true;
+
+        }
+        public ChatMessage(ReadOnlySpan<char> text) : this(text.ToString()) { }
+        public ChatMessage(ReadOnlySpan<char> text, ChatColor color) : this(text.ToString(), color) { }
+        public ChatMessage(ReadOnlySpan<char> text, ChatColor color, ChatFormat format) : this(text.ToString(), color, format) { }
+        public ChatMessage(ReadOnlySpan<char> text, ChatFormat format) : this(text.ToString(), format) { }
 
 
         /// <summary>
@@ -204,8 +228,10 @@ namespace MinecraftProtocol.DataType.Chat
         {
             if (string.IsNullOrWhiteSpace(json))
                 return new ChatMessage();
+            if(json[0] == '\"' && json[json.Length - 1] == '\"')
+                return new ChatMessage(json.AsSpan().Slice(1, json.Length - 1));
             if (json[0] != '{' && json[json.Length - 1] != '}')
-                return new ChatMessage(json[0] == '\"' ? json.TrimStart('\"').TrimEnd('\"') : json);
+                return new ChatMessage(json);
             else
                 return Deserialize(JObject.Parse(json)) ?? new ChatMessage();
         }
@@ -364,7 +390,7 @@ namespace MinecraftProtocol.DataType.Chat
 
             //纯翻译,没有%s的那种
             if (with == null || with.Count == 0) { sb.Append(text); return; }
-
+            
             int WithCount = 0;
             for (int i = 0; i < text.Length; i++)
             {
@@ -451,9 +477,9 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
         /// <summary>
-        /// 翻译表(英文,默认只有少部分)
+        /// 默认翻译表(只添加了几行英文的英文,如果需要改成其它语言请先使用: ChatMeassge.DefaultTranslation.Clear();
         /// </summary>
-        public static readonly Dictionary<string, string> DefaultTranslation = new Dictionary<string, string>(){
+        public static Dictionary<string, string> DefaultTranslation { get; } = new Dictionary<string, string>() {
 
             { "chat.type.text","<%s> %s"},
             { "chat.type.text.narrate","%s says %s"},
