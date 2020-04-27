@@ -55,13 +55,14 @@ namespace MinecraftProtocol.Protocol.Packets.Client
              * 15w43a(80)
              * Changed ID of Chat Message from 0x01 to 0x02
              */
-            
-            if (protocolVersion >= ProtocolVersionNumbers.V1_14) return 0x03; //不知道什么时候变成0x03的,wiki.vg上面关于1.13.2到1.14的记录特别少,我也不知道还有什么地方可以找到记录
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w45a) return 0x01;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w31a) return 0x02;
+
+            if (protocolVersion >= ProtocolVersionNumbers.V1_14)            return 0x03;
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)  return 0x02;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w45a)     return 0x01;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w31a)     return 0x02;
             //else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x02;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)     return 0x03;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)     return 0x02;
             else return 0x01;
         }
         public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);

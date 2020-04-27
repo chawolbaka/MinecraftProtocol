@@ -8,7 +8,10 @@ using System.Text;
 namespace MinecraftProtocol.Protocol.Packets
 {
 
-    public class ReadOnlyPacket
+    /// <summary>
+    /// 一个Packet的包装器,用于防止PacketID和PacketData被修改（如果修改原始Packet中的内容会导致这边也被修改）
+    /// </summary>
+    public class ReadOnlyPacket : IPacket
     {
         public int ID => _packet.ID;
         public ReadOnlyPacketData Data { get; }
@@ -90,7 +93,8 @@ namespace MinecraftProtocol.Protocol.Packets
         public string ReadString()
         {
             int length = ReadVarInt();
-            string result = Encoding.UTF8.GetString(Data.Slice(offset, length));
+            var x = Data.Slice(offset, length);
+            string result = Encoding.UTF8.GetString(x);
             offset += length;
             return result;
         }

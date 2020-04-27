@@ -33,21 +33,7 @@ namespace MinecraftProtocol.Protocol
         /// <summary>获取数据包的长度</summary>
         public static int GetPacketLength(TcpClient tcp) => GetPacketLength(tcp.Client);
         /// <summary>获取数据包的长度</summary>
-        public static int GetPacketLength(Socket tcp)
-        {
-            //0x7F=127 0x80=128
-            int length = 0;
-            int readCount = 0;
-            byte[] tmp = new byte[1];
-            while (true)
-            {
-                Receive(tmp, 0, 1, SocketFlags.None, tcp);
-                length |= (tmp[0] & 0x7F) << readCount++ * 7;
-                if (readCount > 5) throw new OverflowException("VarInt too big");
-                if ((tmp[0] & 0x80) != 128) break;
-            }
-            return length;
-        }
+        public static int GetPacketLength(Socket tcp) => VarInt.Read(tcp);
 
         public static byte[] ReceiveData(int start, int offset, Socket tcp)
         {
@@ -58,7 +44,7 @@ namespace MinecraftProtocol.Protocol
         public static Packet ReceivePacket(Socket tcp,int compressionThreshold)
         {
             Packet recPacket = new Packet();
-            int PacketLength = ProtocolHandler.GetPacketLength(tcp);
+            int PacketLength = VarInt.Read(tcp);
             recPacket.WriteBytes(ReceiveData(0, PacketLength, tcp));
             if (compressionThreshold > 0)
             {
@@ -73,15 +59,35 @@ namespace MinecraftProtocol.Protocol
             recPacket.ID = ReadVarInt(recPacket.Data);
             return recPacket;
         }
+        public static bool CheckConnect(Socket tcp)
+        {
+            var connections = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections()
+                .Where(x => x.LocalEndPoint.Equals(tcp.LocalEndPoint) && x.RemoteEndPoint.Equals(tcp.RemoteEndPoint));
+            return connections != null && connections.Any() && connections.First().State == System.Net.NetworkInformation.TcpState.Established;
+        }
         private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, Socket tcp)
         {
             int read = 0;
+            int count = 0;
             while (read < offset)
             {
-                read += tcp.Receive(buffer, start + read, offset - read, flags);
+                if (count >= 26)
+                {
+                    if (!CheckConnect(tcp))
+                    {
+                        tcp.Disconnect(false);
+                        throw new SocketException((int)SocketError.ConnectionReset);
+                    }
+                    else
+                        count /= 2;
+                }
+                else
+                {
+                    read += tcp.Receive(buffer, start + read, offset - read, flags);
+                    count++;
+                }
             }
         }
-
 
         public static bool ReadBoolean(List<byte> cache, bool readOnly = false) => ReadBoolean(cache, 0, out _, readOnly);
         public static bool ReadBoolean(List<byte> cache, int offset, bool readOnly = false) => ReadBoolean(cache, offset, out _, readOnly);

@@ -23,6 +23,7 @@ https://github.com/Nsiso/MinecraftOutClient
 https://github.com/ORelio/Minecraft-Console-Client  
 https://gist.github.com/csh/2480d14fbbb33b4bbae3  
 https://gist.github.com/games647/2b6a00a8fc21fd3b88375f03c9e2e603  
+http://www.bouncycastle.org/csharp/  
 http://dotnetzip.codeplex.com  
 (数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个项目里面的代码,不知道来源是不是这个)  
 ### 参考资料

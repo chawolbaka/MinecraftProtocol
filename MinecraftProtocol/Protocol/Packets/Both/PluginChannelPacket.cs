@@ -49,8 +49,8 @@ namespace MinecraftProtocol.Protocol.Packets.Both
             else
                 PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(channel.Length), channel, Data.ToArray());
             int DataLength = PacketData.Length;
-            
-                PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), PacketData);
+
+            PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), PacketData);
 
             if (compress > 0)
             {

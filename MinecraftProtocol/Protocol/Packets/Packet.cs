@@ -7,7 +7,7 @@ using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol.Packets
 {
-    public class Packet : IEquatable<Packet>
+    public class Packet : IPacket, IEquatable<Packet>
     {
         public virtual int ID { get; set; }
         public virtual List<byte> Data { get; set; }
