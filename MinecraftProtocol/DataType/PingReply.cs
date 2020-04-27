@@ -26,7 +26,10 @@ namespace MinecraftProtocol.DataType
         public string Icon { get; set; }
 
         [JsonIgnore]
-        public long? ElapsedMicroseconds { get; set; }
+        public TimeSpan? Elapsed { get; set; }
+
+        [JsonIgnore]
+        public string Json { get; set; }
 
         public class ForgePayLoad
         {
@@ -101,6 +104,11 @@ namespace MinecraftProtocol.DataType
 
             [JsonProperty(PropertyName = "id")]
             public string Id { get; set; }
+        }
+
+        public override string ToString()
+        {
+            return Json;
         }
     }
 }
