@@ -7,6 +7,7 @@ namespace MinecraftProtocol.Compression
 {
     public static class VarLong
     {
+        public delegate byte ReadByteHandle();
 
         private const int MaskIntSigned = 0b1000_0000_0000_0000_0000_0000;
         private const byte MaskByteSigned = 0b1000_0000;
@@ -22,43 +23,23 @@ namespace MinecraftProtocol.Compression
         public static byte[] Convert(long value) => GetBytes(value);
 
 
-        public static long Read(Stream stream) => Read(stream, out _);
-        public static long Read(Stream stream, out int readCount)
-        {
-            if (stream == null)
-                throw new ArgumentNullException(nameof(stream));
-
-            long result = 0;
-            for (int i = 0; i < 10; i++)
-            {
-                int read = stream.ReadByte();
-                //某一些流读不了的情况下会给个-1,但是我希望他抛个异常出来，因为我也不知道怎么继续运行下去了
-                if ((read & MaskIntSigned) != 0)
-                    throw new InvalidDataException("stream.ReadByte return is negative");
-                result |= (long)(read & MaskValue) << i * 7;
-                if ((read & MaskByteSigned) == 0)
-                {
-                    readCount = i + 1;
-                    return result;
-                }
-            }
-            throw new OverflowException("VarLong too big");
-        }
 
         public static long Read(Socket socket) => Read(socket, out _);
-        public static long Read(Socket socket, out int readCount)
+        public static long Read(Socket socket, out int readCount) => Read(() => { byte[] buffer = new byte[1]; socket.Receive(buffer); return buffer[0]; }, out readCount);
+        public static long Read(Stream stream) => Read(() => (byte)stream.ReadByte(), out _);
+        public static long Read(Stream stream, out int readCount) => Read(() => { int read = stream.ReadByte(); return read >= 0 ? (byte)read : throw new InvalidDataException("negative"); }, out readCount);
+        public static long Read(ReadByteHandle read) => Read(read, out _);
+        public static long Read(ReadByteHandle read, out int readCount)
         {
-            if (socket == null)
-                throw new ArgumentNullException(nameof(socket));
+            if (read == null)
+                throw new ArgumentNullException(nameof(read));
 
             long result = 0;
-            byte[] buffer = new byte[1];
             for (int i = 0; i < 10; i++)
             {
-
-                socket.Receive(buffer);
-                result |= (long)(buffer[0] & MaskValue) << i * 7;
-                if ((buffer[0] & MaskByteSigned) == 0)
+                byte b = read();
+                result |= (long)(b & MaskValue) << i * 7;
+                if ((b & MaskByteSigned) == 0)
                 {
                     readCount = i + 1;
                     return result;

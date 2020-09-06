@@ -125,6 +125,12 @@ namespace MinecraftProtocol
         public delegate void SendPacketEventHandler(MinecraftClient sender, SendPacketEventArgs args);
 
         /// <summary>
+        /// 登陆成功事件
+        /// </summary>
+        public abstract event LoginEventHandler LoginSuccess;
+        public delegate void LoginEventHandler(MinecraftClient sender, LoginEventArgs args);
+
+        /// <summary>
         /// TCP连接状态
         /// </summary>
         public abstract bool Connected { get; }
@@ -210,11 +216,11 @@ namespace MinecraftProtocol
             try
             {
                 DateTime ReceiveStartTime = DateTime.Now;
-                int PacketLength = VarInt.Read(tcp);
+                int PacketLength = ReceivePacketLength();
                 if (PacketLength > 0)
                 {
                     StateObject so = new StateObject(tcp, PacketLength, ReceiveStartTime);
-                    tcp.BeginReceive(so.Data, 0, PacketLength, SocketFlags.None, new AsyncCallback(ReceiveCallback), so);
+                    tcp.BeginReceive(so.Data, 0, PacketLength, SocketFlags.None, new AsyncCallback(RecieveComplete), so);
 
                 }
                 else if (!ProtocolHandler.CheckConnect(tcp))
@@ -223,9 +229,7 @@ namespace MinecraftProtocol
                 }
                 else
                 {
-#if DEBUG
-                    throw new InvalidDataException("发生了很魔法的错误，服务器并没有断开连接但是无法收到数据了(0 Byte)");
-#endif
+                    throw new InvalidDataException("发生了很魔法的错误，服务器发送了一个长度小于1的包。");
                 }
             }
             catch (Exception e) 
@@ -234,7 +238,7 @@ namespace MinecraftProtocol
                     throw;
             }
         }
-        private void ReceiveCallback(IAsyncResult ar)
+        private void RecieveComplete(IAsyncResult ar)
         {
             if (!Connected || ReceivePacketCancellationToken.IsCancellationRequested) return;
             
@@ -256,14 +260,13 @@ namespace MinecraftProtocol
                 }
                 else if (State.Offset < State.Length)
                 {
-                    if (!State.Connected)
-                        throw new SocketException((int)SocketError.ConnectionReset);
-                    if (State.Socket.Available <= 0)
-                        Thread.Sleep(64);
-                    State.Socket.BeginReceive(State.Data, State.Offset, State.Length - State.Offset, SocketFlags.None, new AsyncCallback(ReceiveCallback), State);
+                    if (!State.Connected || (State.Socket.Available <= 0 && !ProtocolHandler.CheckConnect(State.Socket)))
+                        throw new SocketException((int)SocketError.ConnectionReset); //根据msdn写的，Socket.Available = 0 就是连接已关闭
+
+                    State.Socket.BeginReceive(State.Data, State.Offset, State.Length - State.Offset, SocketFlags.None, new AsyncCallback(RecieveComplete), State);
                 }
                 else
-                {
+                {   
                     throw new Exception("你遇到了魔法！");
                 }
             }
@@ -280,6 +283,13 @@ namespace MinecraftProtocol
         /// <param name="packet">接收到的包</param>
         /// <returns>阻止包被加入队列</returns>
         protected virtual bool BasePacketHandler(Packet packet) => false;
+
+
+        /// <summary>
+        /// 接收Packet的长度
+        /// </summary>
+        /// <returns>包长度</returns>
+        protected virtual int ReceivePacketLength() => VarInt.Read(GetSocket());
 
         /// <summary>
         /// 将接收到的数据解码成Packet

@@ -12,6 +12,7 @@ using MinecraftProtocol.Protocol.Packets;
 using MinecraftProtocol.Protocol.Packets.Client;
 using MinecraftProtocol.Protocol.Packets.Server;
 using MinecraftProtocol.Compression;
+using System.Threading.Tasks;
 
 namespace MinecraftProtocol.Utils
 {
@@ -68,15 +69,15 @@ namespace MinecraftProtocol.Utils
         public override event PacketReceiveEventHandler PacketReceived  { add => _packetReceived += ThrowIfDisposed(value); remove => _packetReceived -= ThrowIfDisposed(value); }
         public override event SendPacketEventHandler PacketSend         { add => _packetSend     += ThrowIfDisposed(value); remove => _packetSend     -= ThrowIfDisposed(value); }
 
+        public override event LoginEventHandler LoginSuccess              { add => _loginSuccess       += ThrowIfDisposed(value); remove => _loginSuccess       -= ThrowIfDisposed(value); }
         public virtual event VanillaLoginEventHandler LoginStatusChanged  { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
-        public virtual event VanillaLoginEventHandler LoginSuccess        { add => _loginSuccess       += ThrowIfDisposed(value); remove => _loginSuccess       -= ThrowIfDisposed(value); }
         public virtual event DisconnectEventHandler Kicked                { add => _kicked             += ThrowIfDisposed(value); remove => _kicked             -= ThrowIfDisposed(value); }
         public virtual event DisconnectEventHandler Disconnected          { add => _disconnected       += ThrowIfDisposed(value); remove => _disconnected       -= ThrowIfDisposed(value); }
 
         protected virtual event PacketReceiveEventHandler _packetReceived;
         protected virtual event SendPacketEventHandler _packetSend;
         protected virtual event VanillaLoginEventHandler _loginStatusChanged;
-        protected virtual event VanillaLoginEventHandler _loginSuccess;
+        protected virtual event LoginEventHandler _loginSuccess;
         protected virtual event DisconnectEventHandler _kicked;
         protected virtual event DisconnectEventHandler _disconnected;
 
@@ -236,6 +237,15 @@ namespace MinecraftProtocol.Utils
         private readonly object ReadPacketLock = new object();
 
         protected override Packet DecodePacket(ReadOnlySpan<byte> packet) => ThrowIfNotConnected(Crypto.Enable ? base.DecodePacket(Crypto.Decrypt(packet.ToArray())) : base.DecodePacket(packet));
+        protected override int ReceivePacketLength()
+        {
+            return ThrowIfNotConnected(VarInt.Read(() =>
+            {
+                byte[] buffer = new byte[1];
+                TCP.Receive(buffer);
+                return Crypto.Enable ? Crypto.Decrypt(buffer[0]) : buffer[0];
+            }));
+        }
         protected virtual Packet ReadPacket()
         {
             lock (ReadPacketLock)
@@ -355,10 +365,12 @@ namespace MinecraftProtocol.Utils
 
         private readonly object DisconnectLock = new object();
         public override void Disconnect() => Disconnect("Unknown");
+        public virtual Task DisconnectAsync(string reason, bool reuseSocket = false) => Task.Run(() => Disconnect(reason, reuseSocket));
+
         /// <summary>
         /// 断开连接
         /// </summary>
-        /// <param name="reason">断开连接的原因(支持mc的那种json)</param>
+        /// <param name="reason">断开连接的原因（支持mc的那种json）</param>
         public virtual void Disconnect(string reason, bool reuseSocket = false)
         {
             ThrowIfDisposed();
@@ -370,17 +382,18 @@ namespace MinecraftProtocol.Utils
                 StopListen();
                 if (UpdateConnectStatus())
                 {
-                    _connected = false;
+
                     TCP.Disconnect(reuseSocket);
                     TCP.Shutdown(SocketShutdown.Both);
                     TCP.Close();
                 }
-                _disconnected?.Invoke(this, new DisconnectEventArgs(reason));
+                _connected = false;
                 PacketQueueHandleThread = null;
                 TCP = null;
-                //ProtocolVersion = -1;
                 CompressionThreshold = -1;
+                _disconnected?.Invoke(this, new DisconnectEventArgs(reason));
             }
+
         }
 
         public void Dispose()

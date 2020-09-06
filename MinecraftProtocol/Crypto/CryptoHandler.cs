@@ -31,6 +31,20 @@ namespace MinecraftProtocol.Crypto
             _decrypt.Init(false, new ParametersWithIV(new KeyParameter(secretKey), secretKey, 0, 16));
 
         }
+
+        public byte Encrypt(byte input)
+        {
+            if (!_enable)
+                throw new InvalidOperationException("加密未开启。");
+            return _encrypt.ProcessByte(input)[0];
+        }
+        public byte Decrypt(byte input)
+        {
+            if (!_enable)
+                throw new InvalidOperationException("加密未开启。");
+            return _decrypt.ProcessByte(input)[0];
+        }
+
         public byte[] Encrypt(byte[] input) => Encrypt(input, 0, input.Length);
         public byte[] Encrypt(byte[] input, int offset, int length)
         {
