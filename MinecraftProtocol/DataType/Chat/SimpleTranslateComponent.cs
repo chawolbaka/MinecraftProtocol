@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace MinecraftProtocol.DataType.Chat
 {
-    public class SimpleTranslateComponent : IEquatable<SimpleTranslateComponent>
+    public class SimpleTranslateComponent : ITranslation ,IEquatable<SimpleTranslateComponent>
     {
         [JsonProperty("translate", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public string Translate;
