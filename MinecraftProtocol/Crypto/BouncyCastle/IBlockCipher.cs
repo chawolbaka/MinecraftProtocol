@@ -27,7 +27,7 @@ namespace BouncyCastle.Crypto
 		/// <exception cref="DataLengthException">If input block is wrong size, or outBuf too small.</exception>
 		/// <returns>The number of bytes processed and produced.</returns>
 		int ProcessBlock(byte[] inBuf, int inOff, byte[] outBuf, int outOff);
-        int ProcessBlock(ReadOnlySpan<byte> input, int inOff, Span<byte> output, int outOff);
+        int ProcessBlock(ReadOnlySpan<byte> input, Span<byte> output);
 
         /// <summary>
         /// Reset the cipher to the same state as it was after the last init (if there was one).

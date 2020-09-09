@@ -24,10 +24,17 @@ namespace MinecraftProtocol.Crypto
             _enable = true;
             _key = (byte[])secretKey.Clone();
 
-            _encrypt = new BufferedBlockCipher(new CfbBlockCipher(new AesFastEngine(), 8));
-            _encrypt.Init(true, new ParametersWithIV(new KeyParameter(secretKey), secretKey, 0, 16));
+            if (AesFastFastEngine.IsSupported)
+                _encrypt = new BufferedBlockCipher(new CfbBlockCipher(new AesFastFastEngine(), 8));
+            else
+                _encrypt = new BufferedBlockCipher(new CfbBlockCipher(new AesFastEngine(), 8));
+            
+            if (AesFastFastEngine.IsSupported)
+                _decrypt = new BufferedBlockCipher(new CfbBlockCipher(new AesFastFastEngine(), 8));
+            else
+                _decrypt = new BufferedBlockCipher(new CfbBlockCipher(new AesFastEngine(), 8));
 
-            _decrypt = new BufferedBlockCipher(new CfbBlockCipher(new AesFastEngine(), 8));
+            _encrypt.Init(true, new ParametersWithIV(new KeyParameter(secretKey), secretKey, 0, 16));
             _decrypt.Init(false, new ParametersWithIV(new KeyParameter(secretKey), secretKey, 0, 16));
 
         }

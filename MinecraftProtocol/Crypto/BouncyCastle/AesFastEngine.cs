@@ -719,6 +719,7 @@ namespace BouncyCastle.Crypto.Engines
             return BLOCK_SIZE;
         }
 
+        public virtual int ProcessBlock(ReadOnlySpan<byte> input, Span<byte> output) => throw new NotImplementedException();
         public virtual int ProcessBlock(byte[] input, int inOff, byte[] output, int outOff)
         {
             if (WorkingKey == null)
@@ -839,10 +840,7 @@ namespace BouncyCastle.Crypto.Engines
             this.C3 = (uint)Si[r3 & 255] ^ (((uint)Si[(r2 >> 8) & 255]) << 8) ^ (((uint)Si[(r1 >> 16) & 255]) << 16) ^ (((uint)Si[r0 >> 24]) << 24) ^ kw[3];
         }
 
-        public int ProcessBlock(ReadOnlySpan<byte> input, int inOff, Span<byte> output, int outOff)
-        {
-            throw new NotImplementedException();
-        }
+ 
 
         private static class Pack
         {

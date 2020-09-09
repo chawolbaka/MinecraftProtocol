@@ -240,13 +240,13 @@ namespace BouncyCastle.Crypto
             {
                 //Array.Copy(input, inOff, buf, bufOff, gapLen);
                 input.Slice(inOff, gapLen).CopyTo(buf.AsSpan(bufOff));
-                resultLen += cipher.ProcessBlock(buf, 0, output, outOff);
+                resultLen += cipher.ProcessBlock(buf, output.Slice(outOff));
                 bufOff = 0;
                 length -= gapLen;
                 inOff += gapLen;
                 while (length > buf.Length)
                 {
-                    resultLen += cipher.ProcessBlock(input, inOff, output, outOff + resultLen);
+                    resultLen += cipher.ProcessBlock(input.Slice(inOff), output.Slice(outOff + resultLen));
                     length -= blockSize;
                     inOff += blockSize;
                 }
@@ -256,7 +256,7 @@ namespace BouncyCastle.Crypto
             bufOff += length;
             if (bufOff == buf.Length)
             {
-                resultLen += cipher.ProcessBlock(buf, 0, output, outOff + resultLen);
+                resultLen += cipher.ProcessBlock(buf, output.Slice( outOff + resultLen));
                 bufOff = 0;
             }
             return resultLen;

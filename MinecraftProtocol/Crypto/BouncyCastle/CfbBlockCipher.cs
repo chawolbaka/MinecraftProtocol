@@ -103,11 +103,11 @@ namespace BouncyCastle.Crypto.Modes
 				:	DecryptBlock(input, inOff, output, outOff);
         }
 
-        public int ProcessBlock(ReadOnlySpan<byte> input, int inOff, Span<byte> output, int outOff)
+        public int ProcessBlock(ReadOnlySpan<byte> input, Span<byte> output)
         {
             return (encrypting)
-                ? EncryptBlock(input, inOff, output, outOff)
-                :  DecryptBlock(input, inOff, output, outOff);
+                ? EncryptBlock(input, output)
+                :  DecryptBlock(input, output);
         }
 
         /// <summary>
@@ -177,11 +177,11 @@ namespace BouncyCastle.Crypto.Modes
             return blockSize;
         }
 
-        public int EncryptBlock(ReadOnlySpan<byte> input, int inOff, Span<byte> outBytes, int outOff)
+        public int EncryptBlock(ReadOnlySpan<byte> input, Span<byte> outBytes)
         {
-            if ((inOff + blockSize) > input.Length)
+            if ((blockSize) > input.Length)
                 throw new DataLengthException("input buffer too short");
-            if ((outOff + blockSize) > outBytes.Length)
+            if ((blockSize) > outBytes.Length)
                 throw new DataLengthException("output buffer too short");
 
             cipher.ProcessBlock(cfbV, 0, cfbOutV, 0);
@@ -190,36 +190,33 @@ namespace BouncyCastle.Crypto.Modes
             //
             for (int i = 0; i < blockSize; i++)
             {
-                outBytes[outOff + i] = (byte)(cfbOutV[i] ^ input[inOff + i]);
+                outBytes[i] = (byte)(cfbOutV[i] ^ input[i]);
             }
             //
             // change over the input block.
             //
             cfbV.AsSpan().Slice(blockSize, cfbV.Length - blockSize).CopyTo(cfbV);
-            outBytes.Slice(outOff, blockSize).CopyTo(cfbV.AsSpan().Slice(cfbV.Length - blockSize));
+            outBytes.Slice(0, blockSize).CopyTo(cfbV.AsSpan().Slice(cfbV.Length - blockSize));
             return blockSize;
         }
 
-        public int DecryptBlock(ReadOnlySpan<byte> input, int inOff, Span<byte> outBytes, int outOff)
+        public int DecryptBlock(ReadOnlySpan<byte> input, Span<byte> outBytes)
         {
-            if ((inOff + blockSize) > input.Length)
-            {
+            if (blockSize > input.Length)
                 throw new DataLengthException("input buffer too short");
-            }
-            if ((outOff + blockSize) > outBytes.Length)
-            {
+            if (blockSize > outBytes.Length)
                 throw new DataLengthException("output buffer too short");
-            }
+            
             cipher.ProcessBlock(cfbV, 0, cfbOutV, 0);
 
             // change over the input block.            
             cfbV.AsSpan().Slice(blockSize).CopyTo(cfbV);
-            input.Slice(inOff, blockSize).CopyTo(cfbV.AsSpan().Slice(cfbV.Length - blockSize));
+            input.Slice(0, blockSize).CopyTo(cfbV.AsSpan().Slice(cfbV.Length - blockSize));
 
             // XOR the cfbV with the ciphertext producing the plaintext            
             for (int i = 0; i < blockSize; i++)
             {
-                outBytes[outOff + i] = (byte)(cfbOutV[i] ^ input[inOff + i]);
+                outBytes[i] = (byte)(cfbOutV[i] ^ input[i]);
             }
             return blockSize;
         }
