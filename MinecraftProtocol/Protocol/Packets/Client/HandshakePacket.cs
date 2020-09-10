@@ -7,11 +7,11 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// <summary>
     /// http://wiki.vg/Server_List_Ping#Handshake
     /// </summary>
-    public class HandshakePacket:Packet
+    public class HandshakePacket : Packet
     {
         //握手包永远不会变ID(大概)
-        public const int PacketID = 0x00;
-        public enum NextState : int
+        private const int id = 0x00;
+        public enum State : int
         {
             GetStatus = 1,
             Login = 2
@@ -19,58 +19,56 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         public int ProtocolVersion { get; }
         public string ServerAddress { get; }
         public ushort ServerPort { get; }
-        public NextState Next { get; }
+        public State NextState { get; }
 
+        private HandshakePacket(ReadOnlyPacket packet, string serverAddress, ushort port, int protocolVersion, State nextState) : base(packet)
+        {
+            this.ServerAddress = serverAddress;
+            this.ServerPort = port;
+            this.ProtocolVersion = protocolVersion;
+            this.NextState = nextState;
+        }
         /// <param name="protocolVersion">
         /// The version that the client plans on using to connect to the server (which is not important for the ping).
         /// If the client is pinging to determine what version to use, by convention -1 should be set.
         /// </param>
-        public HandshakePacket(string serverIP, ushort port, int protocolVersion, NextState nextState)
+        public HandshakePacket(string serverAddress, ushort port, int protocolVersion, State nextState) : base(id)
         {
-            this.ID = PacketID;
-            this.ServerAddress = serverIP;
+            if (string.IsNullOrEmpty(serverAddress))
+                throw new ArgumentNullException(nameof(serverAddress));     
+
+            this.ServerAddress = serverAddress;
             this.ServerPort = port;
             this.ProtocolVersion = protocolVersion;
-            this.Next = nextState;
+            this.NextState = nextState;
             WriteVarInt(protocolVersion);
-            WriteString(ServerAddress);
-            WriteUnsignedShort(ServerPort);
-            WriteVarInt((int)Next);
+            WriteString(serverAddress);
+            WriteUnsignedShort(port);
+            WriteVarInt((int)nextState);
         }
-        public HandshakePacket(Packet handshakePacket)
+
+        public static int GetPacketID() => id;
+
+        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out _);
+        public static bool Verify(ReadOnlyPacket packet, out HandshakePacket hp)
         {
-            if(HandshakePacket.Verify(handshakePacket))
-            {
-                this.ID = handshakePacket.ID;
-                this.Data = new List<byte>(handshakePacket.Data);
-                this.ProtocolVersion = ProtocolHandler.ReadVarInt(handshakePacket.Data, 0, out int offset, true);
-                this.ServerAddress = ProtocolHandler.ReadString(handshakePacket.Data, offset, out offset, true);
-                this.ServerPort = ProtocolHandler.ReadUnsignedShort(handshakePacket.Data, offset, out offset, true);
-                this.Next = (NextState)ProtocolHandler.ReadVarInt(handshakePacket.Data, offset, true);
-            }
-            else
-            {
-                throw new InvalidPacketException("Not a handshake packet", handshakePacket);
-            }
-        }
-        public static bool Verify(Packet packet) => Verify(packet, -1);
-        public static bool Verify(Packet packet, NextState nextState) => Verify(packet, (int)nextState);
-        private static bool Verify(Packet packet, int nextState)
-        {
-            if (packet.ID != PacketID)
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+
+            hp = null;
+            if (packet.ID != id)
                 return false;
 
-            List<byte> verifyPacket = new List<byte>(packet.Data);
             try
             {
-                ProtocolHandler.ReadVarInt(verifyPacket); //Protocol Version
-                ProtocolHandler.ReadString(verifyPacket); //Server Address
-                ProtocolHandler.ReadUnsignedShort(verifyPacket); //Server Port
-                int Next_State = ProtocolHandler.ReadVarInt(verifyPacket);
-                if (nextState == -1)
-                    return verifyPacket.Count == 0 && (Next_State == (int)NextState.GetStatus || Next_State == (int)NextState.Login);
-                else
-                    return verifyPacket.Count == 0 && Next_State == nextState;
+                int ProtocolVersion = packet.ReadVarInt();
+                string ServerAddress = packet.ReadString();
+                ushort ServerPort = packet.ReadUnsignedShort();
+                int NextState = packet.ReadVarInt();
+
+                if (packet.IsReadToEnd)
+                    hp = new HandshakePacket(packet, ServerAddress, ServerPort, ProtocolVersion, (State)NextState);
+                return !(hp is null);
             }
             catch (ArgumentOutOfRangeException) { return false; }
             catch (IndexOutOfRangeException) { return false; }

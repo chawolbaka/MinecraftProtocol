@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
+using System.Collections.Generic;
 using Newtonsoft.Json;
+using MinecraftProtocol.DataType.Forge;
 
 namespace MinecraftProtocol.DataType
 {
@@ -24,12 +25,11 @@ namespace MinecraftProtocol.DataType
         [JsonProperty(PropertyName = "favicon")]
         public string Icon { get; set; }
 
-        /// <summary>
-        /// 单位:微秒(Microsecond)
-        /// null:校验失败or发生了异常(非DEBUG模式下异常会被直接丢弃)
-        /// </summary>
         [JsonIgnore]
-        public long? Time { get; set; }
+        public TimeSpan? Elapsed { get; set; }
+
+        [JsonIgnore]
+        public string Json { get; set; }
 
         public class ForgePayLoad
         {
@@ -37,7 +37,7 @@ namespace MinecraftProtocol.DataType
             public string Type { get; set; }
 
             [JsonProperty(PropertyName = "modList")]
-            public List<Forge.ForgeInfo> ModList { get; set; }
+            public List<ModInfo> ModList { get; set; }
 
         }
         public class VersionPayload
@@ -62,6 +62,7 @@ namespace MinecraftProtocol.DataType
             [JsonProperty(PropertyName = "sample")]
             public List<PlayerSample> Samples { get; set; }
         }
+
         /// <summary>
         /// 这个类随时会被我丢到其它地方的或者改名
         /// </summary>
@@ -103,6 +104,11 @@ namespace MinecraftProtocol.DataType
 
             [JsonProperty(PropertyName = "id")]
             public string Id { get; set; }
+        }
+
+        public override string ToString()
+        {
+            return Json;
         }
     }
 }

@@ -7,74 +7,155 @@ using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol.Packets
 {
-    public class Packet : IEquatable<Packet>, IWriteMinecraftDataType
+    public class Packet : IPacket, IEquatable<Packet>
     {
-        public int ID { get; set; }
-        public List<byte> Data { get; set; }
-        public int Length => VarInt.GetLength(ID) + Data.Count;
+        public virtual int ID { get; set; }
+        public virtual List<byte> Data { get; set; }
+        public virtual int Length => VarInt.GetLength(ID) + Data.Count;
+        public virtual bool Empty => ID < 0 || Data is null;
 
         public Packet() : this(-1) { }
+        public Packet(ReadOnlyPacket readOnlyPacket) : this(readOnlyPacket.ID, readOnlyPacket.Data) { }
         public Packet(int packetID)
         {
             this.ID = packetID;
             this.Data = new List<byte>();
         }
-        public Packet(int packetID, List<byte> packetData)
+        public Packet(int packetID, IEnumerable<byte> packetData)
         {
             this.ID = packetID;
             this.Data = new List<byte>(packetData);
         }
-        public Packet(int packetID, params byte[] packetData)
+        public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID)
         {
-            this.ID = packetID;
-            this.Data = new List<byte>();
-            foreach (var data in packetData)
-            {
-                this.Data.Add(data);
-            }
+            Data.Capacity += packetData.Length;
+            for (int i = 0; i < packetData.Length; i++)
+                Data.Add(packetData[i]);
         }
 
         /// <summary>
-        /// 获取可以用于发送的完整包
+        /// 生成发送给服务端的包
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
-        /// <returns></returns>
-        public virtual byte[] GetPacket(int compress = -1)
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        /// <exception cref="IndexOutOfRangeException"></exception>
+        public virtual byte[] ToBytes(int compress = -1)
         {
-            byte[] PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), this.Data.ToArray());
+            if (Empty)
+                throw new PacketException("Packet is empty");
 
+            byte[] PacketData;
             if (compress > 0)
             {
-                if (this.Data.Count >= compress)
-                    PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), ZlibUtils.Compress(PacketData));
+                /*
+                 * 压缩的数据包:
+                 *
+                 * 名称       类型    备注
+                 * 数据包长度 Varint  等于下方两者解压前的总字节数
+                 * 解压后长度 Varint  若为0则表示本包未被压缩
+                 * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
+                 */
+                if (Data.Count >= compress)
+                {
+                    //拼接PacketID(VarInt)和PacketData(ByteArray)并塞入ZlibUtils.Compress去压缩
+                    byte[] uncompressed = new byte[Length];
+                    Data.CopyTo(uncompressed, VarInt.WriteTo(ID, uncompressed));
+                    byte[] compressed = ZlibUtils.Compress(uncompressed);
+
+                    PacketData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressed.Length) + compressed.Length) + VarInt.GetLength(uncompressed.Length) + compressed.Length];
+                    //写入第一个VarInt(解压长度+压缩后的长度）
+                    int offset = VarInt.WriteTo(VarInt.GetLength(uncompressed.Length) + compressed.Length, PacketData);
+                    //写入第二个VarInt(未压缩长度)
+                    offset += VarInt.WriteTo(uncompressed.Length, PacketData.AsSpan().Slice(offset));
+                    //写入被压缩的数据
+                    compressed.CopyTo(PacketData, offset);
+                }
                 else
-                    PacketData = ProtocolHandler.ConcatBytes(new byte[] { 0 }, PacketData);
+                {
+                    PacketData = new byte[VarInt.GetLength(Length+1) + Length + 1];
+                    int offset = VarInt.WriteTo(Length + 1, PacketData);
+                    PacketData[offset++] = 0;
+                    offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
+                    if (Data.Count > 0)
+                        Data.CopyTo(PacketData, offset);
+                }
             }
-            return ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), PacketData);
+            else
+            {
+                PacketData = new byte[VarInt.GetLength(Length) + Length];
+                int offset = VarInt.WriteTo(Length, PacketData);
+                offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
+                if (Data.Count > 0)
+                    Data.CopyTo(PacketData, offset);
+            }
+            return PacketData;
+        }
+
+        /// <summary>
+        /// 生成发送给服务端的包
+        /// </summary>
+        /// <param name="compress">数据包压缩的阚值</param>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
+        public virtual List<byte> ToList(int compress = -1)
+        {
+            if (Empty)
+                throw new PacketException("Packet is empty");
+
+            List<byte> PacketData = new List<byte>();
+            PacketData.Capacity = Length;
+            if (compress > 0)
+            {
+                if (Data.Count >= compress)
+                {
+                    PacketData.AddRange(VarInt.GetBytes(Length));
+                    int IdLength = VarInt.GetLength(ID);
+                    byte[] buffer = new byte[IdLength + Data.Count];
+                    Array.Copy(VarInt.GetBytes(ID), 0, buffer, 0, IdLength);
+                    Data.CopyTo(buffer, IdLength);
+                    PacketData.AddRange(ZlibUtils.Compress(buffer));
+                    PacketData.InsertRange(0, VarInt.GetBytes(PacketData.Count));
+                }
+                else
+                {
+                    PacketData.AddRange(VarInt.GetBytes(Length + 1));
+                    PacketData.Add(0);
+                    PacketData.AddRange(VarInt.GetBytes(ID));
+                    PacketData.AddRange(Data);
+                }
+            }
+            else
+            {
+                PacketData.AddRange(VarInt.GetBytes(Length));
+                PacketData.AddRange(VarInt.GetBytes(ID));
+                PacketData.AddRange(Data);
+
+            }
+            return PacketData;
         }
 
 
-        public void WriteBoolean(bool boolean)
+        public virtual void WriteBoolean(bool boolean)
         {
             if (boolean)
                 WriteUnsignedByte(0x01);
             else
                 WriteUnsignedByte(0x00);
         }
-        public void WriteByte(sbyte value)
+        public virtual void WriteByte(sbyte value)
         {
             Data.Add((byte)value);
         }
-        public void WriteUnsignedByte(byte value)
+        public virtual void WriteUnsignedByte(byte value)
         {
             Data.Add(value);
         }
-        public void WriteString(string value)
+        public virtual void WriteString(string value)
         {
             byte[] str = Encoding.UTF8.GetBytes(value);
-            WriteBytes(ProtocolHandler.ConcatBytes(VarInt.GetBytes(str.Length), str));
+            WriteVarInt(str.Length);
+            WriteBytes(str);
         }
-        public void WriteShort(short value)
+        public virtual void WriteShort(short value)
         {
             byte[] data = new byte[2];
             for (int i = data.Length; i > 0; i--)
@@ -84,19 +165,17 @@ namespace MinecraftProtocol.Protocol.Packets
             }
             WriteBytes(data);
         }
-        public void WriteUnsignedShort(ushort value)
+        public virtual void WriteUnsignedShort(ushort value)
         {
             byte[] data = new byte[2];
-            //byte[] datax = BitConverter.GetBytes(value);
             for (int i = data.Length; i > 0; i--)
             {
                 data[i - 1] |= (byte)value;
                 value >>= 8;
             }
-            //Array.Reverse(data);
             WriteBytes(data);
         }
-        public void WriteInt(int value)
+        public virtual void WriteInt(int value)
         {
             byte[] data = new byte[4];
             for (int i = data.Length; i > 0; i--)
@@ -104,10 +183,9 @@ namespace MinecraftProtocol.Protocol.Packets
                 data[i - 1] |= (byte)value;
                 value >>= 8;
             }
-            //Array.Reverse(data);
             WriteBytes(data);
         }
-        public void WriteLong(long value)
+        public virtual void WriteLong(long value)
         {
             byte[] data = new byte[8];
             for (int i = data.Length; i > 0; i--)
@@ -115,37 +193,40 @@ namespace MinecraftProtocol.Protocol.Packets
                 data[i - 1] |= (byte)value;
                 value >>= 8;
             }
-            //Array.Reverse(data);
             WriteBytes(data);
         }
-        public void WriteFloat(float value)
+        public virtual void WriteFloat(float value)
         {
             byte[] data = BitConverter.GetBytes(value);
             Array.Reverse(data);
             WriteBytes(data);
         }
-        public void WriteDouble(double value)
+        public virtual void WriteDouble(double value)
         {
             byte[] data = BitConverter.GetBytes(value);
             Array.Reverse(data);
             WriteBytes(data);
         }
-        public void WriteVarInt(int value)
+        public virtual void WriteVarShort(int value)
+        {
+            WriteBytes(VarShort.GetBytes(value));
+        }
+        public virtual void WriteVarInt(int value)
         {
             WriteBytes(VarInt.GetBytes(value));
         }
-        public void WriteVarLong(long value)
+        public virtual void WriteVarLong(long value)
         {
             WriteBytes(VarLong.GetBytes(value));
         }
-        public void WriteUUID(UUID value)
+        public virtual void WriteUUID(UUID value)
         {
-            Guid uuid = value.ToGuid();
-            WriteBytes(uuid.ToByteArray());
+            WriteLong(value.Most);
+            WriteLong(value.Least);
         }
-        public void WriteBytes(List<byte> value) => Data.AddRange(value);
-        public void WriteBytes(params byte[] value) => Data.AddRange(value);
-        public void WriteByteArray(byte[] array, int protocolVersion)
+        public virtual void WriteBytes(IEnumerable<byte> value) => Data.AddRange(value);
+        public virtual void WriteBytes(params byte[] value) => Data.AddRange(value);
+        public virtual void WriteByteArray(byte[] array, int protocolVersion)
         {
             //14w21a: All byte arrays have VarInt length prefixes instead of short
             if (protocolVersion >= ProtocolVersionNumbers.V14w21a)
@@ -155,6 +236,8 @@ namespace MinecraftProtocol.Protocol.Packets
             WriteBytes(array);
         }
 
+        public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
+        public virtual ReadOnlyPacket AsReadOnly() => new ReadOnlyPacket(this);
 
         public override string ToString()
         {
@@ -177,12 +260,10 @@ namespace MinecraftProtocol.Protocol.Packets
         public static bool operator !=(Packet left, Packet right) => !(left == right);
         public bool Equals(Packet packet)
         {
-            if (this.ID != packet.ID)
-                return false;
-            if (this.Data.Count != packet.Data.Count)
-                return false;
-            if (object.ReferenceEquals(this, packet))
-                return true;
+            if (packet is null) return false;
+            if (this.ID != packet.ID) return false;
+            if (this.Data.Count != packet.Data.Count) return false;
+            if (object.ReferenceEquals(this, packet)) return true;
             for (int i = 0; i < packet.Data.Count; i++)
             {
                 if (this.Data[i] != packet.Data[i])

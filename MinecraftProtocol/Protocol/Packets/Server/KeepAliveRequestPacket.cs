@@ -24,15 +24,12 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                     return BitConverter.ToInt32(Data.ToArray(), 0);
             }
         }
-        public KeepAliveRequestPacket(List<byte> code, int protocolVersion)
+        private KeepAliveRequestPacket(ReadOnlyPacket packet, int protocolVersion) : base(packet)
         {
-            this.ID = GetPacketID(protocolVersion);
             this.ProtocolVersion = protocolVersion;
-            WriteBytes(code);
         }
-        public KeepAliveRequestPacket(byte[] code, int protocolVersion)
+        public KeepAliveRequestPacket(IEnumerable<byte> code, int protocolVersion) : base(GetPacketID(protocolVersion))
         {
-            this.ID = GetPacketID(protocolVersion);
             this.ProtocolVersion = protocolVersion;
             WriteBytes(code);
         }
@@ -54,36 +51,43 @@ namespace MinecraftProtocol.Protocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Keep Alive from 0x00 to 0x1F
              */
-            if (protocolVersion >= ProtocolVersionNumbers.V1_14) return 0x20;//不知道什么时候更新成这个的
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7) return 0x21;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w46a) return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x1F;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w46a) return 0x1F;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x1F;
-            else return 0x00;
+            if (protocolVersion >= ProtocolVersionNumbers.V1_14)              return 0x20;//不知道什么时候更新成这个的
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)    return 0x21;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w46a)       return 0x20;
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5)    return 0x1F;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)       return 0x20;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w46a)       return 0x1F;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)       return 0x20;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w36a)       return 0x1F;
+            else                                                              return 0x00;
         }
-        public static bool Verify(Packet packet, int protocolVersion)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out byte[] _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out KeepAliveRequestPacket karp)
         {
+            karp = null;
+            if (Verify(packet, protocolVersion))
+                karp = new KeepAliveRequestPacket(packet, protocolVersion);
+            return karp == null;
+        }
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out byte[] code)
+        {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
+            code = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
-            /*
-             * 1.12.2-pre1, -pre2(339)
-             * Changed parameters in Keep Alive (clientbound - 0x1F) and Keep Alive (serverbound - 0x0B) from VarInts to longs.
-             * 14w31a(32)
-             * Changed the type of Keep Alive ID from Int to VarInt (Clientbound)
-             */
-
             if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
-                return true;
+                code = packet.Data.ToArray();
             else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
-                return true;
+                code = packet.Data.ToArray();
             else if (protocolVersion < ProtocolVersionNumbers.V14w31a && packet.Data.Count == 4)
-                return true;
-            else
-                return false;
+                code = packet.Data.ToArray();
+
+            return !(code is null);
         }
     }
 }

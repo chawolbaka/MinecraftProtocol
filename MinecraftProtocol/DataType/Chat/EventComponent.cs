@@ -11,6 +11,12 @@ namespace MinecraftProtocol.DataType.Chat
         [JsonProperty("value")]
         public T Value;
 
+        public EventComponent() { }
+        public EventComponent(EventAction action, T value)
+        {
+            Action = action;
+            Value = value;
+        }
     }
     [JsonConverter(typeof(StringEnumConverter))]
     public enum EventAction

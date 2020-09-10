@@ -7,21 +7,13 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// </summary>
     public class PingRequestPacket : Packet
     {
-        public const int PacketID = 0x00;
-        public PingRequestPacket()
+        private const int id= 0x00;
+        public PingRequestPacket() : base(id) { }
+        public static int GetPacketID() => id;
+        public static bool Verify(ReadOnlyPacket packet, out PingRequestPacket prp)
         {
-            this.ID = PingRequestPacket.PacketID;
-        }
-        public PingRequestPacket(Packet pingRequestPacket)
-        {
-            if (Verify(pingRequestPacket))
-                this.ID = PingRequestPacket.PacketID;
-            else
-                throw new InvalidPacketException(pingRequestPacket);
-        }
-        public static bool Verify(Packet packet)
-        {
-            return packet.ID == PingRequestPacket.PacketID && packet.Data.Count == 0;
+            prp = packet.ID == id && packet.Data.Count == 0 ? new PingRequestPacket() : null;
+            return !(prp is null);
         }
     }
 }

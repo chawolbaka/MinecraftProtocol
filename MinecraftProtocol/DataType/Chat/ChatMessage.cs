@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Text;
-using System.Collections;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -18,6 +17,8 @@ namespace MinecraftProtocol.DataType.Chat
         public bool HasColorCode => !string.IsNullOrEmpty(Color);
         [JsonIgnore]
         public bool HasFormatCode => Bold || Italic || Underline || Strikethrough || Obfuscated;
+        [JsonIgnore]
+        public bool IsSimpleText =>  !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && With == null && HoverEvent == null && ClickEvent == null && Insertion == null;
 
         /// <summary>粗体</summary>
         [JsonProperty("bold", DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -50,7 +51,7 @@ namespace MinecraftProtocol.DataType.Chat
         public string Translate;
 
         [JsonProperty("with", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public ArrayList With;
+        public List<object> With;
 
         [JsonProperty("clickEvent", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public EventComponent<string> ClickEvent;
@@ -67,7 +68,29 @@ namespace MinecraftProtocol.DataType.Chat
 
         public ChatMessage() { }
         public ChatMessage(string text) { this.Text = text; }
-        public ChatMessage(string text, ChatColor color) { this.Text = text; this.Color = color.ToString(); }
+        public ChatMessage(string text, ChatColor color) : this(text) { this.Color = color.ToString(); }
+        public ChatMessage(string text, ChatColor color, ChatFormat format) : this(text, format) { this.Color = color.ToString(); }
+        public ChatMessage(string text, ChatFormat format) : this(text)
+        {
+            if (text.Length <= 0)
+                throw new ArgumentOutOfRangeException(nameof(text), "使用样式代码的情况下必须要有文字.");
+
+            if (format.HasFlag(ChatFormat.Bold))
+                this.Bold = true;
+            if (format.HasFlag(ChatFormat.Italic))
+                this.Italic = true;
+            if (format.HasFlag(ChatFormat.Underline))
+                this.Underline = true;
+            if (format.HasFlag(ChatFormat.Strikethrough))
+                this.Strikethrough = true;
+            if (format.HasFlag(ChatFormat.Obfuscated))
+                this.Obfuscated = true;
+
+        }
+        public ChatMessage(ReadOnlySpan<char> text) : this(text.ToString()) { }
+        public ChatMessage(ReadOnlySpan<char> text, ChatColor color) : this(text.ToString(), color) { }
+        public ChatMessage(ReadOnlySpan<char> text, ChatColor color, ChatFormat format) : this(text.ToString(), color, format) { }
+        public ChatMessage(ReadOnlySpan<char> text, ChatFormat format) : this(text.ToString(), format) { }
 
 
         /// <summary>
@@ -80,7 +103,7 @@ namespace MinecraftProtocol.DataType.Chat
         {
             if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException(nameof(message));
-            
+
 
             if (message[0] != sectionSign && message.Length < 3)
                 return new ChatMessage(message);
@@ -136,7 +159,7 @@ namespace MinecraftProtocol.DataType.Chat
                 result.AddExtra(ChatComponet);
             }
             if (compressExtra)
-               result.CompressExtra();
+                result.CompressExtra();
             return result;
         }
 
@@ -176,7 +199,7 @@ namespace MinecraftProtocol.DataType.Chat
             //如果最后一个组件没指定样式就把那个组件的Text后面的空格都清了
             else if (!this.Extra[this.Extra.Count - 1].HasFormatCode)
                 this.Extra[this.Extra.Count - 1].Text = this.Extra[this.Extra.Count - 1].Text.TrimEnd();
-        } 
+        }
 
 
         public ChatMessage AddExtra(ChatMessage message)
@@ -190,7 +213,7 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
 
-        public ChatMessage AddExtra(List<ChatMessage> messages)
+        public ChatMessage AddExtra(IEnumerable<ChatMessage> messages)
         {
             if (this.Extra == null)
                 this.Extra = new List<ChatMessage>();
@@ -200,44 +223,109 @@ namespace MinecraftProtocol.DataType.Chat
             return this;
         }
 
-
-
         public string Serialize(Formatting formatting = Formatting.None) => JsonConvert.SerializeObject(this, formatting);
-        public static ChatMessage Deserialize(string json) => WithHandler(JsonConvert.DeserializeObject<ChatMessage>(json));
-        public static ChatMessage Deserialize(JsonReader reader) => WithHandler(new JsonSerializer().Deserialize<ChatMessage>(reader));
-        private static ChatMessage WithHandler(ChatMessage chatMessage)
+        public static ChatMessage Deserialize(string json)
         {
-            if (chatMessage.With is null || chatMessage.With.Count == 0)
-                return chatMessage;
-            for (int i = 0; i < chatMessage.With.Count; i++)
+            if (string.IsNullOrWhiteSpace(json))
+                return new ChatMessage();
+            if(json[0] == '\"' && json[json.Length - 1] == '\"')
+                return new ChatMessage(json.AsSpan().Slice(1, json.Length - 1));
+            if (json[0] != '{' && json[json.Length - 1] != '}')
+                return new ChatMessage(json);
+            else
+                return Deserialize(JObject.Parse(json)) ?? new ChatMessage();
+        }
+        private static ChatMessage Deserialize(JObject json)
+        {
+            ChatMessage ChatComponent = new ChatMessage();
+            if (json!=null&&json.Count == 0)
+                return null;
+
+            foreach (JProperty Property in json.Children())
             {
-                if (chatMessage.With[i] is null)
-                    chatMessage.With.RemoveAt(i);
-                else if (chatMessage.With[i] is JObject jo)
+                switch (Property.Name)
                 {
-                    try
+                    case "bold":            ChatComponent.Bold =           (bool)Property.Value; continue;
+                    case "italic":          ChatComponent.Italic =         (bool)Property.Value; continue;
+                    case "underlined":      ChatComponent.Underline =      (bool)Property.Value; continue;
+                    case "strikethrough":   ChatComponent.Strikethrough =  (bool)Property.Value; continue;
+                    case "obfuscated":      ChatComponent.Obfuscated =     (bool)Property.Value; continue;
+                    case "text":            ChatComponent.Text =      Property.Value.ToString(); continue;
+                    case "color":           ChatComponent.Color =     Property.Value.ToString(); continue;
+                    case "insertion":       ChatComponent.Insertion = Property.Value.ToString(); continue;
+                    case "translate":       ChatComponent.Translate = Property.Value.ToString(); continue;
+                }
+                if (Property.Name == "with")
+                {
+                    ChatComponent.With = new List<object>();
+                    foreach (var WithItem in Property.Value)
                     {
-                        string json = jo.ToString();
-                        if (jo.Count > 1)
-                            chatMessage.With[i] = WithHandler(JsonConvert.DeserializeObject<ChatMessage>(json));
-                        else if (jo.Count == 1 && json.Contains("text"))
-                            chatMessage.With[i] = JsonConvert.DeserializeObject<TextComponent>(json);
-                        else if (jo.Count == 1 && jo.ContainsKey("translate"))
-                            chatMessage.With[i] = JsonConvert.DeserializeObject<TranslationComponent>(json);
-                        else if (jo.Count == 0)
-                            chatMessage.With.RemoveAt(i);
-                    }
-                    catch (JsonReaderException)
-                    {
-                        #if DEBUG
-                            throw;
-                        #else //防止有什么插件发了一个现在解析不出来的组件(反正解析不出来就直接删掉了）
-                            chatMessage.With.RemoveAt(i);
-                        #endif
+                        if (WithItem.Type == JTokenType.String)
+                            ChatComponent.With.Add(WithItem.Value<string>());
+                        else if (WithItem.Type == JTokenType.Object && WithItem is JObject jo && jo.Count > 0)
+                        {
+                            if (jo.Count == 1 && jo.First is JProperty jp && jp.Name == "translate")
+                                ChatComponent.With.Add(new SimpleTranslateComponent(jp.Value.ToString()));
+                            else
+                                ChatComponent.With.Add(Deserialize(jo));
+                        }
+                        else
+                        {
+                            ChatMessage WithComponent = Deserialize(WithItem.ToString());
+                            if(WithComponent!=null)
+                                ChatComponent.With.Add(WithComponent);
+                        }
                     }
                 }
+                else if (Property.Name == "clickEvent")
+                {
+                    foreach (JProperty EventProperty in Property.Value.Children())
+                    {
+                        ChatComponent.ClickEvent = new EventComponent<string>();
+                        if (EventProperty.Name == "action" && Enum.TryParse(EventProperty.Value.ToString(), out EventAction ea))
+                            ChatComponent.ClickEvent.Action = ea;
+                        else if (EventProperty.Name == "value")
+                            ChatComponent.ClickEvent.Value = EventProperty.Value.ToString();
+#if DEBUG
+                        else
+                            throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
+#endif
+                    }
+                }
+                else if (Property.Name == "hoverEvent")
+                {
+                    foreach (JProperty EventProperty in Property.Value.Children())
+                    {
+                        ChatComponent.HoverEvent = new EventComponent<ChatMessage>();
+                        if (EventProperty.Name == "action" && Enum.TryParse(EventProperty.Value.ToString(), out EventAction ea))
+                            ChatComponent.HoverEvent.Action = ea;
+                        else if (EventProperty.Name == "value")
+                            ChatComponent.HoverEvent.Value = Deserialize(EventProperty.Value.ToString());
+#if DEBUG
+                        else
+                            throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
+#endif
+                    }
+                }
+                else if (Property.Name == "extra")
+                {
+                    foreach (var ExtraItem in Property.Value)
+                    {
+                        ChatMessage ExtraComponent = ExtraItem.Type switch
+                        {
+                            JTokenType.String => new ChatMessage(ExtraItem.Value<string>()),
+                            JTokenType.Object => Deserialize((JObject)ExtraItem),
+                            _ => Deserialize(ExtraItem.ToString())
+                        };
+                        if (ExtraComponent != null) ChatComponent.AddExtra(ExtraComponent);
+                    }
+                }
+#if DEBUG
+                else
+                    throw new InvalidCastException($"Unknown Property {Property.Name} : {Property.Value}");
+#endif
             }
-            return chatMessage;
+            return ChatComponent;
         }
 
 
@@ -284,8 +372,7 @@ namespace MinecraftProtocol.DataType.Chat
             return sb.ToString();
         }
 
-
-        private void ResolveTranslate(string translate, Dictionary<string, string> lang, ArrayList with, ref StringBuilder sb)
+        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> with, ref StringBuilder sb)
         {
             /*
              * 这东西的结构大概是这样的:
@@ -303,7 +390,7 @@ namespace MinecraftProtocol.DataType.Chat
 
             //纯翻译,没有%s的那种
             if (with == null || with.Count == 0) { sb.Append(text); return; }
-
+            
             int WithCount = 0;
             for (int i = 0; i < text.Length; i++)
             {
@@ -312,12 +399,11 @@ namespace MinecraftProtocol.DataType.Chat
                     //这个%d是在forge的语言文件里面看见的,原版好像没有?
                     if (text[i + 1] == 's'|| text[i + 1] == 'd')
                     {
-                        object obj = with[WithCount++];
-                        if (obj is ITranslation translation)
-                            sb.Append(translation.ToString(lang));
+                        if (with[WithCount] is ITranslation itc)
+                            sb.Append(itc.ToString(lang));
                         else
-                            sb.Append(obj.ToString());
-                        i++;
+                            sb.Append(with[WithCount].ToString());
+                        WithCount++; i++;
                     }
                     else if (text[i + 1] == '%')
                     {
@@ -329,11 +415,10 @@ namespace MinecraftProtocol.DataType.Chat
                         //处理类型的: 给予%4$s时长为%5$s秒的%1$s（ID %2$s）*%3$s效果
                         //由于最高我只找到%5所以我不清楚这是16进制还是10进制,我暂时当成10进制处理了
                         //(还是最小只能9的10进制,超过9就解析不到了)
-                        object obj = with[number - 1];
-                        if (obj is ITranslation translation)
-                            sb.Append(translation.ToString(lang));
+                        if (with[number-1] is ITranslation itc)
+                            sb.Append(itc.ToString(lang));
                         else
-                            sb.Append(obj.ToString());
+                            sb.Append(with[number-1].ToString());
                         i += 3;
                     }
                     else
@@ -348,11 +433,10 @@ namespace MinecraftProtocol.DataType.Chat
                     index<with.Count&&
                     text[i+2] == '}')
                 {
-                    object obj = with[index];
-                    if (obj is ITranslation translation)
-                        sb.Append(translation.ToString(lang));
+                    if (with[index] is ITranslation itc)
+                        sb.Append(itc.ToString(lang));
                     else
-                        sb.Append(obj.ToString());
+                        sb.Append(with[index].ToString());
                     i += 2;
                 }
                 else
@@ -393,9 +477,9 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
         /// <summary>
-        /// 翻译表(英文,默认只有少部分)
+        /// 默认翻译表(只添加了几行英文的英文,如果需要改成其它语言请先使用: ChatMeassge.DefaultTranslation.Clear();
         /// </summary>
-        public static readonly Dictionary<string, string> DefaultTranslation = new Dictionary<string, string>(){
+        public static Dictionary<string, string> DefaultTranslation { get; } = new Dictionary<string, string>() {
 
             { "chat.type.text","<%s> %s"},
             { "chat.type.text.narrate","%s says %s"},

@@ -1,17 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+  
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup>
+    <TargetFramework Condition="!$(DefineConstants.Contains('AES_NI'))">netstandard2.1</TargetFramework>
+    <TargetFramework Condition="$(DefineConstants.Contains('AES_NI'))">netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+
+    <!--版本配置-->
+    <AssemblyVersion>1.0</AssemblyVersion>
+    <FileVersion>1.0</FileVersion>
+    <Version>1.0-alpha</Version>
+
+    <!--版权配置-->
+    <Authors>Chawol</Authors>
+    <Copyright>Copyright (c) 2020 Chawol</Copyright>
+
+    <!--xml注释文档生成-->
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    <NoWarn>1701;1702;1591;1573</NoWarn>
-  </PropertyGroup>
+    <NoWarn>1701;1702;1591;1573;1574</NoWarn>
+
+  </PropertyGroup>  
   
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
   
-
 </Project>

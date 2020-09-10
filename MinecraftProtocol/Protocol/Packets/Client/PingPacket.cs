@@ -7,17 +7,33 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// </summary>
     public class PingPacket : Packet
     {
-        public const int PacketID = 0x01;
+        private const int id = 0x01;
         public long Code { get; }
-        public PingPacket(long code)
+        private PingPacket(ReadOnlyPacket packet, long code) : base(packet) { Code = code; }
+        public PingPacket(long code) : base(id)
         {
-            this.Code = code;
-            this.ID = PingPacket.PacketID;
+            this.Code = code;;
             WriteLong(code);
         }
-        public static bool Verify(Packet packet)
+        public static int GetPacketID() => id;
+
+        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out long? _);
+        public static bool Verify(ReadOnlyPacket packet, out PingPacket pp)
         {
-            return packet.ID == PacketID && packet.Data.Count == 8;
+            pp = null;
+            if (Verify(packet, out long? code))
+                pp = new PingPacket(packet, code.Value);
+            return !(pp is null);
+        }
+        public static bool Verify(ReadOnlyPacket packet, out long? code)
+        {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+
+            code = null;
+            if (packet.ID == id && packet.Data.Count == 8)
+                code = packet.ReadLong();
+            return !(code is null);
         }
     }
 }

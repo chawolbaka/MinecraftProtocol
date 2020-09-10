@@ -7,36 +7,44 @@ using Newtonsoft.Json.Linq;
 namespace MinecraftProtocol.DataType
 {
 
-    public struct UUID:IEquatable<UUID>
+    public struct UUID : IComparable, IComparable<UUID>, IEquatable<UUID>
     {
-        public static UUID Empty => new UUID(Guid.Empty);
+        public static UUID Empty => new UUID(0, 0);
 
-        private Guid _uuid;
+        public readonly long Most;
+        public readonly long Least;
 
-        public UUID(string uuid)
+        public UUID(long most, long least)
         {
-            if (string.IsNullOrWhiteSpace(uuid))
-                throw new ArgumentNullException(nameof(uuid));
-            _uuid = Guid.Parse(uuid);
+            Most = most;
+            Least = least;
         }
-        public UUID(Guid uuid)
+
+        public UUID(byte[] data)
         {
-            if (uuid==null)
-                throw new ArgumentNullException(nameof(uuid));
-            _uuid = uuid;
+            if (data == null) 
+                throw new ArgumentNullException(nameof(data));
+            if (data.Length != 16)
+                throw new ArgumentOutOfRangeException(nameof(data), $"{nameof(data)}的长度必须是16");
+            
+            Least = 0; Most = 0;
+            for (int i = 0; i < 8; i++)
+                Most = (Most << 8) | data[i];
+            for (int i = 8; i < 16; i++)
+                Least = (Least << 8) | data[i];
         }
 
         /// <summary>
-        /// 从MojangAPI获取正版玩家的UUID
+        /// 通过玩家名向MojangAPI获取正版玩家的UUID
         /// </summary>
         /// <exception cref="ArgumentNullException"/>
-        public static UUID? GetFromMojangAPI(string playerName)
+        public static UUID? GetFromMojangAPI(string playerName, string url = "https://api.mojang.com/users/profiles/minecraft/")
         {
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new ArgumentNullException(nameof(playerName));
 
             HttpClient hc = new HttpClient();
-            var HttpResponse = hc.GetAsync("https://api.mojang.com/users/profiles/minecraft/" + playerName).Result;
+            var HttpResponse = hc.GetAsync(url + playerName).Result;
             string json = HttpResponse.Content.ReadAsStringAsync().Result;
             if (!string.IsNullOrWhiteSpace(json))
             {
@@ -44,55 +52,118 @@ namespace MinecraftProtocol.DataType
                 if (string.IsNullOrWhiteSpace(id))
                     throw new Exception("MojangAPI返回了空uuid");
                 else
-                    return new UUID(Guid.Parse(id));
+                    return Parse(id);
             }
             return null;
         }
+
+        /// <summary>
+        /// 通过玩家名获取离线模式下的UUID
+        /// </summary>
+        /// <exception cref="ArgumentNullException"/>
         public static UUID GetFromPlayerName(string playerName)
         {
             if (string.IsNullOrEmpty(playerName))
-            {
                 throw new ArgumentNullException(nameof(playerName));
-            }
-            else
-            {
-                //https://gist.github.com/games647/2b6a00a8fc21fd3b88375f03c9e2e603
-                //https://en.wikipedia.org/wiki/Universally_unique_identifier#Versions_3_and_5_(namespace_name-based)
-                MD5 md5 = new MD5CryptoServiceProvider();
-                byte[] MD5 = md5.ComputeHash(Encoding.UTF8.GetBytes("OfflinePlayer:" + playerName));
-                MD5[6] = (byte)((MD5[6] & 0x0f) | 0x30); //set the version to 3 -> Name based md5 hash
-                MD5[8] = (byte)((MD5[8] & 0x3f) | 0x80); //IETF variant
 
-                StringBuilder uuid_hex = new StringBuilder();
-                for (int i = 0; i < MD5.Length; i++)
-                    uuid_hex.Append(MD5[i].ToString("x2"));
-
-                //TrimStart('0')对于CryptoHandler.GetMinecraftShaDigest是必要的,但是对于UUID我不清楚是不是必要的
-                //总之先不加,毕竟这边是要塞到Guid里面的,可能已经在里面处理过了?
-                //哪天出bug了再加上把qwq
-                //return new UUID(uuid_hex.ToString().TrimStart('0'));
-                return new UUID(uuid_hex.ToString());
-            }
+            //https://gist.github.com/games647/2b6a00a8fc21fd3b88375f03c9e2e603
+            //https://en.wikipedia.org/wiki/Universally_unique_identifier#Versions_3_and_5_(namespace_name-based)
+            MD5 md5 = new MD5CryptoServiceProvider();
+            byte[] MD5 = md5.ComputeHash(Encoding.UTF8.GetBytes("OfflinePlayer:" + playerName));
+            MD5[6] = (byte)((MD5[6] & 0x0f) | 0x30); //set the version to 3 -> Name based md5 hash
+            MD5[8] = (byte)((MD5[8] & 0x3f) | 0x80); //IETF variant
+            return new UUID(MD5);
         }
-        
-        //这边为什么不新建一个guid?
-        //我是是这样考虑的,Guid的构造函数看了眼源码好像要做好多事情的样子
-        //所以直接把_uuid丢出去了,我觉得直接让它直接在内存里面复制一份比较省事
-        public Guid ToGuid() => _uuid;
-        public override string ToString() => _uuid.ToString();
-        public override int GetHashCode() => _uuid.GetHashCode();
-        public static explicit operator string(UUID uuid) => uuid.ToString();
-        public static explicit operator Guid(UUID uuid) => uuid.ToGuid();
+
+        public static UUID NewUUID()
+        {
+            byte[] bytes = new byte[16];
+            using RandomNumberGenerator RNG = RandomNumberGenerator.Create();
+            RNG.GetBytes(bytes);
+
+            //https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
+            bytes[6] = (byte)((bytes[6] & 0x0f) | 0x40); //set the version to 4 -> Random
+            bytes[8] = (byte)((bytes[8] & 0x3f) | 0x80); //IETF variant
+            return new UUID(bytes);
+        }
+
+
+        public static UUID Parse(string input)
+        {
+            string[] hexs = input.Split('-');
+            if (hexs.Length != 5 || hexs[0].Length != 8 || hexs[1].Length != 4 || hexs[2].Length != 4 || hexs[3].Length != 4 || hexs[4].Length != 12)
+                throw new FormatException("UUID的格式必须是xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+
+            return new UUID(
+                (Convert.ToInt64(hexs[0], 16) << 32) | (Convert.ToInt64(hexs[1], 16) << 16) | Convert.ToInt64(hexs[2], 16),
+                (Convert.ToInt64(hexs[3], 16) << 48) | (Convert.ToInt64(hexs[4], 16)));
+        }
+        public static bool TryParse(string input, out UUID result)
+        {
+            result = default;
+            string[] hexs = input.Split('-');
+            if (hexs.Length != 5 || hexs[0].Length != 8 || hexs[1].Length != 4 || hexs[2].Length != 4 || hexs[3].Length != 4 || hexs[4].Length != 12)
+                return false;
+
+            try
+            {
+                result = new UUID(
+                (Convert.ToInt64(hexs[0], 16) << 32) | (Convert.ToInt64(hexs[1], 16) << 16) | Convert.ToInt64(hexs[2], 16),
+                (Convert.ToInt64(hexs[3], 16) << 48) | (Convert.ToInt64(hexs[4], 16)));
+                return true;
+            }
+            catch (ArgumentOutOfRangeException) { return false; }
+            catch (ArgumentException) { return false; }
+            catch (FormatException) { return false; }
+            catch (OverflowException) { return false; }
+
+        }
+
+        public string ToString(bool toUpper)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Capacity = 36;
+            sb.Append(ToHex(((Most  >> 32) & 0xFFFFFFFF)     | 0x100000000, toUpper)).Append('-');
+            sb.Append(ToHex(((Most  >> 16) & 0xFFFF)         | 0x10000, toUpper)).Append('-');
+            sb.Append(ToHex(((Most  >> 00) & 0xFFFF)         | 0x10000, toUpper)).Append('-');
+            sb.Append(ToHex(((Least >> 48) & 0xFFFF)         | 0x10000, toUpper)).Append('-');
+            sb.Append(ToHex(((Least >> 00) & 0xFFFFFFFFFFFF) | 0x1000000000000, toUpper));
+            return sb.ToString();
+        }
+        public override string ToString() => ToString(false);
+        private ReadOnlySpan<char> ToHex(long value, bool toUpper) => value.ToString(toUpper ? "X2" : "x2").AsSpan().Slice(1);
+
+        public override bool Equals(object obj) => obj is UUID uUID && Equals(uUID);
+
+        public bool Equals(UUID other) => Most == other.Most && Least == other.Least;
 
         public static bool operator ==(UUID left, UUID right) => left.Equals(right);
+
         public static bool operator !=(UUID left, UUID right) => !(left == right);
-        public bool Equals(UUID other) => this._uuid.Equals(other._uuid);
-        public override bool Equals(object obj)
+
+        public int CompareTo(object obj)
         {
-            if (obj == null || !(obj is UUID id))
-                return false;
-            else
-                return this.Equals(id);
+            if (obj == null)
+                return 0;
+            if (!(obj is UUID))
+                throw new ArgumentException("对象的类型必须是UUID", nameof(obj));
+
+            return CompareTo((UUID)obj);
+        }
+
+        public int CompareTo(UUID other)
+        {
+            if (this.Most < other.Most) return -1;
+            else if (this.Most > other.Most) return 1;
+            else if (this.Least < other.Least) return -1;
+            else if (this.Least > other.Least) return 1;
+            else return 0;
+        }
+
+        public override int GetHashCode()
+        {
+            long temp = Most ^ Least;
+            return ((int)(temp >> 32)) ^ (int)temp;
         }
 
     }

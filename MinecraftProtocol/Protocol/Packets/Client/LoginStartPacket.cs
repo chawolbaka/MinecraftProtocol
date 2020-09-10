@@ -11,26 +11,26 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     {
         public string PlayerName { get; }
 
+        private LoginStartPacket(ReadOnlyPacket packet, string name) : base(packet)
+        {
+            this.PlayerName = name;
+        }
         public LoginStartPacket(string playerName, int protocolVersion)
         {
+            if (string.IsNullOrWhiteSpace(playerName))
+                throw new ArgumentNullException(nameof(playerName));
+            if (playerName.Length > 16)
+                throw new ArgumentOutOfRangeException(nameof(playerName), "玩家名过长");
+
             this.ID = GetPacketID(protocolVersion);
             this.PlayerName = playerName;
             WriteString(PlayerName);
         }
-        public LoginStartPacket(Packet loginStartPacket, int protocolVersion)
-        {
-            if (Verify(loginStartPacket, protocolVersion))
-            {
-                this.ID = loginStartPacket.ID;
-                this.Data = new List<byte>(loginStartPacket.Data);
-                this.PlayerName = ProtocolHandler.ReadString(Data, true);
-            }
-            else
-                throw new InvalidPacketException("Not a LoginStart Packet", loginStartPacket);
-        }
+
+
 
         /// <summary>从一个LoginStart包中读取玩家名,如果传入其它包会抛出异常.</summary>
-        public static string GetPlayerName(Packet packet) => ProtocolHandler.ReadString(packet.Data, true);
+        public static string GetPlayerName(ReadOnlyPacket packet) => packet.ReadString();
         public static int GetPacketID(int protocolVersion)
         {
             /*
@@ -40,19 +40,39 @@ namespace MinecraftProtocol.Protocol.Packets.Client
              * Changed the ID of Login Start from 0x00 to 0x01
              */
 
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9) return 0x00;
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3) return 0x01;
+#if !DROP_PRE_RELEASE
+            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9)       return 0x00;
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3)  return 0x01;
             else return 0x00;
+#else
+            return 0x01;
+#endif
         }
-        public static bool Verify(Packet packet,int protocolVersion)
+
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out LoginStartPacket lsp)
         {
+            lsp = null;
+            if(Verify(packet,protocolVersion,out string name))
+                lsp = new LoginStartPacket(packet, name);
+            return lsp == null;
+        }
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out string playerName)
+        {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
+            playerName = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
-            List<byte> buffer = new List<byte>(packet.Data);
+
             try
             {
-                ProtocolHandler.ReadString(buffer);
-                return buffer.Count == 0;
+                string name = packet.ReadString();
+                if (packet.IsReadToEnd)
+                    playerName = name;
+                return !string.IsNullOrEmpty(playerName);
             }
             catch (ArgumentOutOfRangeException) { return false; }
             catch (IndexOutOfRangeException) { return false; }

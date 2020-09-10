@@ -7,7 +7,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Protocol#Chat_Message_.28serverbound.29
     /// </summary>
-    public class ChatMessagePacket:Packet
+    public class ClientChatMessagePacket:Packet
     {
         /// <summary>For New Version(>=16w38a)</summary>
         public const int MaxMessageLength = 256;
@@ -16,7 +16,11 @@ namespace MinecraftProtocol.Protocol.Packets.Client
 
         public string Message { get; }
 
-        public ChatMessagePacket(string message, int protocolVersion)
+        private ClientChatMessagePacket(ReadOnlyPacket packet, string message) : base(packet)
+        {
+            Message = message;
+        }
+        public ClientChatMessagePacket(string message, int protocolVersion)
         {
             /*       
              * 16w38a(306)
@@ -30,18 +34,8 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             this.Message = Message;
             WriteString(message);
         }
-        public ChatMessagePacket(Packet packet, int protocolVersion)
-        {
-            if (!Verify(packet, protocolVersion))
-                throw new InvalidPacketException(packet);
-            else
-            {
-                this.ID = packet.ID;
-                this.Data = new List<byte>(packet.Data);
-                this.Message = ProtocolHandler.ReadString(packet.Data, 0, true);
-            }
 
-        }
+
         public static int GetPacketID(int protocolVersion)
         {
             /*
@@ -61,29 +55,38 @@ namespace MinecraftProtocol.Protocol.Packets.Client
              * 15w43a(80)
              * Changed ID of Chat Message from 0x01 to 0x02
              */
-            
-            if (protocolVersion >= ProtocolVersionNumbers.V1_14) return 0x03; //不知道什么时候变成0x03的,wiki.vg上面关于1.13.2到1.14的记录特别少,我也不知道还有什么地方可以找到记录
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w45a) return 0x01;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w31a) return 0x02;
+
+            if (protocolVersion >= ProtocolVersionNumbers.V1_14)            return 0x03;
+            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)  return 0x02;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w45a)     return 0x01;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w31a)     return 0x02;
             //else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a) return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x02;
+            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)     return 0x03;
+            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)     return 0x02;
             else return 0x01;
         }
-        public static bool Verify(Packet packet, int protocolVersion)
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out ClientChatMessagePacket ccmp)
         {
+            if (packet is null)
+                throw new ArgumentNullException(nameof(packet));
+            if (protocolVersion < 0)
+                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
+
+            ccmp = null;
+            if (packet.ID != GetPacketID(protocolVersion))
+                return false;
+
             try
             {
-                if (packet.ID != GetPacketID(protocolVersion))
-                    return false;
-
-                List<byte> buffer = new List<byte>(packet.Data);
-                string Message = ProtocolHandler.ReadString(buffer);
+                string Message = packet.ReadString();
                 if (protocolVersion >= ProtocolVersionNumbers.V16w38a && Message.Length > MaxMessageLength)
                     return false;
                 else if (Message.Length > OldMaxMessageLength)
                     return false;
-                return buffer.Count == 0;
+                if (packet.IsReadToEnd)
+                    ccmp = new ClientChatMessagePacket(packet, Message);
+                return !(ccmp is null);
             }
             catch (ArgumentOutOfRangeException) { return false; }
             catch (IndexOutOfRangeException) { return false; }
