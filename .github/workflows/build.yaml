@@ -13,13 +13,5 @@ jobs:
         dotnet-version: '3.1.402'
     - name: Build
       run: dotnet build --configuration Release
-  build_AES_NI:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Setup .NET Core
-      uses: actions/setup-dotnet@v1
-      with:
-        dotnet-version: '3.1.402'
-    - name: Build
+    - name: Build AES-NI
       run: dotnet build --configuration Release -p:DefineConstants=AES_NI
