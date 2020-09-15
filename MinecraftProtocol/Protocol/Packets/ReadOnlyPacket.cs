@@ -2,6 +2,7 @@
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Protocol.VersionCompatible;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,15 +10,18 @@ namespace MinecraftProtocol.Protocol.Packets
 {
 
     /// <summary>
-    /// 一个Packet的包装器,用于防止PacketID和PacketData被修改（如果修改原始Packet中的内容会导致这边也被修改）
+    /// 一个Packet的包装器，用于防止PacketID和PacketData被修改（如果修改原始Packet中的内容会导致这边也被修改）
     /// </summary>
     public class ReadOnlyPacket : IPacket
     {
         public int ID => _packet.ID;
-        public ReadOnlyPacketData Data { get; }
+        public ReadOnlyPacketData<byte> Data { get; }
         public int Length => _packet.Length;
         private Packet _packet;
 
+        byte IPacket.this[int index] { get => Data[index]; set => throw new NotSupportedException(); }
+        public byte this[int index] => Data[index];
+        
 
         public bool IsReadToEnd => offset >= Data.Count;
         public int Position
@@ -33,16 +37,29 @@ namespace MinecraftProtocol.Protocol.Packets
             }
         }
 
+
         private int offset;
 
         public ReadOnlyPacket(Packet packet)
         {
             this._packet = packet;
-            this.Data = new ReadOnlyPacketData(packet.Data);
+            this.Data = new ReadOnlyPacketData<byte>(packet.Data);
         }
+
+        internal ReadOnlyPacket(Packet packet, ReadOnlyPacketData<byte> data)
+        {
+            this._packet = packet;
+            this.Data = data;
+        }
+
+        /// <summary>
+        /// 创建一个共享Data的ReadOnlyPacket，如果需要从单个Packet创建大量ReadOnlyPacket，建议除了第一次全部都用这个方法来创建。
+        /// </summary>
+        public virtual ReadOnlyPacket Clone() => new ReadOnlyPacket(_packet, Data);
 
         public virtual byte[] ToBytes(int compress = -1) => _packet.ToBytes(compress);
         public virtual List<byte> ToList(int compress = -1) => _packet.ToList(compress);
+
 
         public bool ReadBoolean() => Data[offset++] == 0x01;
 

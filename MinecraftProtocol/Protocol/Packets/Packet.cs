@@ -9,10 +9,14 @@ namespace MinecraftProtocol.Protocol.Packets
 {
     public class Packet : IPacket, IEquatable<Packet>
     {
+        #pragma warning disable CS0618
         public virtual int ID { get; set; }
+        [Obsolete("请使用索引器")]
         public virtual List<byte> Data { get; set; }
+        public virtual byte this[int index] { get => Data[index]; set => Data[index] = value; }
         public virtual int Length => VarInt.GetLength(ID) + Data.Count;
         public virtual bool Empty => ID < 0 || Data is null;
+
 
         public Packet() : this(-1) { }
         public Packet(ReadOnlyPacket readOnlyPacket) : this(readOnlyPacket.ID, readOnlyPacket.Data) { }

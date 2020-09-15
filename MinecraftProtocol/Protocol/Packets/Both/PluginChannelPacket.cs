@@ -112,7 +112,7 @@ namespace MinecraftProtocol.Protocol.Packets.Both
                 throw new InvalidCastException();
             
         }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, Bound bound, bool hasForge) => Verify(packet, protocolVersion, bound, hasForge);
+        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, Bound bound, bool hasForge) => Verify(packet, protocolVersion, bound, hasForge, out _);
         public static bool Verify(ReadOnlyPacket packet, int protocolVersion, Bound bound, bool hasForge, out PluginChannelPacket pcp)
         {
             if (packet is null)
@@ -121,8 +121,8 @@ namespace MinecraftProtocol.Protocol.Packets.Both
                 throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
 
             pcp = null;
-            if ((bound.HasFlag(Bound.Client)&&packet.ID != GetPacketID(protocolVersion, Bound.Client)) ||
-                (bound.HasFlag(Bound.Server)&&packet.ID != GetPacketID(protocolVersion, Bound.Server)))
+            if (((bound & Bound.Client) == Bound.Client && packet.ID != GetPacketID(protocolVersion, Bound.Client)) ||
+                ((bound & Bound.Server) == Bound.Server && packet.ID != GetPacketID(protocolVersion, Bound.Server)))
                 return false;
 
             try

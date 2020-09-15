@@ -1,104 +1,18 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType.Chat;
-using MinecraftProtocol.Protocol;
 using MinecraftProtocol.Protocol.Packets;
+using MinecraftProtocol.Utils;
+using MinecraftProtocol.Entity;
 
-namespace MinecraftProtocol
+namespace MinecraftProtocol.Client
 {
-    public class MinecraftClientEventArgs : EventArgs
-    {
-        public virtual DateTime Time { get; }
-        public MinecraftClientEventArgs() { this.Time = DateTime.Now; }
-        public MinecraftClientEventArgs(DateTime time) { this.Time = time; }
-    }
-
-    public class PacketEventArgs : MinecraftClientEventArgs
-    {
-        public virtual bool IsCancelled => _isCancelled;
-        private bool _isCancelled;
-
-        public PacketEventArgs() : base() { }
-        public PacketEventArgs(DateTime time): base(time) { }
-
-        public virtual void Cancel()
-        {
-            _isCancelled = true;
-        }
-    }
-
-    public class PacketReceiveEventArgs : PacketEventArgs
-    {
-        public virtual TimeSpan RoundTripTime { get; }
-        public virtual ReadOnlyPacket Packet { get; }
-        
-        public PacketReceiveEventArgs(ReadOnlyPacket packet, TimeSpan roundTripTime) : this(packet, roundTripTime, DateTime.Now) { }
-        public PacketReceiveEventArgs(ReadOnlyPacket packet, TimeSpan roundTripTime, DateTime time) : base(time)
-        {
-            this.Packet = packet;
-            this.RoundTripTime = roundTripTime;
-        }
-    }
-
-    public class SendPacketEventArgs : PacketEventArgs
-    {
-        public virtual IPacket Packet { get; }
-
-        public SendPacketEventArgs(IPacket packet) : this(packet, DateTime.Now) { }
-        public SendPacketEventArgs(IPacket packet, DateTime time) : base(time)
-        {
-            this.Packet = packet;
-        }
-
-        /// <summary>
-        /// 阻止包被发送
-        /// </summary>
-        public override void Cancel() => base.Cancel(); //为了加个注释才重写的
-        
-    }
-
-    public abstract class LoginEventArgs: MinecraftClientEventArgs
-    {
-        public abstract bool IsSuccess { get; }
-
-        public LoginEventArgs(): base() { }
-        public LoginEventArgs(DateTime time) : base(time) { }
-    }
-
-    public class DisconnectEventArgs : MinecraftClientEventArgs
-    {
-        public ChatMessage Reason { get; }
-        private string rawJson;
-
-        public DisconnectEventArgs(string reason) : this(reason, DateTime.Now) { }
-        public DisconnectEventArgs(string reason, DateTime disconnectTime) : base(disconnectTime)
-        {
-            if (string.IsNullOrEmpty(reason))
-                throw new ArgumentNullException(nameof(reason));
-            this.rawJson = reason;
-            this.Reason = ChatMessage.Deserialize(reason);
-        }
-
-        public DisconnectEventArgs(ChatMessage reason) : this(reason, DateTime.Now) { }
-        public DisconnectEventArgs(ChatMessage reason, DateTime disconnectTime) : base(disconnectTime)
-        {
-            this.Reason = reason;
-        }
-
-        public override string ToString()
-        {
-            if (string.IsNullOrEmpty(rawJson))
-                return Reason.Serialize();
-            else
-                return rawJson;
-        }
-    }
 
     public abstract class MinecraftClient
     {
@@ -110,13 +24,14 @@ namespace MinecraftProtocol
         public virtual int CompressionThreshold { get; set; } = -1;
         public virtual int ProtocolVersion { get; set; } = -1;
 
+
         public delegate void DisconnectEventHandler(MinecraftClient sender, DisconnectEventArgs args);
 
         /// <summary>
         /// 接收到包事件
         /// </summary>
-        public abstract event PacketReceiveEventHandler PacketReceived;
-        public delegate void PacketReceiveEventHandler(MinecraftClient sender, PacketReceiveEventArgs args);
+        public abstract event PacketReceivedEventHandler PacketReceived;
+        public delegate void PacketReceivedEventHandler(MinecraftClient sender, PacketReceivedEventArgs args);
 
         /// <summary>
         /// 发送包事件
@@ -141,6 +56,11 @@ namespace MinecraftProtocol
         public abstract void Connect();
 
         /// <summary>
+        /// 玩家是否已进入服务器
+        /// </summary>
+        public abstract bool Joined { get; }
+
+        /// <summary>
         /// 发送登录服务器的请求
         /// </summary>
         /// <param name="playerName">玩家名</param>
@@ -155,27 +75,47 @@ namespace MinecraftProtocol
         /// <returns>如果是false代表登陆失败</returns>
         public abstract bool Join(string playerName, out ChatMessage disconnectReason);
 
-
         /// <summary>
         /// 断开连接
         /// </summary>
         public abstract void Disconnect();
         public virtual Task DisconnectAsync() => Task.Run(Disconnect);
 
-
-        private readonly object ReceivePacketLock = new object();
+        /// <summary>
+        /// 监听到的数据包会被塞到这个队列里面
+        /// </summary>
+        protected ConcurrentQueue<(DateTime ReceivedTime, TimeSpan RoundTripTime, Packet Packet)> ReceiveQueue = new ConcurrentQueue<(DateTime, TimeSpan, Packet)>();
         protected CancellationTokenSource ReceivePacketCancellationToken;
-       
+        private readonly object StartListenLock = new object();
+        private StateObject _stateObject;
+        private class StateObject
+        {
+
+            //这个检查方法效率不行，我之后可能需要设置前几次使用高效一点的方法。
+            public bool Connected => NetworkUtils.CheckConnect(Socket);
+            public DateTime StartTime;
+            public Socket Socket;
+            public int Length;
+            public int Offset;
+            public byte[] Data;
+            public StateObject(Socket socket)
+            {
+                Socket = socket;
+            }
+        }
+
         /// <summary>
         /// 开始监听数据包
         /// </summary>
         public virtual void StartListen(CancellationTokenSource cancellationToken = default)
         {
-            lock(ReceivePacketLock)
+            //我为什么要锁这个来着...
+            lock (StartListenLock)
             {
                 if (ReceivePacketCancellationToken == null)
                 {
                     ReceivePacketCancellationToken = cancellationToken ?? new CancellationTokenSource();
+                    _stateObject = new StateObject(GetSocket());
                     ReceiveNextPacket(GetSocket());
                 }
             }
@@ -186,44 +126,20 @@ namespace MinecraftProtocol
         /// </summary>
         public virtual void StopListen() => ReceivePacketCancellationToken?.Cancel();
 
-        /// <summary>
-        /// 监听到的数据包会被塞到这个队列里面
-        /// </summary>
-        protected ConcurrentQueue<(DateTime ReceivedTime, TimeSpan RoundTripTime, Packet Packet)> ReceiveQueue = new ConcurrentQueue<(DateTime, TimeSpan, Packet)>();
-        private class StateObject
-        {
-
-            //这个检查方法效率不行，我之后可能需要设置前几次使用高效一点的方法。
-            public bool Connected => ProtocolHandler.CheckConnect(Socket);
-            public DateTime StartTime;
-            public Socket Socket;
-            public int Length;
-            public int Offset;
-            public byte[] Data;
-
-            public StateObject(Socket socket, int packetLength,DateTime startTime)
-            {
-                Socket = socket;
-                Offset = 0;
-                Length = packetLength;
-                Data = new byte[packetLength];
-                StartTime = startTime;
-            }
-        }
         private void ReceiveNextPacket(Socket tcp)
         {
             if (!Connected|| ReceivePacketCancellationToken.IsCancellationRequested) return;
             try
             {
-                DateTime ReceiveStartTime = DateTime.Now;
-                int PacketLength = ReceivePacketLength();
-                if (PacketLength > 0)
+                _stateObject.StartTime = DateTime.Now;
+                _stateObject.Offset = 0;
+                _stateObject.Length = ReceivePacketLength();
+                if (_stateObject.Length > 0)
                 {
-                    StateObject so = new StateObject(tcp, PacketLength, ReceiveStartTime);
-                    tcp.BeginReceive(so.Data, 0, PacketLength, SocketFlags.None, new AsyncCallback(RecieveComplete), so);
-
+                    _stateObject.Data = new byte[_stateObject.Length];
+                    tcp.BeginReceive(_stateObject.Data, 0, _stateObject.Length, SocketFlags.None, new AsyncCallback(RecieveComplete), _stateObject);
                 }
-                else if (!ProtocolHandler.CheckConnect(tcp))
+                else if (!NetworkUtils.CheckConnect(tcp))
                 {
                     throw new SocketException((int)SocketError.ConnectionReset);
                 }
@@ -260,7 +176,7 @@ namespace MinecraftProtocol
                 }
                 else if (State.Offset < State.Length)
                 {
-                    if (!State.Connected || (State.Socket.Available <= 0 && !ProtocolHandler.CheckConnect(State.Socket)))
+                    if (!State.Connected || (State.Socket.Available <= 0 && !NetworkUtils.CheckConnect(State.Socket)))
                         throw new SocketException((int)SocketError.ConnectionReset); //根据msdn写的，Socket.Available = 0 就是连接已关闭
 
                     State.Socket.BeginReceive(State.Data, State.Offset, State.Length - State.Offset, SocketFlags.None, new AsyncCallback(RecieveComplete), State);
@@ -349,6 +265,11 @@ namespace MinecraftProtocol
         /// 获取Socket,用于实现自己的的包监听(也就是说调用了StartListen就不要在获取了,不然不安全)
         /// </summary>
         public abstract Socket GetSocket();
+
+        /// <summary>
+        /// 获取玩家
+        /// </summary>
+        public abstract Player GetPlayer();
 
         /// <summary>
         /// 获取服务器地址

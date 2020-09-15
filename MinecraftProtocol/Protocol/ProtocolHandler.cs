@@ -8,11 +8,14 @@ using MinecraftProtocol.Protocol.Packets;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.Protocol.VersionCompatible;
 using System.Net;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.Protocol
 {
+
     public static class ProtocolHandler
     {
+#pragma warning disable CS0618 // 类型或成员已过时
         /*
          * 数据包格式(https://github.com/bangbang93/minecraft-protocol/blob/master/protocol.md)
          * 
@@ -60,12 +63,6 @@ namespace MinecraftProtocol.Protocol
             recPacket.ID = ReadVarInt(recPacket.Data);
             return recPacket;
         }
-        public static bool CheckConnect(Socket tcp)
-        {
-            var connections = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpConnections()
-                .Where(x => x.LocalEndPoint.Equals(tcp.LocalEndPoint) && x.RemoteEndPoint.Equals(tcp.RemoteEndPoint));
-            return connections != null && connections.Any() && connections.First().State == System.Net.NetworkInformation.TcpState.Established;
-        }
         private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, Socket tcp)
         {
             int read = 0;
@@ -74,7 +71,7 @@ namespace MinecraftProtocol.Protocol
             {
                 if (count >= 26)
                 {
-                    if (!CheckConnect(tcp))
+                    if (!NetworkUtils.CheckConnect(tcp))
                     {
                         tcp.Disconnect(false);
                         throw new SocketException((int)SocketError.ConnectionReset);
@@ -334,15 +331,19 @@ namespace MinecraftProtocol.Protocol
         /// <summary>
         /// 拼接Byte数组
         /// </summary>
-        public static byte[] ConcatBytes(params IEnumerable<byte>[] bytes)
+        public static byte[] ConcatBytes(params ICollection<byte>[] bytes)
         {
-            List<byte> buffer = new List<byte>();
+            int length = 0 ,offset = 0;
+            foreach (var array in bytes)
+                length += array.Count;
+            byte[] buffer = new byte[length];
             foreach (var array in bytes)
             {
                 if (array != null)
-                    buffer.AddRange(array);
+                    array.CopyTo(buffer, offset);
+                offset += array.Count;
             }
-            return buffer.ToArray();
+            return buffer;
         }
         /// <summary>
         /// 对比两个Dictionary的值是否相等
@@ -400,57 +401,6 @@ namespace MinecraftProtocol.Protocol
             return true;
         }
 
-        /// <summary>
-        /// 检查IP是否是保留地址
-        /// </summary>
-        public static bool IsReserved(this IPAddress ip)
-        {
-            if (ip.AddressFamily == AddressFamily.InterNetwork)
-                return IsAddressReserved(ip.GetAddressBytes());
-            else
-                throw new NotSupportedException("不支持IPv6");
-        }
-
-        public static bool IsAddressReserved(byte[] ip)
-        {
-            //数据来源:https://zh.wikipedia.org/wiki/%E4%BF%9D%E7%95%99IP%E5%9C%B0%E5%9D%80
-
-            //效用域:专用网络
-
-            //用于专用网络内的本地通信。
-            if (ip[0] == 10) return true;
-            //用于在电信级NAT环境中服务提供商与其用户通信。[3]
-            else if (ip[0] == 100 && (ip[1] & 0xC0) == 64) return true;
-            //用于专用网络中的本地通信。
-            else if (ip[0] == 172 && (ip[1] & 0xF0) == 16) return true;
-            //用于专用网络中的本地通信。
-            else if (ip[0] == 192 && ip[1] == 168) return true;
-            //用于IANA的IPv4特殊用途地址表。
-            else if (ip[0] == 192 && ip[1] == 0 && ip[2] == 0) return true;
-            //用于测试两个不同的子网的网间通信。
-            else if (ip[0] == 192 && (ip[1] & 0xFE) == 18) return true;
-
-
-            //效用域:主机
-
-            //用于到本地主机的环回地址。
-            else if (ip[0] == 127) return true;
-
-
-            //效用域:文档
-
-            //分配为用于文档和示例中的“TEST-NET”（测试网），它不应该被公开使用。
-            else if (ip[0] == 192 && ip[1] == 0 && ip[2] == 2) return true;
-            //分配为用于文档和示例中的“TEST-NET-2”（测试-网-2），它不应该被公开使用。
-            else if (ip[0] == 192 && ip[1] == 51 && ip[2] == 100) return true;
-            //分配为用于文档和示例中的“TEST-NET-3”（测试-网-3），它不应该被公开使用。
-            else if (ip[0] == 203 && ip[1] == 0 && ip[2] == 113) return true;
-
-            //效用域:子网
-
-            //用于单链路的两个主机之间的本地链路地址，而没有另外指定IP地址，例如通常从DHCP服务器所检索到的IP地址。
-            else if (ip[0] == 169 && ip[1] == 254) return true;
-            else return false;
-        }
+        
     }
 }

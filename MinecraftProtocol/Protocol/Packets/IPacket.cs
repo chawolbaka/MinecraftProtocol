@@ -1,13 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Collections;
 
 namespace MinecraftProtocol.Protocol.Packets
 {
     public interface IPacket
     {
-        //int GetID();
-        //IEnumerable<byte> GetData();
-        byte[] ToBytes(int compress = -1);
+        byte this[int index] { get; set; }
+
+        int ID { get; }
+        int Length { get; }
+        byte[] ToBytes(int compress);
     }
 }

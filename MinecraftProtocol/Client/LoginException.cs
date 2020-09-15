@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MinecraftProtocol.Utils
+namespace MinecraftProtocol.Client
 {
     
    public class LoginException:Exception

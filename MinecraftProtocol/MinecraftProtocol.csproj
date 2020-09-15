@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  
+
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>TRACE</DefineConstants>
   </PropertyGroup>
@@ -8,7 +8,11 @@
     <TargetFramework Condition="!$(DefineConstants.Contains('AES_NI'))">netstandard2.1</TargetFramework>
     <TargetFramework Condition="$(DefineConstants.Contains('AES_NI'))">netcoreapp3.1</TargetFramework>
   </PropertyGroup>
-  
+
+  <PropertyGroup Condition="$(DefineConstants.Contains('UNSAFE'))">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <PropertyGroup>
 
     <!--版本配置-->
@@ -23,11 +27,11 @@
     <!--xml注释文档生成-->
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
     <NoWarn>1701;1702;1591;1573;1574</NoWarn>
+  </PropertyGroup>
 
-  </PropertyGroup>  
-  
   <ItemGroup>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.7.1" Condition="$(DefineConstants.Contains('UNSAFE'))"/>
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
-  
+
 </Project>

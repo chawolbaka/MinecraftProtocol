@@ -28,12 +28,32 @@ namespace MinecraftProtocol.DataType.Forge
 
         public ModList() { this._modList = new List<ModInfo>(); }
         public ModList(params ModInfo[] mods) : this((IEnumerable<ModInfo>)mods) { }
-        public ModList(IEnumerable<ModInfo> mods):this()
+        public ModList(IEnumerable<ModInfo> mods): this()
         {
             if (mods is null)
                 throw new ArgumentNullException(nameof(mods));
 
             this._modList.AddRange(mods);
+        }
+
+        /// <summary>
+        /// 通过字符串解析mod列表
+        /// </summary>
+        /// <param name="mods">格式: NAME@VERSION,NAME@VERSION,NAME@VERSION,....</param>
+        public static ModList Parse(string mods)
+        {
+            if (string.IsNullOrWhiteSpace(mods))
+                throw new ArgumentNullException(nameof(mods));
+
+            ModList result = new ModList();
+            foreach (var mod in mods.Split(','))
+            {
+                int index = mod.LastIndexOf('@');
+                result.Add(new ModInfo(
+                    modName: mod.AsSpan().Slice(0, index).ToString(),
+                    modVersion: mod.AsSpan().Slice(index).ToString()));
+            }
+            return result;
         }
 
         public byte[] ToBytes()

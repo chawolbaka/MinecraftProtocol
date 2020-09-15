@@ -8,9 +8,7 @@ namespace MinecraftProtocol.Compression
 
     public static class VarInt
     {
-        public delegate byte ReadByteHandle();
 
-        private const int MaskIntSigned = 0b1000_0000_0000_0000_0000_0000;
         private const byte MaskByteSigned = 0b1000_0000;
         private const byte MaskValue = 0b0111_1111;
 
@@ -28,16 +26,16 @@ namespace MinecraftProtocol.Compression
         public static int Read(Stream stream, out int readCount) => Read(() => { int read = stream.ReadByte(); return read >= 0 ? (byte)read : throw new InvalidDataException("negative"); }, out readCount);
         public static int Read(Socket socket) => Read(socket, out _);
         public static int Read(Socket socket, out int readCount) => Read(() => { byte[] buffer = new byte[1]; socket.Receive(buffer); return buffer[0]; }, out readCount);
-        public static int Read(ReadByteHandle read) => Read(read, out _);
-        public static int Read(ReadByteHandle read, out int readCount)
+        public static int Read(Func<byte> readByte) => Read(readByte, out _);
+        public static int Read(Func<byte> readByte, out int readCount)
         {
-            if (read == null)
-                throw new ArgumentNullException(nameof(read));
+            if (readByte == null)
+                throw new ArgumentNullException(nameof(readByte));
 
             int result = 0;
             for (int i = 0; i < 5; i++)
             {
-                byte b = read();
+                byte b = readByte();
                 result |= (b & MaskValue) << i * 7;
                 if ((b & MaskByteSigned) == 0)
                 {
