@@ -11,11 +11,11 @@ namespace MinecraftProtocol.Protocol.Packets
         public PacketException(string message, Exception innerException) : base(message, innerException) { }
         public PacketException(string message, Packet packet) : base(message)
         {
-            this._packet = new Packet(packet.ID, packet.Data);
+            _packet = packet.Clone();
         }
         public PacketException(string message, Packet packet, Exception innerException) : base(message, innerException)
         {
-            this._packet = new Packet(packet.ID, packet.Data);
+            _packet = packet.Clone();
         }
     }
 }

@@ -72,18 +72,15 @@ namespace MinecraftProtocol.DataType.Forge
             }
             return data;
         }
-        public static ModList Read(List<byte> data)
+        public static ModList Read(ReadOnlySpan<byte> data)
         {
-            if (data is null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Count < 1)
+            if (data.Length < 1)
                 throw new ArgumentOutOfRangeException(nameof(data), "data length too short");
             if (data[0] != Discriminator)
                 throw new InvalidCastException($"Invalid Discriminator {data[0]}");
 
             ModList ML = new ModList();
-            ReadOnlySpan<byte> buffer = data.ToArray().AsSpan().Slice(1);
-            buffer.ReadVarInt(out int ModCount).ReadStringArray(out string[] array, ModCount * 2);
+            data.Slice(1).ReadVarInt(out int ModCount).ReadStringArray(out string[] array, ModCount * 2);
             for (int i = 0; i < ModCount; i++)
                 ML.Add(new ModInfo(array[i + i], array[i + i + 1]));
 

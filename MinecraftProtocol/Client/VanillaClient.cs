@@ -58,7 +58,7 @@ namespace MinecraftProtocol.Client
         protected LoginEventHandler _loginSuccess;
         protected DisconnectEventHandler _kicked;
         protected DisconnectEventHandler _disconnected;
-        protected Player Player;
+        protected Player _player;
 
         private VanillaLoginEventHandler _loginStatusChanged;
 
@@ -111,7 +111,7 @@ namespace MinecraftProtocol.Client
             ProtocolVersion = protocolVersion >= 0 ? protocolVersion : throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议号不能小于0");
             if (Settings == null)
                 Settings = ProtocolVersion >= ProtocolVersionNumbers.V1_12_pre3 ? ClientSettings.Default : ClientSettings.LegacyDefault;
-            _loginSuccess += (sender, e) => Player.Init(this);
+            _loginSuccess += (sender, e) => _player.Init(this);
         }
         public VanillaClient(string host, IPAddress serverIP, ushort serverPort, int protocolVersion) : this(host, serverIP, serverPort, null, protocolVersion) { }
         public VanillaClient(string host, IPEndPoint remoteEP, int protocolVersion) : this(host, remoteEP, null, protocolVersion) { }
@@ -169,7 +169,7 @@ namespace MinecraftProtocol.Client
             {
                 LoginStatus = VanillaLoginStatus.Success;
                 SetPlayer(lsp);
-                this._joined = true;
+                _joined = true;
                 disconnectReason = null;
                 return true;
             }
@@ -226,7 +226,7 @@ namespace MinecraftProtocol.Client
             }
             if (ServerResponse != null && SetCompressionPacket.Verify(ServerResponse, ProtocolVersion, out int? threshold))
             {
-                this.CompressionThreshold = threshold.Value;
+                CompressionThreshold = threshold.Value;
                 LoginStatus = VanillaLoginStatus.SetCompression;
                 ServerResponse = ReadPacket();
             }
@@ -243,7 +243,7 @@ namespace MinecraftProtocol.Client
             if (!Joined)
                 return null;
             else
-                return Player;
+                return _player;
         }
 
         protected virtual void SetPlayer(Packet packet)
@@ -255,7 +255,7 @@ namespace MinecraftProtocol.Client
                 lsp = packet as LoginSuccessPacket;
             else if (!LoginSuccessPacket.Verify(packet, ProtocolVersion, out lsp))
                 throw new InvalidPacketException(packet);
-            Player = new Player(lsp.PlayerName, UUID.Parse(lsp.PlayerUUID));
+            _player = new Player(lsp.PlayerName, UUID.Parse(lsp.PlayerUUID));
         }
 
 
@@ -338,8 +338,7 @@ namespace MinecraftProtocol.Client
                             foreach (PacketReceivedEventHandler Method in _packetReceived.GetInvocationList())
                             {
                                 //ReadOnlyPacket内部有个offset，所以必须保证大家拿到的不指向同一个引用。
-                                ReadOnlyPacket packet = data.Packet.AsReadOnly();
-                                PacketReceivedEventArgs EventArgs = new PacketReceivedEventArgs(packet.Clone(), data.RoundTripTime, data.ReceivedTime);
+                                PacketReceivedEventArgs EventArgs = new PacketReceivedEventArgs(data.Packet.AsReadOnly(), data.RoundTripTime, data.ReceivedTime);
                                 Method.Invoke(this, EventArgs);
                                 if (EventArgs.IsCancelled)
                                     break;
@@ -371,6 +370,7 @@ namespace MinecraftProtocol.Client
         }
         protected override bool BasePacketHandler(Packet packet)
         {
+            //这个方法数据不够 没有接收到的时间
             if (DisconnectPacket.Verify(packet,ProtocolVersion,out DisconnectPacket dp))
             {
                 _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason));
@@ -379,7 +379,7 @@ namespace MinecraftProtocol.Client
             }
             else if (_autoKeepAlive && KeepAliveRequestPacket.Verify(packet, ProtocolVersion))
             {
-                SendPacketAsync(new KeepAliveResponsePacket(packet.Data, ProtocolVersion));
+                SendPacketAsync(new KeepAliveResponsePacket(packet.AsSpan(), ProtocolVersion));
                 return true;
             }
 
@@ -413,7 +413,7 @@ namespace MinecraftProtocol.Client
                 ReceiveQueue?.Clear();
                 TCP = null;
                 CompressionThreshold = -1;
-                Player = null;
+                _player = null;
                 PacketQueueHandleThread = null;
                 ReceivePacketCancellationToken = null;
                 _disconnected?.Invoke(this, new DisconnectEventArgs(reason));

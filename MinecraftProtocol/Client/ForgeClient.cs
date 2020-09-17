@@ -13,6 +13,7 @@ using MinecraftProtocol.Protocol.VersionCompatible;
 using System.Collections;
 using System.Threading.Tasks;
 using MinecraftProtocol.Client.Channels;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.Client
 {
@@ -106,7 +107,7 @@ namespace MinecraftProtocol.Client
                         foreach (var channel in Channel)
                         {
                             if (channel.CanRead && channel.ToString() == pcp.Channel)
-                                channel.TriggerEvent(pcp.Data.ToArray());
+                                channel.TriggerEvent(pcp.Data);
                         }
                     }
                 });
@@ -126,7 +127,7 @@ namespace MinecraftProtocol.Client
                 PluginChannelPacket RegisterChannelPacket = ReadPluginMessage();
                 string[] ServerChannels;
                 if (RegisterChannelPacket.Channel == "REGISTER")
-                    ServerChannels = Encoding.UTF8.GetString(RegisterChannelPacket.Data.ToArray()).Split('\0');
+                    ServerChannels = Encoding.UTF8.GetString(RegisterChannelPacket.Data).Split('\0');
                 else
                     throw new LoginException("错误的登录流程");
 
@@ -147,6 +148,7 @@ namespace MinecraftProtocol.Client
                 UpdateLoginStatus(ForgeLoginStatus.ClientHello);
 
                 //C→S: 发送客户端mod列表, 服务器会拿去和自己的比较,如果有缺少就断开连接。
+                var x = NetworkUtils.CheckConnect(TCP);
                 Channel["FML|HS"].Send(_clientModList.ToBytes());
                 UpdateLoginStatus(ForgeLoginStatus.SendModList);
 
@@ -173,7 +175,7 @@ namespace MinecraftProtocol.Client
                     try
                     {
                         PluginChannelPacket StatePacket = ReadPluginMessage();
-                        if (StatePacket.Data.Count != 2)
+                        if (StatePacket.Data.Length != 2)
                             continue;
                         else if (HandshakeAck.Read(StatePacket.Data) == FMLHandshakeServerState.WAITINGCACK)
                             HandshakeState = FMLHandshakeClientState.PENDINGCOMPLETE;
@@ -217,7 +219,7 @@ namespace MinecraftProtocol.Client
             SendPacket(new PluginChannelPacket(channel, forgeStruct, ProtocolVersion, Bound.Client, true));
         }
 
-        public virtual void SendPluginMessage(string channel, IEnumerable<byte> data)
+        public virtual void SendPluginMessage(string channel, byte[] data)
         {
             SendPacket(new PluginChannelPacket(channel, data, ProtocolVersion, Bound.Client, true));
         }

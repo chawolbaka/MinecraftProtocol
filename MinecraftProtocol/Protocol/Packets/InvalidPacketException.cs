@@ -6,7 +6,7 @@ namespace MinecraftProtocol.Protocol.Packets
     {
         public InvalidPacketException(Packet packet) : base()
         {
-            this._packet = new Packet(packet.ID, packet.Data);
+            _packet = packet.Clone();
         }
         public InvalidPacketException(string message) : base(message) { }
         public InvalidPacketException(string message, Exception innerException) : base(message, innerException) { }

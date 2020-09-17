@@ -31,7 +31,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
                 throw new ArgumentNullException(nameof(packet));
 
             code = null;
-            if (packet.ID == id && packet.Data.Count == 8)
+            if (packet.ID == id && packet.Count == 8)
                 code = packet.ReadLong();
             return !(code is null);
         }

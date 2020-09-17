@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using MinecraftProtocol.Protocol.Packets.Both;
@@ -27,7 +28,7 @@ namespace MinecraftProtocol.Client.Channels
             if (!CanSend)
                 return;
 
-            PluginChannelPacket packet = new PluginChannelPacket(_channelName, data, _client.ProtocolVersion, Bound.Client, _client is ForgeClient);
+            PluginChannelPacket packet = new PluginChannelPacket(_channelName, data as byte[] ?? data.ToArray(), _client.ProtocolVersion, Bound.Client, _client is ForgeClient);
             _client.SendPacket(packet);
         }
 

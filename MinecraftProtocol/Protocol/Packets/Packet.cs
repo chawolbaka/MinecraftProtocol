@@ -4,51 +4,90 @@ using System.Collections.Generic;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.Protocol.VersionCompatible;
+using System.Linq;
+using System.Collections;
 
 namespace MinecraftProtocol.Protocol.Packets
 {
-    public class Packet : IPacket, IEquatable<Packet>
+    public class Packet : IPacket, IEnumerable<byte>, IEquatable<Packet>
     {
-        #pragma warning disable CS0618
-        public virtual int ID { get; set; }
-        [Obsolete("请使用索引器")]
-        public virtual List<byte> Data { get; set; }
-        public virtual byte this[int index] { get => Data[index]; set => Data[index] = value; }
-        public virtual int Length => VarInt.GetLength(ID) + Data.Count;
-        public virtual bool Empty => ID < 0 || Data is null;
+        public virtual bool IsEmpty => ID < 0 || _data is null;
 
+        public virtual int ID { get; set; }
+      
+        public virtual int Count => _size;
+
+        public virtual byte this[int index]
+        {
+            get
+            {
+                if (index > _size)
+                    throw new IndexOutOfRangeException("Index was outside the bounds of the packet.");
+                else
+                    return _data[index];
+            }
+            set
+            {
+                if (index > _size)
+                    throw new IndexOutOfRangeException("Index was outside the bounds of the packet.");
+                else
+                    _data[index] = value;
+            }
+        }
+
+        public virtual int Capacity
+        {
+            get => _data.Length;
+            set
+            {
+                if (value < _size)
+                    throw new ArgumentOutOfRangeException(nameof(Capacity), "Capacity was less than the current size.");
+                if (value == _size)
+                    return;
+
+                byte[] temp = new byte[value];
+                Array.Copy(_data, temp, _size);
+                _data = temp;
+            }
+        }
+
+        /// <summary>
+        /// 和List内部的_items一样后面可能有空白的部分
+        /// </summary>
+        protected byte[] _data;
+        private int _size = 0;
+
+        private const int DEFUALT_CAPACITY = 16;
 
         public Packet() : this(-1) { }
-        public Packet(ReadOnlyPacket readOnlyPacket) : this(readOnlyPacket.ID, readOnlyPacket.Data) { }
-        public Packet(int packetID)
+        public Packet(int packetID) : this(packetID, DEFUALT_CAPACITY) { }
+        public Packet(int packetID, int capacity = DEFUALT_CAPACITY)
         {
-            this.ID = packetID;
-            this.Data = new List<byte>();
+            ID = packetID;
+            _data = new byte[capacity];
         }
-        public Packet(int packetID, IEnumerable<byte> packetData)
+        public Packet(int packetID, byte[] packetData)
         {
-            this.ID = packetID;
-            this.Data = new List<byte>(packetData);
+            ID = packetID;
+            _data = packetData;
+            _size = _data.Length;
         }
-        public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID)
-        {
-            Data.Capacity += packetData.Length;
-            for (int i = 0; i < packetData.Length; i++)
-                Data.Add(packetData[i]);
-        }
+        public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID, packetData.ToArray()) { }
+        public Packet(ReadOnlyPacket packet) : this(packet.ID, packet.AsSpan()) { }
 
         /// <summary>
         /// 生成发送给服务端的包
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        /// <exception cref="IndexOutOfRangeException"></exception>
+        /// <exception cref="ArgumentOutOfRangeException"/>
+        /// <exception cref="IndexOutOfRangeException"/>
         public virtual byte[] ToBytes(int compress = -1)
         {
-            if (Empty)
+            if (IsEmpty)
                 throw new PacketException("Packet is empty");
 
             byte[] PacketData;
+            int Length = VarInt.GetLength(ID) + Count;
             if (compress > 0)
             {
                 /*
@@ -59,11 +98,12 @@ namespace MinecraftProtocol.Protocol.Packets
                  * 解压后长度 Varint  若为0则表示本包未被压缩
                  * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
                  */
-                if (Data.Count >= compress)
+                if (_data.Length >= compress)
                 {
                     //拼接PacketID(VarInt)和PacketData(ByteArray)并塞入ZlibUtils.Compress去压缩
                     byte[] uncompressed = new byte[Length];
-                    Data.CopyTo(uncompressed, VarInt.WriteTo(ID, uncompressed));
+                    AsSpan().CopyTo(uncompressed.AsSpan().Slice(VarInt.WriteTo(ID, uncompressed)));
+                    //Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(ID, uncompressed), uncompressed.Length);
                     byte[] compressed = ZlibUtils.Compress(uncompressed);
 
                     PacketData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressed.Length) + compressed.Length) + VarInt.GetLength(uncompressed.Length) + compressed.Length];
@@ -76,12 +116,12 @@ namespace MinecraftProtocol.Protocol.Packets
                 }
                 else
                 {
-                    PacketData = new byte[VarInt.GetLength(Length+1) + Length + 1];
+                    PacketData = new byte[VarInt.GetLength(Length + 1) + Length + 1];
                     int offset = VarInt.WriteTo(Length + 1, PacketData);
                     PacketData[offset++] = 0;
                     offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
-                    if (Data.Count > 0)
-                        Data.CopyTo(PacketData, offset);
+                    if (_data.Length > 0)
+                        Array.Copy(_data, 0, PacketData, offset, PacketData.Length - offset);
                 }
             }
             else
@@ -89,148 +129,144 @@ namespace MinecraftProtocol.Protocol.Packets
                 PacketData = new byte[VarInt.GetLength(Length) + Length];
                 int offset = VarInt.WriteTo(Length, PacketData);
                 offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
-                if (Data.Count > 0)
-                    Data.CopyTo(PacketData, offset);
+                if (_data.Length > 0)
+                    Array.Copy(_data, 0, PacketData, offset, PacketData.Length-offset);
             }
             return PacketData;
         }
-
-        /// <summary>
-        /// 生成发送给服务端的包
-        /// </summary>
-        /// <param name="compress">数据包压缩的阚值</param>
-        /// <exception cref="ArgumentOutOfRangeException"></exception>
-        public virtual List<byte> ToList(int compress = -1)
-        {
-            if (Empty)
-                throw new PacketException("Packet is empty");
-
-            List<byte> PacketData = new List<byte>();
-            PacketData.Capacity = Length;
-            if (compress > 0)
-            {
-                if (Data.Count >= compress)
-                {
-                    PacketData.AddRange(VarInt.GetBytes(Length));
-                    int IdLength = VarInt.GetLength(ID);
-                    byte[] buffer = new byte[IdLength + Data.Count];
-                    Array.Copy(VarInt.GetBytes(ID), 0, buffer, 0, IdLength);
-                    Data.CopyTo(buffer, IdLength);
-                    PacketData.AddRange(ZlibUtils.Compress(buffer));
-                    PacketData.InsertRange(0, VarInt.GetBytes(PacketData.Count));
-                }
-                else
-                {
-                    PacketData.AddRange(VarInt.GetBytes(Length + 1));
-                    PacketData.Add(0);
-                    PacketData.AddRange(VarInt.GetBytes(ID));
-                    PacketData.AddRange(Data);
-                }
-            }
-            else
-            {
-                PacketData.AddRange(VarInt.GetBytes(Length));
-                PacketData.AddRange(VarInt.GetBytes(ID));
-                PacketData.AddRange(Data);
-
-            }
-            return PacketData;
-        }
-
-
-        public virtual void WriteBoolean(bool boolean)
+        
+        public virtual Packet WriteBoolean(bool boolean)
         {
             if (boolean)
                 WriteUnsignedByte(0x01);
             else
                 WriteUnsignedByte(0x00);
+            return this;
         }
-        public virtual void WriteByte(sbyte value)
+        public virtual Packet WriteByte(sbyte value)
         {
-            Data.Add((byte)value);
+            TryAllocateCapacity(sizeof(sbyte));
+            _data[_size++] = (byte)value;
+            return this;
         }
-        public virtual void WriteUnsignedByte(byte value)
+        public virtual Packet WriteUnsignedByte(byte value)
         {
-            Data.Add(value);
+            TryAllocateCapacity(sizeof(byte));
+            _data[_size++] = value;
+            return this;
         }
-        public virtual void WriteString(string value)
+        public virtual Packet WriteString(string value)
         {
             byte[] str = Encoding.UTF8.GetBytes(value);
+            TryAllocateCapacity(VarInt.GetLength(str.Length) + str.Length);
             WriteVarInt(str.Length);
             WriteBytes(str);
+            return this;
         }
-        public virtual void WriteShort(short value)
+        public virtual Packet WriteShort(short value)
         {
-            byte[] data = new byte[2];
-            for (int i = data.Length; i > 0; i--)
-            {
-                data[i - 1] |= (byte)value;
-                value >>= 8;
-            }
-            WriteBytes(data);
+            TryAllocateCapacity(2);
+            _data[_size++] = (byte)(value >> 8);
+            _data[_size++] = (byte)value;
+            return this;
         }
-        public virtual void WriteUnsignedShort(ushort value)
+        public virtual Packet WriteUnsignedShort(ushort value)
         {
-            byte[] data = new byte[2];
-            for (int i = data.Length; i > 0; i--)
-            {
-                data[i - 1] |= (byte)value;
-                value >>= 8;
-            }
-            WriteBytes(data);
+            TryAllocateCapacity(2);
+            _data[_size++] = (byte)(value >> 8);
+            _data[_size++] = (byte)value;
+            return this;
         }
-        public virtual void WriteInt(int value)
+        public virtual Packet WriteInt(int value)
         {
-            byte[] data = new byte[4];
-            for (int i = data.Length; i > 0; i--)
-            {
-                data[i - 1] |= (byte)value;
-                value >>= 8;
-            }
-            WriteBytes(data);
+            TryAllocateCapacity(4);
+            _data[_size++] = (byte)(value >> 24);
+            _data[_size++] = (byte)(value >> 16);
+            _data[_size++] = (byte)(value >> 8);
+            _data[_size++] = (byte)value;
+            return this;
         }
-        public virtual void WriteLong(long value)
+        public virtual Packet WriteLong(long value)
         {
-            byte[] data = new byte[8];
-            for (int i = data.Length; i > 0; i--)
-            {
-                data[i - 1] |= (byte)value;
-                value >>= 8;
-            }
-            WriteBytes(data);
+            TryAllocateCapacity(8);
+            _data[_size++] = (byte)(value >> 54);
+            _data[_size++] = (byte)(value >> 48);
+            _data[_size++] = (byte)(value >> 40);
+            _data[_size++] = (byte)(value >> 32);
+            _data[_size++] = (byte)(value >> 24);
+            _data[_size++] = (byte)(value >> 16);
+            _data[_size++] = (byte)(value >> 8);
+            _data[_size++] = (byte)value;
+            return this;
         }
-        public virtual void WriteFloat(float value)
+        public virtual Packet WriteFloat(float value)
         {
-            byte[] data = BitConverter.GetBytes(value);
-            Array.Reverse(data);
-            WriteBytes(data);
+            TryAllocateCapacity(sizeof(float));
+            BitConverter.GetBytes(value).CopyTo(_data,_size);
+            _data.AsSpan().Slice(_size, sizeof(float)).Reverse();
+            _size+=sizeof(float);
+            return this;
         }
-        public virtual void WriteDouble(double value)
+        public virtual Packet WriteDouble(double value)
         {
-            byte[] data = BitConverter.GetBytes(value);
-            Array.Reverse(data);
-            WriteBytes(data);
+            TryAllocateCapacity(sizeof(double));
+            BitConverter.GetBytes(value).CopyTo(_data, _size);
+            _data.AsSpan().Slice(_size, sizeof(double)).Reverse();
+            _size += sizeof(double);
+            return this;
         }
-        public virtual void WriteVarShort(int value)
+        public virtual Packet WriteVarShort(int value)
         {
             WriteBytes(VarShort.GetBytes(value));
+            return this;
         }
-        public virtual void WriteVarInt(int value)
+        public virtual Packet WriteVarInt(int value)
         {
             WriteBytes(VarInt.GetBytes(value));
+            return this;
         }
-        public virtual void WriteVarLong(long value)
+        public virtual Packet WriteVarLong(long value)
         {
             WriteBytes(VarLong.GetBytes(value));
+            return this;
         }
-        public virtual void WriteUUID(UUID value)
+        public virtual Packet WriteUUID(UUID value)
         {
+            TryAllocateCapacity(sizeof(long)*2);
             WriteLong(value.Most);
             WriteLong(value.Least);
+            return this;
         }
-        public virtual void WriteBytes(IEnumerable<byte> value) => Data.AddRange(value);
-        public virtual void WriteBytes(params byte[] value) => Data.AddRange(value);
-        public virtual void WriteByteArray(byte[] array, int protocolVersion)
+        public virtual Packet WriteBytes(params ICollection<byte>[] collections)
+        {
+            int length = 0;
+            foreach (var conllection in collections)
+                length += conllection.Count;
+            TryAllocateCapacity(length);
+
+            foreach (var collection in collections)
+            {
+                collection.CopyTo(_data, _size);
+                _size += collection.Count;
+            }
+            return this;
+        }
+        public virtual Packet WriteBytes(params byte[] value)
+        {
+            TryAllocateCapacity(value.Length);
+            Array.Copy(value, 0, _data, _size, value.Length);
+            _size += value.Length;
+            return this;
+        }
+
+        public virtual Packet WriteBytes(ReadOnlySpan<byte> value)
+        {
+            TryAllocateCapacity(value.Length);
+            value.CopyTo(_data.AsSpan(_size));
+            _size += value.Length;
+            return this;
+        }
+        public virtual Packet WriteByteArray(byte[] array, int protocolVersion)
         {
             //14w21a: All byte arrays have VarInt length prefixes instead of short
             if (protocolVersion >= ProtocolVersionNumbers.V14w21a)
@@ -238,14 +274,26 @@ namespace MinecraftProtocol.Protocol.Packets
             else
                 WriteShort((short)array.Length);
             WriteBytes(array);
+            return this;
         }
+
+        protected virtual void TryAllocateCapacity(int writeLength)
+        {
+            //这样子是不是有点浪费内存?
+            if (writeLength + _size > Capacity)
+                Capacity += writeLength > 128 ? writeLength : (int)(writeLength * 1.2);
+        }
+
 
         public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
         public virtual ReadOnlyPacket AsReadOnly() => new ReadOnlyPacket(this);
 
+        public Span<byte> AsSpan() => _data.AsSpan(0, _size);
+        public Packet Clone() => new Packet(ID, AsSpan());
+
         public override string ToString()
         {
-            return $"PacketID: {ID} PacketLength: {Data.Count}";
+            return $"ID: {ID}, Count: {Count}";
         }
         public override bool Equals(object obj)
         {
@@ -254,31 +302,40 @@ namespace MinecraftProtocol.Protocol.Packets
             else
                 return false;
         }
-        public static bool operator ==(Packet left, Packet right)
-        {
-            if (object.ReferenceEquals(left, null))
-                return object.ReferenceEquals(right, null);
-            else
-                return left.Equals(right);
-        }
-        public static bool operator !=(Packet left, Packet right) => !(left == right);
         public bool Equals(Packet packet)
         {
             if (packet is null) return false;
-            if (this.ID != packet.ID) return false;
-            if (this.Data.Count != packet.Data.Count) return false;
-            if (object.ReferenceEquals(this, packet)) return true;
-            for (int i = 0; i < packet.Data.Count; i++)
+            if (ID != packet.ID) return false;
+            if (_data.Length != packet.Count) return false;
+            if (ReferenceEquals(this, packet)) return true;
+            for (int i = 0; i < packet.Count; i++)
             {
-                if (this.Data[i] != packet.Data[i])
+                if (this[i] != packet[i])
                     return false;
             }
             return true;
         }
         public override int GetHashCode()
         {
-            //return ID ^ Data.GetHashCode();
-            return HashCode.Combine(ID, Data);
+            return HashCode.Combine(ID, _data);
+        }
+
+        public void CopyTo(byte[] array, int arrayIndex)
+        {
+            if (arrayIndex == 0)
+                _data.AsSpan().Slice(0, _size).CopyTo(array);
+            else
+                _data.AsSpan().Slice(0, _size).CopyTo(array.AsSpan().Slice(arrayIndex));
+        }
+
+        IEnumerator<byte> IEnumerable<byte>.GetEnumerator()
+        {
+            return ((IList<byte>)_data.AsSpan(0, _size).ToArray()).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return _data.AsSpan(0, _size).ToArray().GetEnumerator();
         }
     }
 }

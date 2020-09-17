@@ -54,7 +54,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
             lsp = null;
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
-            if (packet.Data.Count <= 34)//随便猜的最低长度,实际上应该更高（但是我懒的算)
+            if (packet.Count <= 34)//随便猜的最低长度,实际上应该更高（但是我懒的算)
                 return false;
 
             try

@@ -181,12 +181,12 @@ namespace MinecraftProtocol.Utils
             if (EnableDnsRoundRobin&&IPAddressList!=null&&IPAddressList.Length>1)
                 DnsRoundRobinHandler();
             if(!socket.Connected)
-                socket.Connect(ServerIP, this.ServerPort);
+                socket.Connect(ServerIP, ServerPort);
             if (ReceiveTimeout != default)
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, this.ServerPort, -1, HandshakePacket.State.GetStatus);
+            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, ServerPort, -1, HandshakePacket.State.GetStatus);
             socket.Send(Handshake.ToBytes());
             Packet PingRequest = new PingRequestPacket();
             socket.Send(PingRequest.ToBytes());
@@ -195,10 +195,10 @@ namespace MinecraftProtocol.Utils
             int PacketLength = ProtocolHandler.GetPacketLength(socket);
             if (PacketLength > 0)
             {
-                List<byte> Packet = new List<byte>(ProtocolHandler.ReceiveData(0, PacketLength, socket));
+                List<byte> Packet = new List<byte>(NetworkUtils.ReceiveData(PacketLength, socket));
                 int PacketID = ProtocolHandler.ReadVarInt(Packet);
                 if (PacketID != PingResponsePacket.GetPacketID())
-                    throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet));
+                    throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet.ToArray()));
            
                 JsonResult = ProtocolHandler.ReadString(Packet);
                 if (!string.IsNullOrWhiteSpace(JsonResult))
@@ -287,19 +287,18 @@ namespace MinecraftProtocol.Utils
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-            TimeSpan Time;
+            Stopwatch sw = new Stopwatch();
             try
             {
                 //http://wiki.vg/Server_List_Ping#Ping
-                Stopwatch sw = new Stopwatch();
                 long code = DateTime.Now.Millisecond;
                 byte[] RequestPacket = new PingPacket(code).ToBytes();
                 sw.Start();
                 socket.Send(RequestPacket);
 
                 //http://wiki.vg/Server_List_Ping#Pong
-                ReadOnlySpan<byte> ResponesPacket = ProtocolHandler.ReceiveData(0, ProtocolHandler.GetPacketLength(socket), socket);
-                sw.Stop(); Time = sw.Elapsed;
+                ReadOnlySpan<byte> ResponesPacket = NetworkUtils.ReceiveData(ProtocolHandler.GetPacketLength(socket), socket);
+                sw.Stop();
 
                 //校验
                 if (ResponesPacket.Length != 9 || ResponesPacket[0] != 0x01)
@@ -313,12 +312,14 @@ namespace MinecraftProtocol.Utils
 #if DEBUG
                 throw;
 #else
-                    return null;//在正式发布的时候不能因为获取延迟时发生异常就影响到整个程序的运行
+                //有一些服务端或反向代理会导致最后的这两个测量延迟的包没被发送
+                //但json应该是拿到了的，不能因为拿不到延迟就报错导致拿不到json
+                return null;
 #endif
 
             }
 
-            return Time;
+            return sw.Elapsed;
         }
 
         private void DnsRoundRobinHandler()

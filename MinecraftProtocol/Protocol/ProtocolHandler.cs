@@ -39,54 +39,6 @@ namespace MinecraftProtocol.Protocol
         /// <summary>获取数据包的长度</summary>
         public static int GetPacketLength(Socket tcp) => VarInt.Read(tcp);
 
-        public static byte[] ReceiveData(int start, int offset, Socket tcp)
-        {
-            byte[] buffer = new byte[offset - start];
-            Receive(buffer, start, offset, SocketFlags.None, tcp);
-            return buffer;
-        }
-        public static Packet ReceivePacket(Socket tcp,int compressionThreshold)
-        {
-            Packet recPacket = new Packet();
-            int PacketLength = VarInt.Read(tcp);
-            recPacket.WriteBytes(ReceiveData(0, PacketLength, tcp));
-            if (compressionThreshold > 0)
-            {
-                int DataLength = ReadVarInt(recPacket.Data);
-                if (DataLength != 0) //如果是0的话就代表这个数据包没有被压缩
-                {
-                    byte[] uncompressed = ZlibUtils.Decompress(recPacket.Data.ToArray(), DataLength);
-                    recPacket.Data.Clear();
-                    recPacket.Data.AddRange(uncompressed);
-                }
-            }
-            recPacket.ID = ReadVarInt(recPacket.Data);
-            return recPacket;
-        }
-        private static void Receive(byte[] buffer, int start, int offset, SocketFlags flags, Socket tcp)
-        {
-            int read = 0;
-            int count = 0;
-            while (read < offset)
-            {
-                if (count >= 26)
-                {
-                    if (!NetworkUtils.CheckConnect(tcp))
-                    {
-                        tcp.Disconnect(false);
-                        throw new SocketException((int)SocketError.ConnectionReset);
-                    }
-                    else
-                        count /= 2;
-                }
-                else
-                {
-                    read += tcp.Receive(buffer, start + read, offset - read, flags);
-                    count++;
-                }
-            }
-        }
-
         public static bool ReadBoolean(List<byte> cache, bool readOnly = false) => ReadBoolean(cache, 0, out _, readOnly);
         public static bool ReadBoolean(List<byte> cache, int offset, bool readOnly = false) => ReadBoolean(cache, offset, out _, readOnly);
         public static bool ReadBoolean(List<byte> cache, int offset, out int count, bool readOnly = false)

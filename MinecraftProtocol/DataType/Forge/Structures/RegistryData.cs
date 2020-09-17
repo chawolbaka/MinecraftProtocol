@@ -70,32 +70,29 @@ namespace MinecraftProtocol.DataType.Forge
         }
         /// <summary>只读取HasMore字段</summary>
         public static bool ReadHasMore(List<byte> data) => ProtocolHandler.ReadBoolean(data ?? throw new ArgumentNullException(nameof(data)), 1);
-        public static RegistryData Read(List<byte> data)
+        public static RegistryData Read(ReadOnlySpan<byte> data)
         {
-            if (data is null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Count < 1)
+            if (data.Length < 1)
                 throw new ArgumentOutOfRangeException(nameof(data), "data length too short");
             if (data[0] != Discriminator)
                 throw new InvalidCastException($"Invalid Discriminator {data[0]}");
 
             RegistryData RD = new RegistryData();            
-            ReadOnlySpan<byte> buffer = data.ToArray().AsSpan().Slice(1);
-            buffer = buffer
+            data = data.Slice(1)
                 .ReadBoolean(out RD.HasMore)
                 .ReadString(out RD.Name)
                 .ReadVarInt(out int IdsCount);
 
             for (int i = 0; i < IdsCount; i++)
             {
-                buffer = buffer.ReadString(out string name).ReadVarInt(out int id);
+                data = data.ReadString(out string name).ReadVarInt(out int id);
                 RD.Ids.Add(name, id);
             }
-            buffer = buffer.ReadStringArray(out string[] substitutions);
+            data = data.ReadStringArray(out string[] substitutions);
             RD.Substitutions.AddRange(substitutions);
-            if (buffer.Length > 0)
+            if (data.Length > 0)
             {
-                buffer.ReadStringArray(out string[] dummies);
+                data.ReadStringArray(out string[] dummies);
                 RD.Dummies = new List<string>(dummies);
             }  
             return RD;

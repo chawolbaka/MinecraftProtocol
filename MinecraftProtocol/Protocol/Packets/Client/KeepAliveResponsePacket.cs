@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using MinecraftProtocol.Compression;
+using MinecraftProtocol.IO.Extensions;
 using MinecraftProtocol.Protocol.VersionCompatible;
 
 namespace MinecraftProtocol.Protocol.Packets.Client
@@ -21,21 +22,21 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         {
             get {
                 if (ProtocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1)
-                    return ProtocolHandler.ReadLong(Data, true);
+                    return SpanConvert.AsLong(_data);
                 else if (ProtocolVersion >= ProtocolVersionNumbers.V14w31a)
-                    return VarInt.Read(Data);
+                    return SpanConvert.AsVarInt(_data);
                 else
-                    return ProtocolHandler.ReadInt(Data, true);
+                    return SpanConvert.AsInt(_data);
             }
         }
         private KeepAliveResponsePacket(ReadOnlyPacket packet, int protocolVersion) : base(packet)
         {
             this.ProtocolVersion = protocolVersion;
         }
-        public KeepAliveResponsePacket(IEnumerable<byte> code, int protocolVersion) : base(GetPacketID(protocolVersion))
+        public KeepAliveResponsePacket(ReadOnlySpan<byte> code, int protocolVersion) : base(GetPacketID(protocolVersion))
         {
             this.ProtocolVersion = protocolVersion;
-            WriteBytes(code ?? throw new ArgumentNullException(nameof(code)));
+            WriteBytes(code);
         }
         public static int GetPacketID(int protocolVersion)
         {
@@ -88,12 +89,12 @@ namespace MinecraftProtocol.Protocol.Packets.Client
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
-            if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Data.Count == 8)
-                code = packet.Data.ToArray();
-            else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Data.Count <= 5 && packet.Data.Count > 0)
-                code = packet.Data.ToArray();
-            else if (protocolVersion < ProtocolVersionNumbers.V14w31a && packet.Data.Count == 4)
-                code = packet.Data.ToArray();
+            if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Count == 8)
+                code = packet.ReadAll();
+            else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Count <= 5 && packet.Count > 0)
+                code = packet.ReadAll();
+            else if (protocolVersion < ProtocolVersionNumbers.V14w31a && packet.Count == 4)
+                code = packet.ReadAll();
 
             return !(code is null);
         }

@@ -11,7 +11,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
         private const int id = 0x00;
         public string Json { get; }
 
-        private PingResponsePacket(ReadOnlyPacket packet, string json) : base(id, packet.Data) { this.Json = json; }
+        private PingResponsePacket(ReadOnlyPacket packet, string json) : base(packet) { this.Json = json; }
         public PingResponsePacket(string json) : base(id)
         {
             if (string.IsNullOrEmpty(json))

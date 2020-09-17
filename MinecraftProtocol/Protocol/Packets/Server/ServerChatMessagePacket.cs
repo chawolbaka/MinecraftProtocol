@@ -37,7 +37,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                 this.Position = position;
                 WriteUnsignedByte(position);
             }
-            if (Data.Count > 32767)
+            if (Count > 32767)
                 throw new ArgumentOutOfRangeException(nameof(json));
         }
         public static int GetPacketID(int protocolVersion)
@@ -71,7 +71,7 @@ namespace MinecraftProtocol.Protocol.Packets.Server
                 return false;
             try
             {
-                if (packet.Data.Count > 32767)
+                if (packet.Count > 32767)
                     return false;
 
                 string Json = packet.ReadString();

@@ -12,7 +12,7 @@ namespace MinecraftProtocol.Protocol.Packets.Client
         public static int GetPacketID() => id;
         public static bool Verify(ReadOnlyPacket packet, out PingRequestPacket prp)
         {
-            prp = packet.ID == id && packet.Data.Count == 0 ? new PingRequestPacket() : null;
+            prp = packet.ID == id && packet.Count == 0 ? new PingRequestPacket() : null;
             return !(prp is null);
         }
     }

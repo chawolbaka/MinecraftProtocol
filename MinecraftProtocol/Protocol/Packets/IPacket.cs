@@ -8,7 +8,7 @@ namespace MinecraftProtocol.Protocol.Packets
         byte this[int index] { get; set; }
 
         int ID { get; }
-        int Length { get; }
+        int Count { get; }
         byte[] ToBytes(int compress);
     }
 }

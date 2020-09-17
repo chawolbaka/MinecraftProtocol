@@ -9,6 +9,35 @@ namespace MinecraftProtocol.Utils
     public static class NetworkUtils
     {
 
+        /// <summary>
+        /// 一直接收，直到length全部被读取完
+        /// </summary>
+        public static byte[] ReceiveData(int length, Socket tcp)
+        {
+            byte[] buffer = new byte[length]; 
+            int read = 0;
+            int count = 0;
+            while (read < length)
+            {
+                if (count >= 26)
+                {
+                    if (!CheckConnect(tcp))
+                    {
+                        tcp.Disconnect(false);
+                        throw new SocketException((int)SocketError.ConnectionReset);
+                    }
+                    else
+                        count /= 2;
+                }
+                else
+                {
+                    read += tcp.Receive(buffer, read, length - read, SocketFlags.None);
+                    count++;
+                }
+            }
+            return buffer;
+        }
+
         public static bool CheckConnect(Socket tcp)
         {
             try
