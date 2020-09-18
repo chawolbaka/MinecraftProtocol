@@ -13,7 +13,7 @@ ps：英文完全不会，C#只学了一点点(真的非常少,摸鱼非常严�
 [安装.Net Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1 "安装.Net Core SDK 3.1")
 
     git clone https://github.com/chawolbaka/MinecraftProtocol.git
-    cd MinecraftProtocol\MinecraftProtocol\
+    cd MinecraftProtocol\src\
     dotnet publish -c Release
 编译好后你可以在 "bin\Release\netstandard2.1\publish" 里面找到文件
 

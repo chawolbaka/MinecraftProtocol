@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27703.2000
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinecraftProtocol", "MinecraftProtocol\MinecraftProtocol.csproj", "{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinecraftProtocol", "src\MinecraftProtocol.csproj", "{CD0A5FC6-BC8B-40FB-B1F6-A65DE225A361}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
