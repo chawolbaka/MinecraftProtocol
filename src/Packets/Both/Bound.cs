@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MinecraftProtocol.Protocol.Packets.Both
+namespace MinecraftProtocol.Packets.Both
 {
     [Flags]
     public enum Bound

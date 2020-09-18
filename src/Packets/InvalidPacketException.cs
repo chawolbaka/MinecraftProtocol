@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MinecraftProtocol.Protocol.Packets
+namespace MinecraftProtocol.Packets
 {
     public class InvalidPacketException : PacketException
     {

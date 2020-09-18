@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Extensions;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Client
+namespace MinecraftProtocol.Packets.Client
 {
     /// <summary>
     /// https://wiki.vg/Protocol#Keep_Alive_.28serverbound.29

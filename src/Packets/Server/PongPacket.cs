@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Packets.Server
 {
     /// <summary>
     /// https://wiki.vg/Server_List_Ping#Pong

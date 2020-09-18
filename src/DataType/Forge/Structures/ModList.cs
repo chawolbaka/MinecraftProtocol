@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Text;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
-using MinecraftProtocol.Protocol;
 
 namespace MinecraftProtocol.DataType.Forge
 {

@@ -1,5 +1,6 @@
 ﻿using System;
-using MinecraftProtocol.Protocol.Packets.Client;
+using MinecraftProtocol.Packets;
+using MinecraftProtocol.Packets.Client;
 using System.Threading.Tasks;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Client;
@@ -11,6 +12,7 @@ namespace MinecraftProtocol.Entity
     {
         private MinecraftClient Client;
 
+
         public int EntityID { get; }
         public UUID UUID { get; }
         public string Name { get; }
@@ -20,7 +22,6 @@ namespace MinecraftProtocol.Entity
             Name = !string.IsNullOrWhiteSpace(name) ? name : throw new ArgumentNullException(nameof(name));
             UUID = uuid;
         }
-
         public void Init(MinecraftClient client)
         {
             if (client == null)
@@ -30,7 +31,6 @@ namespace MinecraftProtocol.Entity
             else if (Client == null)
                 Client = client;
         }
-
         public Task SendMessageAsync(string message)
         {
             ClientChatMessagePacket cmp = new ClientChatMessagePacket(message, Client.ProtocolVersion);

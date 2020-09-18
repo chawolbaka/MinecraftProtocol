@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections;
 
-namespace MinecraftProtocol.Protocol.Packets
+namespace MinecraftProtocol.Packets
 {
     public interface IPacket
     {

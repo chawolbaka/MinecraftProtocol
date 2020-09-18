@@ -1,8 +1,8 @@
 ﻿using System;
 using MinecraftProtocol.DataType.Chat;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Packets.Server
 {
     /// <summary>
     /// https://wiki.vg/Protocol#Disconnect_.28play.29

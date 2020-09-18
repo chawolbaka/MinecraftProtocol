@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace MinecraftProtocol.Protocol.Packets.Client
+namespace MinecraftProtocol.Packets.Client
 {
 
     /// <summary>

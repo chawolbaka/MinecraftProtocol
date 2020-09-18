@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
-using MinecraftProtocol.Protocol;
 
 namespace MinecraftProtocol.DataType.Forge
 {

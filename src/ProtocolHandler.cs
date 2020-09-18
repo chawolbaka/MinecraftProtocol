@@ -4,35 +4,17 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using MinecraftProtocol.DataType;
-using MinecraftProtocol.Protocol.Packets;
+using MinecraftProtocol.Packets;
 using MinecraftProtocol.Compression;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 using System.Net;
 using MinecraftProtocol.Utils;
 
-namespace MinecraftProtocol.Protocol
+namespace MinecraftProtocol
 {
 
     public static class ProtocolHandler
     {
-#pragma warning disable CS0618 // 类型或成员已过时
-        /*
-         * 数据包格式(https://github.com/bangbang93/minecraft-protocol/blob/master/protocol.md)
-         * 
-         * 未压缩的数据包:
-         * 
-         * 名称      类型
-         * 数据包长度 Varint
-         * 数据包ID  Varint
-         * 数据
-         * 
-         * 压缩的数据包:
-         * 
-         * 名称      类型     备注
-         * 数据包长度 Varint  等于下方两者解压前的总字节数
-         * 解压后长度 Varint  若为0则表示本包未被压缩
-         * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
-         */
 
         /// <summary>获取数据包的长度</summary>
         public static int GetPacketLength(TcpClient tcp) => GetPacketLength(tcp.Client);

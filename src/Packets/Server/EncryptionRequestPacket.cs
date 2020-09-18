@@ -1,7 +1,7 @@
 ﻿using System;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Packets.Server
 {
     /// <summary>
     /// https://wiki.vg/Protocol#Encryption_Request

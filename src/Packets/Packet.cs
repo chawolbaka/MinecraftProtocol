@@ -3,11 +3,11 @@ using System.Text;
 using System.Collections.Generic;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Compression;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 using System.Linq;
 using System.Collections;
 
-namespace MinecraftProtocol.Protocol.Packets
+namespace MinecraftProtocol.Packets
 {
     public class Packet : IPacket, IEnumerable<byte>, IEquatable<Packet>
     {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 
 
-namespace MinecraftProtocol.Protocol.VersionCompatible
+namespace MinecraftProtocol.Compatible
 {
     public static class ProtocolVersionNumbers
     {

@@ -1,8 +1,8 @@
 ﻿using System;
 using MinecraftProtocol.Compression;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Packets.Server
 {
     public class SetCompressionPacket : Packet
     {

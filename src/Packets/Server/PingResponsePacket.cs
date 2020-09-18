@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Packets.Server
 {
     /// <summary>
     /// https://wiki.vg/Server_List_Ping#Response

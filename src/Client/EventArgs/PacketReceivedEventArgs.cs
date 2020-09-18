@@ -1,4 +1,4 @@
-﻿using MinecraftProtocol.Protocol.Packets;
+﻿using MinecraftProtocol.Packets;
 using System;
 using System.Collections.Generic;
 using System.Text;

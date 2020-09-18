@@ -1,8 +1,6 @@
-﻿using MinecraftProtocol.IO.Extensions;
-using MinecraftProtocol.Protocol;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Text;
+using MinecraftProtocol.IO.Extensions;
 
 namespace MinecraftProtocol.DataType.Forge
 {

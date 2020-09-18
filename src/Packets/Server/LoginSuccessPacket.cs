@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Server
+namespace MinecraftProtocol.Packets.Server
 {
     public class LoginSuccessPacket:Packet
     {

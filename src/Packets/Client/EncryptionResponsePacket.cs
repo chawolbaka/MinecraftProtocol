@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Client
+namespace MinecraftProtocol.Packets.Client
 {
     public class EncryptionResponsePacket : Packet
     {

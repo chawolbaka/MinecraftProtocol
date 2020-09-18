@@ -1,6 +1,4 @@
-﻿using MinecraftProtocol.Protocol;
-using MinecraftProtocol.Protocol.Packets.Both;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace MinecraftProtocol.DataType.Forge

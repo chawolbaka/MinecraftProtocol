@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using MinecraftProtocol.Protocol.Packets;
+using MinecraftProtocol.Packets;
 
 namespace MinecraftProtocol.Client.Channels
 {

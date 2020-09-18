@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace MinecraftProtocol.Protocol.Packets.Client
+namespace MinecraftProtocol.Packets.Client
 {
     /// <summary>
     /// https://wiki.vg/Server_List_Ping#Ping

@@ -3,10 +3,10 @@ using System.Text;
 using System.Collections.Generic;
 using MinecraftProtocol.DataType.Forge;
 using MinecraftProtocol.Compression;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 using MinecraftProtocol.IO.Extensions;
 
-namespace MinecraftProtocol.Protocol.Packets.Both
+namespace MinecraftProtocol.Packets.Both
 {
     public class PluginChannelPacket : Packet
     {

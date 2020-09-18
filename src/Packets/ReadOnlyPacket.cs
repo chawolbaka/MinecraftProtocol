@@ -1,12 +1,12 @@
 ﻿using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MinecraftProtocol.Protocol.Packets
+namespace MinecraftProtocol.Packets
 {
 
     /// <summary>

@@ -1,8 +1,8 @@
 ﻿using System;
 using MinecraftProtocol.DataType;
-using MinecraftProtocol.Protocol.VersionCompatible;
+using MinecraftProtocol.Compatible;
 
-namespace MinecraftProtocol.Protocol.Packets.Client
+namespace MinecraftProtocol.Packets.Client
 {
     /// <summary>
     /// https://wiki.vg/Protocol#Client_Settings

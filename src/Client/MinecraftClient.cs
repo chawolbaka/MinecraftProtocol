@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType.Chat;
-using MinecraftProtocol.Protocol.Packets;
+using MinecraftProtocol.Packets;
 using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
 
