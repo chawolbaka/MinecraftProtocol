@@ -23,12 +23,14 @@ namespace MinecraftProtocol.Client.Channels
             _client = client;
         }
 
-        public override void Send(ICollection<byte> data)
+
+        public override void Send(IEnumerable<byte> data)
         {
             if (!CanSend)
                 return;
 
-            PluginChannelPacket packet = new PluginChannelPacket(_channelName, data as byte[] ?? data.ToArray(), _client.ProtocolVersion, Bound.Client, _client is ForgeClient);
+            byte[] Data =  data as byte[] ?? data.ToArray();
+            PluginChannelPacket packet = new PluginChannelPacket(_channelName, Data, _client.ProtocolVersion, Bound.Client, _client is ForgeClient);
             _client.SendPacket(packet);
         }
 

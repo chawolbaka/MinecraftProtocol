@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MinecraftProtocol.Utils;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
@@ -14,18 +16,19 @@ namespace MinecraftProtocol.Compression
 
         public static int Convert(ReadOnlySpan<byte> bytes) => Read(bytes,out _);
         public static int Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes, out length);
-        public static int Convert(byte[] bytes, int offset) => Read(bytes, offset, out _);
-        public static int Convert(byte[] bytes, int offset, out int end) => Read(bytes, offset, out end);
-        public static int Convert(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
-        public static int Convert(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
-        public static int Convert(List<byte> bytes, int offset, out int end) => Read(bytes.ToArray(), offset, out end);
+        public static int Convert(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
+        public static int Convert(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
+        public static int Convert(byte[] bytes, int offset, out int end) => Read(bytes as IList<byte>, offset, out end);
+        public static int Convert(IList<byte> bytes) => Read(bytes, 0, out _);
+        public static int Convert(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
+        public static int Convert(IList<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
         public static byte[] Convert(int value) => GetBytes(value);
 
 
         public static int Read(Stream stream) => Read(stream, out _);
         public static int Read(Stream stream, out int readCount) => Read(() => { int read = stream.ReadByte(); return read >= 0 ? (byte)read : throw new InvalidDataException("negative"); }, out readCount);
         public static int Read(Socket socket) => Read(socket, out _);
-        public static int Read(Socket socket, out int readCount) => Read(() => { byte[] buffer = new byte[1]; socket.Receive(buffer); return buffer[0]; }, out readCount);
+        public static int Read(Socket socket, out int readCount) => Read(() => NetworkUtils.ReceiveData(1, socket)[0], out readCount);
         public static int Read(Func<byte> readByte) => Read(readByte, out _);
         public static int Read(Func<byte> readByte, out int readCount)
         {
@@ -45,13 +48,19 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarInt too big");
         }
-        
-        public static int Read(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
-        public static int Read(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
-        public static int Read(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
-        public static int Read(byte[] bytes, int offset) => Read(bytes, offset, out _);
-        public static int Read(byte[] bytes, int offset, out int length)
+
+        //不这样子会导致和ReadOnlySpan的重载冲突
+        public static int Read(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
+        public static int Read(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
+        public static int Read(byte[] bytes, int offset, out int length) => Read(bytes as IList<byte>, offset, out length);
+
+        public static int Read(IList<byte> bytes) => Read(bytes, 0, out _);
+        public static int Read(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
+        public static int Read(IList<byte> bytes, int offset, out int length)
         {
+            if (bytes == null|| bytes.Count==0)
+                throw new ArgumentNullException(nameof(bytes));
+            
             int result = 0;
             for (int i = 0; i < 5; i++)
             {
@@ -82,14 +91,15 @@ namespace MinecraftProtocol.Compression
 
         public static byte[] GetBytes(int value)
         {
-            List<byte> bytes = new List<byte>();
+            byte[] bytes = new byte[5];
+            byte offset = 0;
             while ((value & -128) != 0)
             {
-                bytes.Add((byte)(value & 127 | 128));
+                bytes[offset++] = (byte)(value & 127 | 128);
                 value = (int)(((uint)value) >> 7);
             }
-            bytes.Add((byte)value);
-            return bytes.ToArray();
+            bytes[offset++] = (byte)value;
+            return offset == 5 ? bytes : bytes.AsSpan().Slice(0, offset).ToArray();
         }
         
 
@@ -115,7 +125,7 @@ namespace MinecraftProtocol.Compression
             dest[offset++] = (byte)value;
             return offset;
         }
-        public static int WriteTo(int value, List<byte> dest)
+        public static int WriteTo(int value, IList<byte> dest)
         {
             int offset = 0;
             while ((value & -128) != 0)

@@ -9,6 +9,7 @@ namespace MinecraftProtocol.Client.Channels
     /// </summary>
     public sealed class WriteOlnyClientChannel : ClientChannel
     {
+        public override event EventHandler<ChannelReceivedEventArgs> Received { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
         public override bool CanRead => false;
         public override bool CanSend => true;
 

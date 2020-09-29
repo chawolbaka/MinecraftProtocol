@@ -10,15 +10,16 @@ namespace MinecraftProtocol.Packets.Both
 {
     public class PluginChannelPacket : Packet
     {
-        public virtual string Channel { get; set; }
-        public virtual byte[] Data { get; set; }
+        public virtual string Channel { get; }
+        public virtual byte[] Data { get; }
         protected int _protocolVersion;
         protected bool HasForge;
 
 
-        private PluginChannelPacket(ReadOnlyPacket packet, int protocolVersion , bool hasForge,string channel) : base(packet)
+        private PluginChannelPacket(ReadOnlyPacket packet, int protocolVersion , bool hasForge,string channel,byte[] data) : base(packet)
         {
             Channel = channel;
+            Data = data;
             HasForge = hasForge;
             _protocolVersion = protocolVersion;
         }
@@ -47,33 +48,6 @@ namespace MinecraftProtocol.Packets.Both
             else
                 WriteBytes(Data);
         }
-        //public override byte[] ToBytes(int compress = -1)
-        //{
-        //    byte[] channel = Encoding.UTF8.GetBytes(Channel);
-        //    byte[] PacketData;
-        //    //14w31a: The length prefix on the payload of Plugin Message has been removed (Both ways)
-        //    if (_protocolVersion <= ProtocolVersionNumbers.V14w31a)
-        //    {
-        //        if (HasForge)
-        //            PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(channel.Length), channel, VarShort.GetBytes(Data.Count), Data.ToArray());
-        //        else
-        //            PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(channel.Length), channel, ProtocolHandler.GetBytes((short)Data.Count), Data.ToArray());
-        //    }
-        //    else
-        //        PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(channel.Length), channel, Data.ToArray());
-        //    int DataLength = PacketData.Length;
-
-        //    PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(ID), PacketData);
-
-        //    if (compress > 0)
-        //    {
-        //        if (DataLength >= compress)
-        //            PacketData = ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), ZlibUtils.Compress(PacketData));
-        //        else
-        //            PacketData = ProtocolHandler.ConcatBytes(new byte[] { 0 }, PacketData);
-        //    }
-        //    return ProtocolHandler.ConcatBytes(VarInt.GetBytes(PacketData.Length), PacketData);
-        //}
 
         public static int GetPacketID(int protocolVersion, Bound bound)
         {
@@ -141,20 +115,18 @@ namespace MinecraftProtocol.Packets.Both
             try
             {
                 ReadOnlySpan<byte> buffer = packet.AsSpan();
-                pcp = new PluginChannelPacket(
-                    packet: packet,
-                    protocolVersion: protocolVersion,
-                    hasForge: hasForge,
-                    channel: buffer.AsString(out buffer));
-
+                string channel = buffer.AsString(out buffer);
+                byte[] data;
                 if (protocolVersion <= ProtocolVersionNumbers.V14w31a && hasForge)
-                    pcp.Data = buffer.Slice(VarShort.GetLength(buffer)).ToArray();
+                    data = buffer.Slice(VarShort.GetLength(buffer)).ToArray();
                 else if (protocolVersion <= ProtocolVersionNumbers.V14w31a)
-                    pcp.Data = buffer.Slice(2).ToArray();
+                    data = buffer.Slice(2).ToArray();
                 else
-                    pcp.Data = buffer.ToArray();
-
-                return true;
+                    data = buffer.ToArray();
+                
+                pcp = new PluginChannelPacket(packet, protocolVersion, hasForge, channel, data);
+                
+                return packet.IsReadToEnd;
             }
             catch (ArgumentOutOfRangeException) { return false; }
             catch (IndexOutOfRangeException) { return false; }

@@ -3,14 +3,18 @@ using System.Text;
 using System.Security.Cryptography;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
+using System.Net.Http.Headers;
 
 namespace MinecraftProtocol.DataType
 {
 
     public struct UUID : IComparable, IComparable<UUID>, IEquatable<UUID>
     {
-        public static UUID Empty => new UUID(0, 0);
 
+        private static Dictionary<string, UUID> Cache = new Dictionary<string, UUID>();
+        public static UUID Empty => new UUID(0, 0);
+        
         public readonly long Most;
         public readonly long Least;
 
@@ -38,10 +42,12 @@ namespace MinecraftProtocol.DataType
         /// 通过玩家名向MojangAPI获取正版玩家的UUID
         /// </summary>
         /// <exception cref="ArgumentNullException"/>
-        public static UUID? GetFromMojangAPI(string playerName, string url = "https://api.mojang.com/users/profiles/minecraft/")
+        public static UUID? GetFromMojangAPI(string playerName,bool useCache = true, string url = "https://api.mojang.com/users/profiles/minecraft/")
         {
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new ArgumentNullException(nameof(playerName));
+            if (useCache&&Cache.ContainsKey(playerName))
+                return Cache[playerName];
 
             HttpClient hc = new HttpClient();
             var HttpResponse = hc.GetAsync(url + playerName).Result;
@@ -51,8 +57,9 @@ namespace MinecraftProtocol.DataType
                 string id = JObject.Parse(json)["id"].ToString();
                 if (string.IsNullOrWhiteSpace(id))
                     throw new Exception("MojangAPI返回了空uuid");
-                else
-                    return Parse(id);
+                if (useCache)
+                    Cache.Add(playerName, Parse(id));
+                return Parse(id);
             }
             return null;
         }

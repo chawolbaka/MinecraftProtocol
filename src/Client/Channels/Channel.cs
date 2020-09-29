@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections;
+﻿using MinecraftProtocol.DataType.Forge;
+using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-using MinecraftProtocol.Packets;
 
 namespace MinecraftProtocol.Client.Channels
 {
@@ -36,7 +33,12 @@ namespace MinecraftProtocol.Client.Channels
                 }
         }
 
-        public abstract void Send(ICollection<byte> data);
+        public abstract void Send(IEnumerable<byte> data);
+        public virtual void Send(IForgeStructure data)
+        {
+            if (CanSend)
+                Send(data.ToBytes());
+        }
 
         public override string ToString() => _channelName;
         public override int GetHashCode() => _channelName.GetHashCode();

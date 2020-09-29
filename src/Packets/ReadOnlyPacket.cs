@@ -12,7 +12,7 @@ namespace MinecraftProtocol.Packets
     /// <summary>
     /// 一个Packet的包装器，用于防止PacketID和PacketData被修改（如果修改原始Packet中的内容会导致这边也被修改）
     /// </summary>
-    public class ReadOnlyPacket : IPacket
+    public class ReadOnlyPacket : IPacket, IEnumerable<byte>
     {
         public int ID => _packet.ID;
         public int Count => _packet.Count;
@@ -135,10 +135,26 @@ namespace MinecraftProtocol.Packets
         }
 
         public ReadOnlySpan<byte> AsSpan() => _packet.AsSpan();
+        
         public byte[] ReadAll()
         {
             offset = _packet.Count;
             return _packet.AsSpan().ToArray();
+        }
+
+        public override int GetHashCode()
+        {
+            return _packet.GetHashCode();
+        }
+
+        public IEnumerator<byte> GetEnumerator()
+        {
+            return ((IEnumerable<byte>)_packet).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return ((IEnumerable)_packet).GetEnumerator();
         }
     }
 }

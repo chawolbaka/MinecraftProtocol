@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.Utils;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
@@ -13,19 +14,20 @@ namespace MinecraftProtocol.Compression
 
         public static long Convert(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
         public static long Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes, out length);
-        public static long Convert(byte[] bytes, int offset) => Read(bytes, offset, out _);
-        public static long Convert(byte[] bytes, int offset, out int length) => Read(bytes, offset, out length);
-        public static long Convert(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
-        public static long Convert(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
-        public static long Convert(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
+        public static long Convert(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
+        public static long Convert(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
+        public static long Convert(byte[] bytes, int offset, out int end) => Read(bytes as IList<byte>, offset, out end);
+        public static long Convert(IList<byte> bytes) => Read(bytes, 0, out _);
+        public static long Convert(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
+        public static long Convert(IList<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
         public static byte[] Convert(long value) => GetBytes(value);
 
 
 
-        public static long Read(Socket socket) => Read(socket, out _);
-        public static long Read(Socket socket, out int readCount) => Read(() => { byte[] buffer = new byte[1]; socket.Receive(buffer); return buffer[0]; }, out readCount);
         public static long Read(Stream stream) => Read(() => (byte)stream.ReadByte(), out _);
         public static long Read(Stream stream, out int readCount) => Read(() => { int read = stream.ReadByte(); return read >= 0 ? (byte)read : throw new InvalidDataException("negative"); }, out readCount);
+        public static long Read(Socket socket) => Read(socket, out _);
+        public static long Read(Socket socket, out int readCount) => Read(() => NetworkUtils.ReceiveData(1, socket)[0], out readCount);
         public static long Read(Func<byte> readByte) => Read(readByte, out _);
         public static long Read(Func<byte> readByte, out int readCount)
         {
@@ -45,11 +47,13 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarLong too big");
         }
-        public static long Read(List<byte> bytes) => Read(bytes.ToArray(), 0, out _);
-        public static long Read(List<byte> bytes, int offset) => Read(bytes.ToArray(), offset, out _);
-        public static long Read(List<byte> bytes, int offset, out int length) => Read(bytes.ToArray(), offset, out length);
-        public static long Read(byte[] bytes, int offset) => Read(bytes, offset, out _);
-        public static long Read(byte[] bytes, int offset, out int length)
+
+        public static long Read(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
+        public static long Read(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
+        public static long Read(byte[] bytes, int offset, out int length) => Read(bytes as IList<byte>, offset, out length);
+        public static long Read(IList<byte> bytes) => Read(bytes, 0, out _);
+        public static long Read(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
+        public static long Read(IList<byte> bytes, int offset, out int length)
         {
             long result = 0;
             for (int i = 0; i < 10; i++)
@@ -80,7 +84,7 @@ namespace MinecraftProtocol.Compression
         }
         public static byte[] GetBytes(long value)
         {
-            List<byte> bytes = new List<byte>();
+            List<byte> bytes = new List<byte>(9);
             ulong Value = (ulong)value;
             do
             {

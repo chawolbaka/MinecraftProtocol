@@ -15,7 +15,7 @@ namespace MinecraftProtocol.Client.Channels
             _channelName = channel;
         }
 
-        public override void Send(ICollection<byte> data) => throw new NotSupportedException();
+        public override void Send(IEnumerable<byte> data) => throw new NotSupportedException();
         
     }
 }

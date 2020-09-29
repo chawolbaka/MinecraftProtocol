@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Text;
+using System.Collections;
 using System.Collections.Generic;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.Compatible;
 using System.Linq;
-using System.Collections;
 
 namespace MinecraftProtocol.Packets
 {
@@ -61,7 +61,7 @@ namespace MinecraftProtocol.Packets
 
         public Packet() : this(-1) { }
         public Packet(int packetID) : this(packetID, DEFUALT_CAPACITY) { }
-        public Packet(int packetID, int capacity = DEFUALT_CAPACITY)
+        public Packet(int packetID, int capacity)
         {
             ID = packetID;
             _data = new byte[capacity];
@@ -75,20 +75,22 @@ namespace MinecraftProtocol.Packets
         public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID, packetData.ToArray()) { }
         public Packet(ReadOnlyPacket packet) : this(packet.ID, packet.AsSpan()) { }
 
+
         /// <summary>
         /// 生成发送给服务端的包
         /// </summary>
         /// <param name="compress">数据包压缩的阚值</param>
         /// <exception cref="ArgumentOutOfRangeException"/>
         /// <exception cref="IndexOutOfRangeException"/>
+        /// <exception cref="PacketException"/>
         public virtual byte[] ToBytes(int compress = -1)
         {
             if (IsEmpty)
                 throw new PacketException("Packet is empty");
 
             byte[] PacketData;
-            int Length = VarInt.GetLength(ID) + Count;
-            if (compress > 0)
+            int Length = VarInt.GetLength(ID) + Count, offset;
+            if (compress > 0 && _size >= compress)
             {
                 /*
                  * 压缩的数据包:
@@ -98,43 +100,45 @@ namespace MinecraftProtocol.Packets
                  * 解压后长度 Varint  若为0则表示本包未被压缩
                  * 被压缩的数据       经Zlib压缩.开头是一个VarInt字段,代表数据包ID,然后是数据包数据.
                  */
-                if (_data.Length >= compress)
-                {
-                    //拼接PacketID(VarInt)和PacketData(ByteArray)并塞入ZlibUtils.Compress去压缩
-                    byte[] uncompressed = new byte[Length];
-                    AsSpan().CopyTo(uncompressed.AsSpan().Slice(VarInt.WriteTo(ID, uncompressed)));
-                    //Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(ID, uncompressed), uncompressed.Length);
-                    byte[] compressed = ZlibUtils.Compress(uncompressed);
+                
+                //拼接PacketID(VarInt)和PacketData(ByteArray)并塞入ZlibUtils.Compress去压缩
+                byte[] uncompressed = new byte[Length];
+                AsSpan().CopyTo(uncompressed.AsSpan().Slice(VarInt.WriteTo(ID, uncompressed)));
+                //Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(ID, uncompressed), uncompressed.Length);
+                byte[] compressed = ZlibUtils.Compress(uncompressed);
 
-                    PacketData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressed.Length) + compressed.Length) + VarInt.GetLength(uncompressed.Length) + compressed.Length];
-                    //写入第一个VarInt(解压长度+压缩后的长度）
-                    int offset = VarInt.WriteTo(VarInt.GetLength(uncompressed.Length) + compressed.Length, PacketData);
-                    //写入第二个VarInt(未压缩长度)
-                    offset += VarInt.WriteTo(uncompressed.Length, PacketData.AsSpan().Slice(offset));
-                    //写入被压缩的数据
-                    compressed.CopyTo(PacketData, offset);
-                }
-                else
-                {
-                    PacketData = new byte[VarInt.GetLength(Length + 1) + Length + 1];
-                    int offset = VarInt.WriteTo(Length + 1, PacketData);
-                    PacketData[offset++] = 0;
-                    offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
-                    if (_data.Length > 0)
-                        Array.Copy(_data, 0, PacketData, offset, PacketData.Length - offset);
-                }
+                PacketData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressed.Length) + compressed.Length) + VarInt.GetLength(uncompressed.Length) + compressed.Length];
+                //写入第一个VarInt(解压长度+压缩后的长度）
+                offset = VarInt.WriteTo(VarInt.GetLength(uncompressed.Length) + compressed.Length, PacketData);
+                //写入第二个VarInt(未压缩长度)
+                offset += VarInt.WriteTo(uncompressed.Length, PacketData.AsSpan().Slice(offset));
+                //写入被压缩的数据
+                compressed.CopyTo(PacketData, offset);
+                return PacketData;
             }
             else
             {
-                PacketData = new byte[VarInt.GetLength(Length) + Length];
-                int offset = VarInt.WriteTo(Length, PacketData);
+                if (compress > 0)
+                {
+                    //写入数据包长度和解压后的长度(0=未压缩)
+                    PacketData = new byte[VarInt.GetLength(Length+1) + Length+1];
+                    offset = VarInt.WriteTo(Length+1, PacketData);
+                        PacketData[offset++] = 0;
+                }
+                else
+                {
+                    //写入数据包长度
+                    PacketData = new byte[VarInt.GetLength(Length) + Length];
+                    offset = VarInt.WriteTo(Length, PacketData);
+                }
+                //写入ID和Data
                 offset += VarInt.WriteTo(ID, PacketData.AsSpan().Slice(offset));
-                if (_data.Length > 0)
-                    Array.Copy(_data, 0, PacketData, offset, PacketData.Length-offset);
+                if (_size > 0)
+                    Array.Copy(_data, 0, PacketData, offset, PacketData.Length - offset);
+                return PacketData;
             }
-            return PacketData;
         }
-        
+
         public virtual Packet WriteBoolean(bool boolean)
         {
             if (boolean)
@@ -277,11 +281,12 @@ namespace MinecraftProtocol.Packets
             return this;
         }
 
+        private bool ExtraAllocate = IntPtr.Size > 4;
         protected virtual void TryAllocateCapacity(int writeLength)
         {
             //这样子是不是有点浪费内存?
             if (writeLength + _size > Capacity)
-                Capacity += writeLength > 128 ? writeLength : (int)(writeLength * 1.2);
+                Capacity += ExtraAllocate && writeLength < 128 ? writeLength * 2 : writeLength;
         }
 
 
@@ -306,7 +311,7 @@ namespace MinecraftProtocol.Packets
         {
             if (packet is null) return false;
             if (ID != packet.ID) return false;
-            if (_data.Length != packet.Count) return false;
+            if (Count != packet.Count) return false;
             if (ReferenceEquals(this, packet)) return true;
             for (int i = 0; i < packet.Count; i++)
             {
@@ -317,7 +322,13 @@ namespace MinecraftProtocol.Packets
         }
         public override int GetHashCode()
         {
-            return HashCode.Combine(ID, _data);
+            HashCode code = new HashCode();
+            code.Add(ID);
+            if (_size > 0)
+                for (int i = 0; i < _size; i++)
+                    code.Add(_data[i]);
+
+            return code.ToHashCode();
         }
 
         public void CopyTo(byte[] array, int arrayIndex)
@@ -330,12 +341,24 @@ namespace MinecraftProtocol.Packets
 
         IEnumerator<byte> IEnumerable<byte>.GetEnumerator()
         {
-            return ((IList<byte>)_data.AsSpan(0, _size).ToArray()).GetEnumerator();
+            if (_size <= 0)
+                yield break;
+
+            for (int i = 0; i < _size; i++)
+            {
+                yield return _data[i];
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
         {
-            return _data.AsSpan(0, _size).ToArray().GetEnumerator();
+            if (_size <= 0)
+                yield break;
+            
+            for (int i = 0; i < _size; i++)
+            {
+                yield return _data[i];
+            }
         }
     }
 }

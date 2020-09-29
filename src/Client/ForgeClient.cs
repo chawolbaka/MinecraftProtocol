@@ -43,7 +43,7 @@ namespace MinecraftProtocol.Client
             get => ThrowIfDisposed(_handshakeState);
             protected set
             {
-                SendPluginMessage("FML|HS", new HandshakeAck(value));
+                Channel["FML|HS"].Send(new HandshakeAck(value));
                 _handshakeState = value;
                 UpdateLoginStatus(ForgeLoginStatus.HandshakeAck);
             }
@@ -106,7 +106,7 @@ namespace MinecraftProtocol.Client
                     {
                         foreach (var channel in Channel)
                         {
-                            if (channel.CanRead && channel.ToString() == pcp.Channel)
+                            if (channel.CanRead && channel.Name == pcp.Channel)
                                 channel.TriggerEvent(pcp.Data);
                         }
                     }
@@ -144,12 +144,12 @@ namespace MinecraftProtocol.Client
                 UpdateLoginStatus(ForgeLoginStatus.ClientRegisterChannel);
 
                 //C→S: 通过 FML|HS 频道发送一个ClientHello
-                Channel["FML|HS"].Send(new ClientHello(FMLProtocolVersion).ToBytes());
+                Channel["FML|HS"].Send(new ClientHello(FMLProtocolVersion));
                 UpdateLoginStatus(ForgeLoginStatus.ClientHello);
 
                 //C→S: 发送客户端mod列表, 服务器会拿去和自己的比较,如果有缺少就断开连接。
                 var x = NetworkUtils.CheckConnect(TCP);
-                Channel["FML|HS"].Send(_clientModList.ToBytes());
+                Channel["FML|HS"].Send(_clientModList);
                 UpdateLoginStatus(ForgeLoginStatus.SendModList);
 
                 //S→C: A ModList packet is sent.
