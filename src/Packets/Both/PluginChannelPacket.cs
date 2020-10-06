@@ -126,7 +126,7 @@ namespace MinecraftProtocol.Packets.Both
                 
                 pcp = new PluginChannelPacket(packet, protocolVersion, hasForge, channel, data);
                 
-                return packet.IsReadToEnd;
+                return true;
             }
             catch (ArgumentOutOfRangeException) { return false; }
             catch (IndexOutOfRangeException) { return false; }
