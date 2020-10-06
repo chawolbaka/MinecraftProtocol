@@ -73,8 +73,7 @@ namespace MinecraftProtocol.Packets
             _size = _data.Length;
         }
         public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID, packetData.ToArray()) { }
-        public Packet(ReadOnlyPacket packet) : this(packet.ID, packet.AsSpan()) { }
-
+        public Packet(IPacket packet) : this(packet.ID, packet.ToArray()) { }
 
         /// <summary>
         /// 生成发送给服务端的包
@@ -83,7 +82,7 @@ namespace MinecraftProtocol.Packets
         /// <exception cref="ArgumentOutOfRangeException"/>
         /// <exception cref="IndexOutOfRangeException"/>
         /// <exception cref="PacketException"/>
-        public virtual byte[] ToBytes(int compress = -1)
+        public virtual byte[] Pack(int compress = -1)
         {
             if (IsEmpty)
                 throw new PacketException("Packet is empty");
@@ -138,6 +137,18 @@ namespace MinecraftProtocol.Packets
                 return PacketData;
             }
         }
+        public static Packet Depack(ReadOnlySpan<byte> data,int compress = -1)
+        {
+            if (compress > 0)
+            {
+                int size = VarInt.Read(data, out int SizeOffset);
+                data = data.Slice(SizeOffset);
+                if (size != 0) //如果是0的话就代表这个数据包没有被压缩
+                    data = ZlibUtils.Decompress(data.ToArray(), size);
+            }
+            return new Packet(VarInt.Read(data, out int IdOffset), data.Slice(IdOffset));
+        }
+
 
         public virtual Packet WriteBoolean(bool boolean)
         {
@@ -337,6 +348,14 @@ namespace MinecraftProtocol.Packets
                 _data.AsSpan().Slice(0, _size).CopyTo(array);
             else
                 _data.AsSpan().Slice(0, _size).CopyTo(array.AsSpan().Slice(arrayIndex));
+        }
+
+        byte[] IPacket.ToArray()
+        {
+            if (_size > 0)
+                return AsSpan().ToArray();
+            else
+                return new byte[0];
         }
 
         IEnumerator<byte> IEnumerable<byte>.GetEnumerator()

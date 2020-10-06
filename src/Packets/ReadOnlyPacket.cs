@@ -1,16 +1,16 @@
-﻿using MinecraftProtocol.Compression;
-using MinecraftProtocol.DataType;
-using MinecraftProtocol.Compatible;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
+using MinecraftProtocol.Compression;
+using MinecraftProtocol.DataType;
+using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Packets
 {
 
     /// <summary>
-    /// 一个Packet的包装器，用于防止PacketID和PacketData被修改（如果修改原始Packet中的内容会导致这边也被修改）
+    /// 一个Packet的包装器，用于防止ID和Data被修改（如果修改原始Packet中的内容会导致这边也被修改）
     /// </summary>
     public class ReadOnlyPacket : IPacket, IEnumerable<byte>
     {
@@ -45,7 +45,7 @@ namespace MinecraftProtocol.Packets
         }
 
 
-        public virtual byte[] ToBytes(int compress = -1) => _packet.ToBytes(compress);
+        public virtual byte[] Pack(int compress = -1) => _packet.Pack(compress);
 
 
         public bool ReadBoolean() => _packet[offset++] == 0x01;
@@ -124,7 +124,10 @@ namespace MinecraftProtocol.Packets
             return result;
         }
 
-        public UUID ReadUUID() => new UUID(ReadLong(), ReadLong());
+        public UUID ReadUUID()
+        {
+            return new UUID(ReadLong(), ReadLong());
+        }
 
         public byte[] ReadByteArray(int protocolVersion)
         {
@@ -134,7 +137,10 @@ namespace MinecraftProtocol.Packets
             return result;
         }
 
-        public ReadOnlySpan<byte> AsSpan() => _packet.AsSpan();
+        public ReadOnlySpan<byte> AsSpan()
+        {
+            return _packet.AsSpan();
+        }
         
         public byte[] ReadAll()
         {
@@ -155,6 +161,11 @@ namespace MinecraftProtocol.Packets
         IEnumerator IEnumerable.GetEnumerator()
         {
             return ((IEnumerable)_packet).GetEnumerator();
+        }
+
+        public byte[] ToArray()
+        {
+            return ((IPacket)_packet).ToArray();
         }
     }
 }

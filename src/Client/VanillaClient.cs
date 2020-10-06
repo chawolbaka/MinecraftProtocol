@@ -311,9 +311,9 @@ namespace MinecraftProtocol.Client
                 }
 
                 if (Crypto.Enable)
-                    TCP.Send(Crypto.Encrypt(packet.ToBytes(CompressionThreshold)));
+                    TCP.Send(Crypto.Encrypt(packet.Pack(CompressionThreshold)));
                 else
-                    TCP.Send(packet.ToBytes(CompressionThreshold));
+                    TCP.Send(packet.Pack(CompressionThreshold));
             }
 
         }

@@ -186,9 +186,9 @@ namespace MinecraftProtocol.Utils
 
             //Send Ping Packet
             Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, ServerPort, -1, HandshakePacket.State.GetStatus);
-            socket.Send(Handshake.ToBytes());
+            socket.Send(Handshake.Pack());
             Packet PingRequest = new PingRequestPacket();
-            socket.Send(PingRequest.ToBytes());
+            socket.Send(PingRequest.Pack());
 
             //Receive Packet
             int PacketLength = ProtocolHandler.GetPacketLength(socket);
@@ -291,7 +291,7 @@ namespace MinecraftProtocol.Utils
             {
                 //http://wiki.vg/Server_List_Ping#Ping
                 long code = DateTime.Now.Millisecond;
-                byte[] RequestPacket = new PingPacket(code).ToBytes();
+                byte[] RequestPacket = new PingPacket(code).Pack();
                 sw.Start();
                 socket.Send(RequestPacket);
 
