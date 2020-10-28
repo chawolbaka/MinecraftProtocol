@@ -9,12 +9,14 @@ namespace MinecraftProtocol.Client
     /// </summary>
     public enum VanillaLoginStatus
     {
+        Connected,
         Handshake,
         LoginStart,
         EncryptionRequest,
         EncryptionResponse,
         SetCompression,
         Success,
-        Failed
+        Failed,
+        Disconnected
     }
 }

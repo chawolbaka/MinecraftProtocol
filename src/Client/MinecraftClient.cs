@@ -10,6 +10,7 @@ using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
+using MinecraftProtocol.Crypto;
 
 namespace MinecraftProtocol.Client
 {
@@ -51,9 +52,10 @@ namespace MinecraftProtocol.Client
         public abstract bool Connected { get; }
 
         /// <summary>
-        /// 连接服务器
+        /// 连接TCP
         /// </summary>
-        public abstract void Connect();
+        /// <returns>连接是否成功</returns>
+        public abstract bool Connect();
 
         /// <summary>
         /// 玩家是否已进入服务器
@@ -64,15 +66,15 @@ namespace MinecraftProtocol.Client
         /// 发送登录服务器的请求
         /// </summary>
         /// <param name="playerName">玩家名</param>
-        /// <returns>如果是false代表登陆失败</returns>
+        /// <returns>登录是否成功</returns>
         public virtual bool Join(string playerName) => Join(playerName, out _);
 
         /// <summary>
         /// 发送登录服务器的请求
         /// </summary>
         /// <param name="playerName">玩家名</param>
-        /// <param name="disconnectReason">无法加入服务器的原因</param>
-        /// <returns>如果是false代表登陆失败</returns>
+        /// <param name="disconnectReason">无法加入服务器的原因(如果登陆失败)</param>
+        /// <returns>登录是否成功</returns>
         public abstract bool Join(string playerName, out ChatMessage disconnectReason);
 
         /// <summary>
@@ -82,173 +84,18 @@ namespace MinecraftProtocol.Client
         public virtual Task DisconnectAsync() => Task.Run(Disconnect);
 
         /// <summary>
-        /// 监听到的数据包会被塞到这个队列里面
-        /// </summary>
-        protected ConcurrentQueue<(DateTime ReceivedTime, TimeSpan RoundTripTime, Packet Packet)> ReceiveQueue = new ConcurrentQueue<(DateTime, TimeSpan, Packet)>();
-        protected CancellationTokenSource ReceivePacketCancellationToken;
-        private readonly object StartListenLock = new object();
-        private StateObject _stateObject;
-        private class StateObject
-        {
-
-            //这个检查方法效率不行，我之后可能需要设置前几次使用高效一点的方法。
-            public bool Connected => NetworkUtils.CheckConnect(Socket);
-            public DateTime StartTime;
-            public Socket Socket;
-            public int Length;
-            public int Offset;
-            public byte[] Data;
-            public StateObject(Socket socket)
-            {
-                Socket = socket;
-            }
-        }
-
-        /// <summary>
         /// 开始监听数据包
         /// </summary>
-        public virtual void StartListen(CancellationTokenSource cancellationToken = default)
-        {
-            //我为什么要锁这个来着...
-            lock (StartListenLock)
-            {
-                if (ReceivePacketCancellationToken == null)
-                {
-                    ReceivePacketCancellationToken = cancellationToken ?? new CancellationTokenSource();
-                    _stateObject = new StateObject(GetSocket());
-                    ReceiveNextPacket(GetSocket());
-                }
-            }
-        }
+        public abstract void StartListen(CancellationTokenSource cancellationToken = default);
 
         /// <summary>
         /// 请求停止监听数据包
         /// </summary>
-        public virtual void StopListen() => ReceivePacketCancellationToken?.Cancel();
-
-        private void ReceiveNextPacket(Socket tcp)
-        {
-            if (!Connected|| ReceivePacketCancellationToken.IsCancellationRequested) return;
-            try
-            {
-                _stateObject.StartTime = DateTime.Now;
-                _stateObject.Offset = 0;
-                _stateObject.Length = ReceivePacketLength();
-                if (_stateObject.Length > 0)
-                {
-                    _stateObject.Data = new byte[_stateObject.Length];
-                    tcp.BeginReceive(_stateObject.Data, 0, _stateObject.Length, SocketFlags.None, new AsyncCallback(RecieveComplete), _stateObject);
-                }
-                else if (!NetworkUtils.CheckConnect(tcp))
-                {
-                    throw new SocketException((int)SocketError.ConnectionReset);
-                }
-                else
-                {
-                    throw new InvalidDataException("发生了很魔法的错误，服务器发送了一个长度小于1的包。");
-                }
-            }
-            catch (Exception e) 
-            {
-                if (!ReceiveExceptionHandler(e)) 
-                    throw;
-            }
-        }
-        private void RecieveComplete(IAsyncResult ar)
-        {
-            if (!Connected || ReceivePacketCancellationToken.IsCancellationRequested) return;
-            
-            StateObject State = (StateObject)ar.AsyncState;
-            try
-            {
-                State.Offset += State.Socket.EndReceive(ar);
-                //如果已经完整的把包接收到了就开始解析包（好像这部分可以异步处理，但是异步可能会导致顺序乱掉）
-                if (State.Offset == State.Length)
-                {
-                    DateTime ReceivedTime = DateTime.Now;
-                    Packet packet = DecodePacket(State.Data);
-                    //用于处理一些对优先级有要求的包，比如断开连接的包。
-                    if (!BasePacketHandler(packet))
-                        ReceiveQueue.Enqueue((ReceivedTime, ReceivedTime - State.StartTime, packet));
-                    
-                    //开始接收下一个包
-                    ReceiveNextPacket(State.Socket);
-                }
-                else if (State.Offset < State.Length)
-                {
-                    if (!State.Connected || (State.Socket.Available <= 0 && !NetworkUtils.CheckConnect(State.Socket)))
-                        throw new SocketException((int)SocketError.ConnectionReset); //根据msdn写的，Socket.Available = 0 就是连接已关闭
-
-                    State.Socket.BeginReceive(State.Data, State.Offset, State.Length - State.Offset, SocketFlags.None, new AsyncCallback(RecieveComplete), State);
-                }
-                else
-                {   
-                    throw new Exception("你遇到了魔法！");
-                }
-            }
-            catch (Exception e)
-            { 
-                if (!ReceiveExceptionHandler(e)) 
-                    throw;
-            }
-        }
+        public abstract void StopListen();
 
         /// <summary>
-        /// 接收到数据包后优先级最高的处理方法
+        /// 发送数据包
         /// </summary>
-        /// <param name="packet">接收到的包</param>
-        /// <returns>阻止包被加入队列</returns>
-        protected virtual bool BasePacketHandler(Packet packet) => false;
-
-
-        /// <summary>
-        /// 接收Packet的长度
-        /// </summary>
-        /// <returns>包长度</returns>
-        protected virtual int ReceivePacketLength() => VarInt.Read(GetSocket());
-
-        /// <summary>
-        /// 将接收到的数据解码成Packet
-        /// </summary>
-        /// <param name="packet"></param>
-        /// <returns></returns>
-        protected virtual Packet DecodePacket(ReadOnlySpan<byte> packet)
-        {
-            if (CompressionThreshold > 0)
-            {
-                int size = VarInt.Read(packet, out int SizeOffset);
-                packet = packet.Slice(SizeOffset);
-                if (size != 0) //如果是0的话就代表这个数据包没有被压缩
-                    packet = ZlibUtils.Decompress(packet.ToArray(), size);
-            }
-            return new Packet(VarInt.Read(packet, out int IdOffset), packet.Slice(IdOffset));
-        }
-
-        /// <summary>
-        /// 在接收数据包时发生的异常会交给这个方法处理
-        /// </summary>
-        /// <param name="e"></param>
-        /// <returns>阻止异常被抛出</returns>
-        protected virtual bool ReceiveExceptionHandler(Exception e)
-        {
-            if(e is ObjectDisposedException || (e is SocketException se && se.SocketErrorCode != SocketError.Success))
-            {
-                if (!ReceivePacketCancellationToken.IsCancellationRequested)
-                    ReceivePacketCancellationToken.Cancel();
-                DisconnectAsync();
-                return true;
-            }
-            else if (e is OverflowException oe && oe.StackTrace.Contains(nameof(VarInt)))
-            {
-                throw new InvalidDataException("无法读取数据包长度", e);
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-
         public abstract void SendPacket(IPacket packet);
         public virtual Task SendPacketAsync(IPacket packet)
         {
@@ -259,7 +106,6 @@ namespace MinecraftProtocol.Client
              });
             return task;
         }
-
 
         /// <summary>
         /// 获取Socket,用于实现自己的的包监听(也就是说调用了StartListen就不要在获取了,不然不安全)
@@ -275,6 +121,5 @@ namespace MinecraftProtocol.Client
         /// 获取服务器地址
         /// </summary>
         public override string ToString() => $"{ServerHost ?? (ServerIP != null ? ServerIP.ToString() : "Unknown")}{(ServerPort != DefaultServerPort ? $":{ServerPort}" : "")}";
-
     }
 }

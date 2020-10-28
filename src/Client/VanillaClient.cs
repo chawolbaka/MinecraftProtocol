@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -16,6 +18,7 @@ using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
+using MinecraftProtocol.IO;
 
 namespace MinecraftProtocol.Client
 {
@@ -38,7 +41,7 @@ namespace MinecraftProtocol.Client
         public override int CompressionThreshold { get => ThrowIfDisposed(base.CompressionThreshold); set => ThrowIfDisposed(base.CompressionThreshold = value); }
         public override int ProtocolVersion      { get => ThrowIfDisposed(base.ProtocolVersion);      set => ThrowIfDisposed(base.ProtocolVersion = value); }
 
-        public bool IsServerInOnlineMode         { get => ThrowIfNotJoined(Crypto.Enable); }
+        public bool IsServerInOnlineMode         { get => ThrowIfNotJoined(PacketReader.Crypto.Enable); }
 
         public bool AutoKeepAlive    { get => ThrowIfDisposed(_autoKeepAlive);        set => _autoKeepAlive = ThrowIfDisposed(value); }
 
@@ -49,6 +52,9 @@ namespace MinecraftProtocol.Client
 
         public override event LoginEventHandler LoginSuccess              { add => _loginSuccess       += ThrowIfDisposed(value); remove => _loginSuccess       -= ThrowIfDisposed(value); }
         public event VanillaLoginEventHandler VanillaLoginStatusChanged   { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
+
+        //这两个事件有什么区别?
+        //Kicked是收到了断开连接的包，Disconnected是Disconnect方法被调用
         public virtual event DisconnectEventHandler Kicked                { add => _kicked             += ThrowIfDisposed(value); remove => _kicked             -= ThrowIfDisposed(value); }
         public virtual event DisconnectEventHandler Disconnected          { add => _disconnected       += ThrowIfDisposed(value); remove => _disconnected       -= ThrowIfDisposed(value); }
 
@@ -90,7 +96,7 @@ namespace MinecraftProtocol.Client
         }
 
         protected Socket TCP;
-        protected CryptoHandler Crypto = new CryptoHandler();
+        protected PacketReader PacketReader;
         protected Thread PacketQueueHandleThread;
         private bool _autoKeepAlive = true;
 
@@ -122,15 +128,49 @@ namespace MinecraftProtocol.Client
         public VanillaClient(IPEndPoint remoteEP, IClientSettings settings, int protocolVersion) : this(remoteEP.Address.ToString(), remoteEP.Address, (ushort)remoteEP.Port, settings, protocolVersion) { }
 
 
-        public override void Connect()
+        public override bool Connect()
         {
             ThrowIfDisposed();
-            TCP ??= new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            PacketReader = new PacketReader(TCP ??= new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp));
+            PacketReader.PacketReceived += (sender, e) =>
+            {
+                if (DisconnectPacket.Verify(e.Packet, ProtocolVersion, out DisconnectPacket dp))
+                {
+                    _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, e.ReceivedTime));
+                    DisconnectAsync(dp.Reason.ToString());
+                }
+                else if (_autoKeepAlive && KeepAliveRequestPacket.Verify(e.Packet.AsReadOnly(), ProtocolVersion))
+                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsSpan(), ProtocolVersion));
+                else
+                    ReceiveQueue.Enqueue((e.ReceivedTime, e.RoundTripTime, e.Packet));
+            };
+            PacketReader.UnhandledException += (sender, e) =>
+            {
+                if (e.Exception is ObjectDisposedException || (e.Exception is SocketException se && se.SocketErrorCode != SocketError.Success))
+                {
+                    StopListen();
+                    if (!_disposed)
+                        Disconnect();
+                    e.Handled = true;
+                }
+                else if (e.Exception is OverflowException oe && oe.StackTrace.Contains(nameof(VarInt)))
+                    throw new InvalidDataException("无法读取数据包长度", e.Exception);
+                else
+                    e.Handled = false;
+            };
             if (!TCP.Connected)
             {
                 TCP.Connect(ServerIP, ServerPort);
-                _connected = NetworkUtils.CheckConnect(TCP);
+                if (!(_connected = NetworkUtils.CheckConnect(TCP)))
+                    return false;
+
+                LoginStatus = VanillaLoginStatus.Connected;
+                return true;
             }
+            else
+            {
+                throw new InvalidOperationException("socket已连接");
+            }    
         }
 
         public override bool Join(string playerName, out ChatMessage disconnectReason) => Join(new SessionToken(null, playerName, null, null), out disconnectReason);
@@ -167,10 +207,10 @@ namespace MinecraftProtocol.Client
             }
             else if (LoginSuccessPacket.Verify(lastPacket, ProtocolVersion, out LoginSuccessPacket lsp))
             {
-                LoginStatus = VanillaLoginStatus.Success;
                 SetPlayer(lsp);
                 _joined = true;
                 disconnectReason = null;
+                LoginStatus = VanillaLoginStatus.Success;
                 return true;
             }
             else if (DisconnectLoginPacket.Verify(lastPacket, ProtocolVersion, out DisconnectLoginPacket dp))
@@ -221,12 +261,13 @@ namespace MinecraftProtocol.Client
                     ProtocolVersion));
                 LoginStatus = VanillaLoginStatus.EncryptionResponse;
 
-                Crypto.Init(SessionKey);
+                PacketReader.Crypto.Init(SessionKey);
                 ServerResponse = ReadPacket();
             }
             if (ServerResponse != null && SetCompressionPacket.Verify(ServerResponse, ProtocolVersion, out int? threshold))
             {
                 CompressionThreshold = threshold.Value;
+                PacketReader.CompressionThreshold = threshold.Value;
                 LoginStatus = VanillaLoginStatus.SetCompression;
                 ServerResponse = ReadPacket();
             }
@@ -262,36 +303,18 @@ namespace MinecraftProtocol.Client
         //抄的,不知道为什么要加readonly 也不知道去掉会有什么区别
         private readonly object SendPacketLock = new object();
         private readonly object ReadPacketLock = new object();
-
-        protected override Packet DecodePacket(ReadOnlySpan<byte> packet) => ThrowIfNotConnected(Crypto.Enable ? base.DecodePacket(Crypto.Decrypt(packet.ToArray())) : base.DecodePacket(packet));
-        protected override int ReceivePacketLength()
-        {
-            byte[] buffer = new byte[1];
-            return ThrowIfNotConnected(VarInt.Read(() =>
-            {
-                TCP.Receive(buffer, SocketFlags.None);
-                return Crypto.Enable ? Crypto.Decrypt(buffer[0]) : buffer[0];
-            }));
-        }
         protected virtual Packet ReadPacket()
         {
             lock (ReadPacketLock)
             {
-                int ReadCount = 0, RetryCount = 0;
-                int PacketLength = ReceivePacketLength();
+                int PacketLength = VarInt.Read(() => PacketReader.Crypto.Enable ? PacketReader.Crypto.Decrypt(NetworkUtils.ReceiveData(1, TCP))[0] : NetworkUtils.ReceiveData(1, TCP)[0]);
                 if (PacketLength == 0 && !UpdateConnectStatus())
-                    return null;
+                    throw new SocketException((int)SocketError.ConnectionReset);
 
-                Span<byte> Data = new byte[PacketLength];
-                while (Connected && ReadCount < PacketLength)
-                {
-                    //简单的防止一下死循环
-                    if (++RetryCount >= 128 && !UpdateConnectStatus())
-                        DisconnectAsync();
-                    else
-                        ReadCount += TCP.Receive(Data.Slice(ReadCount), SocketFlags.None);
-                }
-                return DecodePacket(Data);
+                if (PacketReader.Crypto.Enable)
+                    return Packet.Depack(PacketReader.Crypto.Decrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), CompressionThreshold);
+                else
+                    return Packet.Depack(NetworkUtils.ReceiveData(PacketLength, TCP), CompressionThreshold);
             }
         }
         public override void SendPacket(IPacket packet)
@@ -310,31 +333,33 @@ namespace MinecraftProtocol.Client
                     }
                 }
 
-                if (Crypto.Enable)
-                    TCP.Send(Crypto.Encrypt(packet.Pack(CompressionThreshold)));
+                if (PacketReader.Crypto.Enable)
+                    TCP.Send(PacketReader.Crypto.Encrypt(packet.Pack(CompressionThreshold)));
                 else
                     TCP.Send(packet.Pack(CompressionThreshold));
             }
 
         }
         protected virtual bool UpdateConnectStatus() => _connected = NetworkUtils.CheckConnect(TCP);
+        protected ConcurrentQueue<(DateTime ReceivedTime, TimeSpan RoundTripTime, Packet Packet)> ReceiveQueue = new ConcurrentQueue<(DateTime, TimeSpan, Packet)>();
+        protected CancellationTokenSource ReceivePacketCancellationToken;
         public override void StartListen(CancellationTokenSource cancellationToken = default)
         {
-            base.StartListen(cancellationToken);
+            if (ReceivePacketCancellationToken != null)
+                return;
+            ReceivePacketCancellationToken = cancellationToken ?? new CancellationTokenSource();
+
             PacketQueueHandleThread = new Thread(() =>
             {
+                lock (DisconnectLock)
+                    if (Joined)
+                        PacketReader.StartAsync(ReceivePacketCancellationToken.Token);
                 try
                 {
-                    bool IsReserved = ServerIP.IsReserved();
-                    int TimeSpanOffset = 0;
-                    TimeSpan[] TimeSpans = IsReserved ? null : new TimeSpan[23];
-
                     while (Joined || (ReceivePacketCancellationToken != null && !ReceivePacketCancellationToken.IsCancellationRequested))
                     {
                         if (_packetReceived != null && ReceiveQueue.TryDequeue(out var data))
                         {
-                            if (!IsReserved && TimeSpanOffset < TimeSpans.Length && data.RoundTripTime.TotalMilliseconds > 1.0)
-                                TimeSpans[TimeSpanOffset++] = data.RoundTripTime;                            
                             foreach (PacketReceivedEventHandler Method in _packetReceived.GetInvocationList())
                             {
                                 //ReadOnlyPacket内部有个offset，所以必须保证大家拿到的不指向同一个引用。
@@ -346,19 +371,7 @@ namespace MinecraftProtocol.Client
                         }
                         else
                         {
-                            //我也不知道为什么就写了个这种东西，感觉好像并没有什么用。
-                            if (!IsReserved && TimeSpanOffset > 1)
-                            {
-                                double avg = 0;
-                                for (int i = --TimeSpanOffset; i >= 0; i--)
-                                    avg += TimeSpans[i].TotalMilliseconds;
-                                Thread.Sleep(avg > 0 ? (int)avg / TimeSpanOffset : 100);
-                                TimeSpanOffset = 0;
-                            }
-                            else
-                            {
-                                Thread.Sleep(100);
-                            }
+                            Thread.Sleep(200);   
                         }
                     }
                 }
@@ -368,23 +381,7 @@ namespace MinecraftProtocol.Client
             PacketQueueHandleThread.IsBackground = true;
             PacketQueueHandleThread.Start();
         }
-        protected override bool BasePacketHandler(Packet packet)
-        {
-            //这个方法数据不够 没有接收到的时间
-            if (DisconnectPacket.Verify(packet,ProtocolVersion,out DisconnectPacket dp))
-            {
-                _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason));
-                DisconnectAsync(dp.Reason.ToString());
-                return true;
-            }
-            else if (_autoKeepAlive && KeepAliveRequestPacket.Verify(packet, ProtocolVersion))
-            {
-                SendPacketAsync(new KeepAliveResponsePacket(packet.AsSpan(), ProtocolVersion));
-                return true;
-            }
-
-            return false;
-        }
+        public override void StopListen() => ReceivePacketCancellationToken?.Cancel();
 
         private readonly object DisconnectLock = new object();
         public override void Disconnect() => Disconnect("Unknown");
@@ -409,9 +406,12 @@ namespace MinecraftProtocol.Client
                     TCP.Shutdown(SocketShutdown.Both);
                     TCP.Close();
                 }
+                _joined = false;
 				_connected = false;
-                ReceiveQueue?.Clear();
                 TCP = null;
+                LoginStatus = VanillaLoginStatus.Disconnected;
+                PacketReader.Dispose();
+                ReceiveQueue?.Clear();
                 CompressionThreshold = -1;
                 _player = null;
                 PacketQueueHandleThread = null;
@@ -432,10 +432,10 @@ namespace MinecraftProtocol.Client
             _disposed = true;
             if (!disposed && disposing)
             {
-                this._joined = false;
-                this._connected = false;
-                base.ReceivePacketCancellationToken?.Cancel();
-                base.ReceiveQueue?.Clear();
+                _joined = false;
+                _connected = false;
+                ReceivePacketCancellationToken?.Cancel();
+                ReceiveQueue?.Clear();
                 TCP?.Dispose();
             }
             TCP?.Close();
