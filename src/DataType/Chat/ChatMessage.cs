@@ -3,6 +3,8 @@ using System.Text;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections;
+using System.IO;
 
 namespace MinecraftProtocol.DataType.Chat
 {
@@ -18,7 +20,7 @@ namespace MinecraftProtocol.DataType.Chat
         [JsonIgnore]
         public bool HasFormatCode => Bold || Italic || Underline || Strikethrough || Obfuscated;
         [JsonIgnore]
-        public bool IsSimpleText =>  !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && With == null && HoverEvent == null && ClickEvent == null && Insertion == null;
+        public bool IsSimpleText => !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && With == null && HoverEvent == null && ClickEvent == null && Insertion == null;
 
         /// <summary>粗体</summary>
         [JsonProperty("bold", DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -118,12 +120,12 @@ namespace MinecraftProtocol.DataType.Chat
                 if (message[i] == sectionSign && i + 1 < message.Length)
                 {
                     //转义符
-                    if (i + 2 < message.Length && message[i + 1] == sectionSign && FormattingCodes.ContainsKey(message[i + 2]))
+                    if (i + 2 < message.Length && message[i + 1] == sectionSign && IsFormattingCode(message[i + 2]))
                     {
                         sb.Append(message[++i]);
                         sb.Append(message[++i]);
                     }
-                    else if (FormattingCodes.ContainsKey(message[i + 1]))
+                    else if (IsFormattingCode(message[i + 1]))
                     {
                         /*
                          * 如果前面已经有字了但是又没设置过颜色或者样式就先建立一个纯文本的Extra然后清空StringBuilder再设置样式或者颜色
@@ -213,7 +215,7 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
 
-        public ChatMessage AddExtra(IEnumerable<ChatMessage> messages)
+        public ChatMessage AddExtra(params ChatMessage[] messages)
         {
             if (this.Extra == null)
                 this.Extra = new List<ChatMessage>();
@@ -235,6 +237,7 @@ namespace MinecraftProtocol.DataType.Chat
             else
                 return Deserialize(JObject.Parse(json)) ?? new ChatMessage();
         }
+
         private static ChatMessage Deserialize(JObject json)
         {
             ChatMessage ChatComponent = new ChatMessage();
@@ -330,7 +333,8 @@ namespace MinecraftProtocol.DataType.Chat
 
 
         public override string ToString() => ToString(DefaultTranslation);
-        public string ToString(Dictionary<string, string> lang)
+        public string ToString(Dictionary<string, string> lang) => ToString(lang, Color, this);
+        private string ToString(Dictionary<string, string> lang, string lastColor, ChatMessage lastFormat)
         {
             StringBuilder sb = new StringBuilder();
             if (this.Bold)              sb.Append("§l");
@@ -340,7 +344,7 @@ namespace MinecraftProtocol.DataType.Chat
             if (this.Obfuscated)        sb.Append("§k");
             if (!string.IsNullOrEmpty(Color))       sb.Append(GetColorCode(Color));
             if (!string.IsNullOrEmpty(Text))        sb.Append(Text);
-            if (!string.IsNullOrEmpty(Translate))   ResolveTranslate(Translate, lang, With, ref sb);
+            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, With, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this: lastFormat);
             if (Extra != null && Extra.Count > 0)
             {
                 /*
@@ -357,22 +361,39 @@ namespace MinecraftProtocol.DataType.Chat
                  *   
                  * 比如"§n§eYellow§nRed"它应该是这样子的：
                  *   Yellow(下划线黄色)Red(下划线)
+                 *   
+                 * 对于默认样式的补充: 对于下级组件，在没有指定样式的情况下默认样式就是上一层的样式，所以不能直接加个§r来恢复默认样式，而是需要在递归的时候传递上一层的样式。
+                 * lastColor  = 最后一个默认的颜色
+                 * lastFormat = 最后一个默认的样式
+                 * 这两个应该是最后出现过颜色/样式的一层，也就是说如果下层全是空那就会使用顶层的颜色和样式，如果顶层的颜色也是是空就使用§r，至于样式我暂时不知道该怎么处理。
+                 * 
                  */
-                bool LastIsColorCode = false, LastIsFormatCode = false;
+
                 for (int i = 0; i < Extra.Count; i++)
                 {
-                    string buffer = Extra[i].ToString(lang);
-                    if (((LastIsFormatCode&&!Extra[i].HasFormatCode)||(LastIsColorCode&&!Extra[i].HasColorCode))&&buffer.Length > 0)
+                    if (i == 0 && !HasFormatCode && lastFormat.HasFormatCode)
                         sb.Append("§r");
-                    LastIsFormatCode = Extra[i].HasFormatCode;
-                    LastIsColorCode = Extra[i].HasColorCode;
+                    string buffer = Extra[i].ToString(lang);
+                    if (buffer.Length > 0 && i > 0)
+                    {
+                        if (Extra[i - 1].HasFormatCode && !Extra[i].HasFormatCode)
+                            AppendFormatCode(sb.Append("§r"), lastFormat);
+                        if (Extra[i - 1].HasColorCode && !Extra[i].HasColorCode)
+                            if (!string.IsNullOrEmpty(Color))
+                                sb.Append(GetColorCode(Color));
+                            else if (!string.IsNullOrEmpty(lastColor))
+                                sb.Append(GetColorCode(lastColor));
+                            else if (lastFormat != null)
+                                AppendFormatCode(sb.Append("§r"), lastFormat);
+                            else
+                                sb.Append("§r");
+                    }
                     sb.Append(buffer);
                 }
             }
             return sb.ToString();
         }
-
-        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> with, ref StringBuilder sb)
+        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> with, StringBuilder sb, string lastColor, ChatMessage lastFormat)
         {
             /*
              * 这东西的结构大概是这样的:
@@ -386,24 +407,41 @@ namespace MinecraftProtocol.DataType.Chat
              * 第二个%s取with[1]的内容替换掉
              * 
              */
-            String text = lang.ContainsKey(translate) ? lang[translate] : translate;
-
+            string text = lang.ContainsKey(translate) ? lang[translate] : translate;
+            
             //纯翻译,没有%s的那种
             if (with == null || with.Count == 0) { sb.Append(text); return; }
             
+            bool RestoreColor = false, RestoreFormat = false;
             int WithCount = 0;
+           
             for (int i = 0; i < text.Length; i++)
             {
+                if (RestoreFormat)
+                {
+                    RestoreFormat = false;
+                    AppendFormatCode(sb.Append("§r"), lastFormat);
+                    if (!string.IsNullOrEmpty(lastColor))
+                        sb.Append(GetColorCode(lastColor));
+
+                }
+                if (RestoreColor)
+                {
+                    RestoreColor = false;
+                    //如果最后一层有设置过颜色就使用最后一层的颜色，如果没有就恢复到默认色
+                    if (!string.IsNullOrEmpty(lastColor)) 
+                        sb.Append(GetColorCode(lastColor));
+                    else
+                        AppendFormatCode(sb.Append("§r"), lastFormat);//直接加§r可能可能会导致样式的丢失，但这样子写我也不确定会不会恢复到正确的样式
+                }
+
                 if (text[i] == '%' && i + 1 != text.Length)
                 {
                     //这个%d是在forge的语言文件里面看见的,原版好像没有?
                     if (text[i + 1] == 's'|| text[i + 1] == 'd')
                     {
-                        if (with[WithCount] is ITranslation itc)
-                            sb.Append(itc.ToString(lang));
-                        else
-                            sb.Append(with[WithCount].ToString());
-                        WithCount++; i++;
+                        AppendWith(with[WithCount++]);
+                        i++;
                     }
                     else if (text[i + 1] == '%')
                     {
@@ -415,10 +453,7 @@ namespace MinecraftProtocol.DataType.Chat
                         //处理类型的: 给予%4$s时长为%5$s秒的%1$s（ID %2$s）*%3$s效果
                         //由于最高我只找到%5所以我不清楚这是16进制还是10进制,我暂时当成10进制处理了
                         //(还是最小只能9的10进制,超过9就解析不到了)
-                        if (with[number-1] is ITranslation itc)
-                            sb.Append(itc.ToString(lang));
-                        else
-                            sb.Append(with[number-1].ToString());
+                        AppendWith(with[number - 1]);
                         i += 3;
                     }
                     else
@@ -426,17 +461,9 @@ namespace MinecraftProtocol.DataType.Chat
                         sb.Append(text[i]);
                     }
                 }
-                else if (
-                    text[i] == '{' &&
-                    i+2<text.Length&&
-                    int.TryParse(text[i+1].ToString(), out int index)&&
-                    index<with.Count&&
-                    text[i+2] == '}')
+                else if (text[i] == '{' && i + 2 < text.Length && int.TryParse(text[i + 1].ToString(), out int index) && index < with.Count && text[i + 2] == '}')
                 {
-                    if (with[index] is ITranslation itc)
-                        sb.Append(itc.ToString(lang));
-                    else
-                        sb.Append(with[index].ToString());
+                    AppendWith(with[index]);
                     i += 2;
                 }
                 else
@@ -444,7 +471,32 @@ namespace MinecraftProtocol.DataType.Chat
                     sb.Append(text[i]);
                 }
             }
+            void AppendWith(object item)
+            {
+                if (item is ChatMessage cm)
+                {
+                    RestoreColor = cm.HasColorCode;
+                    //第一天: 这么写有点针对性... 明天再想想怎么写的更通用?
+                    //第二天: 我写的什么东西? 不管啦，反正暂时没什么问题，等有bug了再说！
+                    RestoreFormat = lastFormat.HasFormatCode && !HasFormatCode && !cm.HasFormatCode;
+                    sb.Append(cm.ToString(lang, cm.HasColorCode ? null : lastColor, cm.HasFormatCode ? null : lastFormat));
+                }
+                else
+                    sb.Append(item is ITranslation itc ? itc.ToString(lang) : item.ToString());
+            }
         }
+
+        private static StringBuilder AppendFormatCode(StringBuilder stringBuilder, ChatMessage chatMessage)
+        {
+            if (chatMessage == null)        return stringBuilder;
+            if (chatMessage.Bold)           stringBuilder.Append("§l");
+            if (chatMessage.Italic)         stringBuilder.Append("§o");
+            if (chatMessage.Underline)      stringBuilder.Append("§n");
+            if (chatMessage.Strikethrough)  stringBuilder.Append("§m");
+            if (chatMessage.Obfuscated)     stringBuilder.Append("§k");
+            return stringBuilder;
+        }
+
 
         private void SetFormat(char code)
         {
@@ -534,65 +586,40 @@ namespace MinecraftProtocol.DataType.Chat
             { "commands.tp.notSameDimension","Unable to teleport because players are not in the same dimension"},
             { "commands.effect.success","Given %1$s (ID %2$s) * %3$s to %4$s for %5$s seconds" }
         };
+
         /// <summary>
-        /// 颜色名对应的代码
+        /// 用于查询存不存在这个样式/颜色代码
         /// </summary>
-        private static readonly Dictionary<string, string> ColorNames = new Dictionary<string, string>()
+        public static bool IsFormattingCode(char c)
         {
-            { "black",          "§0" },
-            { "dark_blue",      "§1" },
-            { "dark_green",     "§2" },
-            { "dark_aqua",      "§3" },
-            { "dark_red",       "§4" },
-            { "dark_purple",    "§5" },
-            { "gold",           "§6" },
-            { "gray",           "§7" },
-            { "dark_gray",      "§8" },
-            { "blue",           "§9" },
-            { "green",          "§a" },
-            { "aqua",           "§b" },
-            { "red",            "§c" },
-            { "light_purple",   "§d" },
-            { "yellow",         "§e" },
-            { "white",          "§f" }
-        };
+            return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c == 'l' || c == 'o' || c == 'n' || c == 'm' || c == 'k' || c == 'r';
+        }
+
         /// <summary>
-        /// 防止有人塞个不存在的颜色名进去,正常情况应该只有上面那几种颜色名(1.7.10以上)
+        /// 把颜色名称转换成§0这样子的代码
         /// </summary>
         private static string GetColorCode(string colorName)
         {
-            if (ColorNames.ContainsKey(colorName))
-                return ColorNames[colorName];
-            else
-                return "";
+            return colorName switch
+            {
+                "black"          => "§0",
+                "dark_blue"      => "§1",
+                "dark_green"     => "§2",
+                "dark_aqua"      => "§3",
+                "dark_red"       => "§4",
+                "dark_purple"    => "§5",
+                "gold"           => "§6",
+                "gray"           => "§7",
+                "dark_gray"      => "§8",
+                "blue"           => "§9",
+                "green"          => "§a",
+                "aqua"           => "§b",
+                "red"            => "§c",
+                "light_purple"   => "§d",
+                "yellow"         => "§e",
+                "white"          => "§f",
+                _                => "",
+            };
         }
-        /// <summary>
-        /// 用于查询存不存在这个样式/颜色代码,value基本上是被忽略掉的
-        /// </summary>
-        private static readonly Dictionary<char, string> FormattingCodes = new Dictionary<char, string>()
-        {
-            { '0', "black" },
-            { '1', "dark_blue" },
-            { '2', "dark_green" },
-            { '3', "dark_aqua" },
-            { '4', "dark_red" },
-            { '5', "dark_purple" },
-            { '6', "gold" },
-            { '7', "gray" },
-            { '8', "dark_gray" },
-            { '9', "blue" },
-            { 'a', "green" },
-            { 'b', "aqua" },
-            { 'c', "red" },
-            { 'd', "light_purple" },
-            { 'e', "yellow" },
-            { 'f', "white" },
-            { 'l', null },
-            { 'o', null },
-            { 'n', null },
-            { 'm', null },
-            { 'k', null },
-            { 'r', null }
-        };
     }
 }
