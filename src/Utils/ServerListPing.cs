@@ -11,6 +11,7 @@ using MinecraftProtocol.Packets.Server;
 using System.Net.Sockets;
 using System.Diagnostics;
 using MinecraftProtocol.IO.Extensions;
+using MinecraftProtocol.DataType.Chat;
 
 namespace MinecraftProtocol.Utils
 {
@@ -231,53 +232,8 @@ namespace MinecraftProtocol.Utils
             PingReply PingInfo = JsonConvert.DeserializeObject<PingReply>(json);
             PingInfo.Json = json;
 
-            //我不知道怎么直接反序列化motd,不是每个服务器给的json都长的一样的,我也查不到具体的标准.
-            //所以我现在只能尽量去兼容已知的种类
             if (JObject.Parse(json).ContainsKey("description"))
-            {
-                PingInfo.Motd = new PingReply.Description();
-                var Description = JObject.Parse(json)["description"];
-
-                if (Description.HasValues)
-                {
-                    foreach (JProperty property in Description.Children())
-                    {
-                        if (property.Name == "text" || property.Name == "translate")
-                        {
-                            PingInfo.Motd.Text = property.Value.ToString();
-
-                        }
-                        else if (property.Name == "extra")
-                        {
-                            PingInfo.Motd.Extra = new List<PingReply.ExtraPayload>();
-
-                            foreach (var ja in (JArray)property.First)
-                            {
-                                PingReply.ExtraPayload Extra = new PingReply.ExtraPayload();
-                                foreach (JProperty extraItem in ja)
-                                {
-                                    switch(extraItem.Name)
-                                    {
-                                        case "color":
-                                            Extra.Color = extraItem.Value.ToString(); break;
-                                        case "strikethrough":
-                                            Extra.Strikethrough = bool.Parse(extraItem.Value.ToString().Trim()); break;
-                                        case "bold":
-                                            Extra.Bold = bool.Parse(extraItem.Value.ToString().Trim()); break;
-                                        case "text":
-                                            Extra.Text = extraItem.Value.ToString(); break;
-                                    }
-                                }
-                                PingInfo.Motd.Extra.Add(Extra);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    PingInfo.Motd.Text = Description.ToString();
-                }
-            }
+                PingInfo.Motd = ChatMessage.Deserialize(JObject.Parse(json)["description"].ToString()); 
             return PingInfo;
             
         }
