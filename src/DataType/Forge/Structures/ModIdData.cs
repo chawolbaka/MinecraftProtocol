@@ -29,22 +29,18 @@ namespace MinecraftProtocol.DataType.Forge
 
         public byte[] ToBytes()
         {
-            byte[] data;
-            using (MinecraftMemoryStream buffer = new MinecraftMemoryStream())
-            {
-                buffer.WriteByte(Discriminator);
+            ByteWriter data = new ByteWriter();
 
-                buffer.WriteVarInt(Mapping.Count);
-                foreach (var item in Mapping)
-                {
-                    buffer.WriteString(item.Key);
-                    buffer.WriteVarInt(item.Value);
-                }
-                buffer.WriteStringArray(BlockSubstitutions);
-                buffer.WriteStringArray(ItemSubstitutions);
-                data = buffer.ToArray();
+            data.WriteUnsignedByte(Discriminator);
+            data.WriteVarInt(Mapping.Count);
+            foreach (var item in Mapping)
+            {
+                data.WriteString(item.Key);
+                data.WriteVarInt(item.Value);
             }
-            return data;
+            data.WriteStringArray(BlockSubstitutions);
+            data.WriteStringArray(ItemSubstitutions);
+            return data.AsSpan().ToArray();
         }
 
         public static ModIdData Read(List<byte> data)

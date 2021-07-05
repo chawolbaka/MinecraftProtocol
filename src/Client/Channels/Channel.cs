@@ -1,4 +1,5 @@
 ﻿using MinecraftProtocol.DataType.Forge;
+using MinecraftProtocol.IO;
 using System;
 using System.Collections.Generic;
 
@@ -14,23 +15,16 @@ namespace MinecraftProtocol.Client.Channels
         public abstract bool CanRead { get; }
         public abstract bool CanSend { get; }
 
-
         internal virtual void TriggerEvent(byte[] data)
         {
             if (!CanRead || Received == null) return;
-            var invocationList = Received.GetInvocationList();
-            if (invocationList.Length == 1)
-                (invocationList[0] as EventHandler<ChannelReceivedEventArgs>)?.Invoke(this, new ChannelReceivedEventArgs(data));
-            else
-                foreach (EventHandler<ChannelReceivedEventArgs> x in invocationList)
-                {
-                    byte[] temp = new byte[data.Length];
-                    Array.Copy(data, temp, data.Length);
-                    ChannelReceivedEventArgs eventArgs = new ChannelReceivedEventArgs(temp);
-                    x.Invoke(this, eventArgs);
-                    if (eventArgs.IsCancelled)
-                        return;
-                }
+            foreach (EventHandler<ChannelReceivedEventArgs> x in Received.GetInvocationList())
+            {
+                ChannelReceivedEventArgs eventArgs = new ChannelReceivedEventArgs(new ByteReader(data,false));
+                x.Invoke(this, eventArgs);
+                if (eventArgs.IsCancelled)
+                    return;
+            }
         }
 
         public abstract void Send(IEnumerable<byte> data);

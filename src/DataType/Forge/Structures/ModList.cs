@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
@@ -50,26 +51,23 @@ namespace MinecraftProtocol.DataType.Forge
                 int index = mod.LastIndexOf('@');
                 result.Add(new ModInfo(
                     modName: mod.AsSpan().Slice(0, index).ToString(),
-                    modVersion: mod.AsSpan().Slice(index).ToString()));
+                    modVersion: mod.AsSpan().Slice(index+1).ToString()));
             }
             return result;
         }
 
         public byte[] ToBytes()
         {
-            byte[] data;
-            using (MinecraftMemoryStream ms = new MinecraftMemoryStream())
+            ByteWriter data = new ByteWriter();
+
+            data.WriteUnsignedByte(Discriminator);
+            data.WriteVarInt(_modList.Count);
+            foreach (var mod in _modList)
             {
-                ms.WriteByte(Discriminator);
-                ms.WriteVarInt(_modList.Count);
-                foreach (var mod in _modList)
-                {
-                    ms.WriteString(mod.Name);
-                    ms.WriteString(mod.Version);
-                }
-                data = ms.ToArray();
+                data.WriteString(mod.Name);
+                data.WriteString(mod.Version);
             }
-            return data;
+            return data.AsSpan().ToArray();
         }
         public static ModList Read(ReadOnlySpan<byte> data)
         {

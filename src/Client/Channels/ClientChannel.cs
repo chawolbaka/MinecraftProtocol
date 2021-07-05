@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Net.Sockets;
-using System.Threading.Tasks;
 using MinecraftProtocol.Packets.Both;
 
 namespace MinecraftProtocol.Client.Channels
@@ -22,7 +18,6 @@ namespace MinecraftProtocol.Client.Channels
             _channelName = channel;
             _client = client;
         }
-
 
         public override void Send(IEnumerable<byte> data)
         {

@@ -44,28 +44,23 @@ namespace MinecraftProtocol.DataType.Forge
 
         public byte[] ToBytes()
         {
-            byte[] data;
-            using (MinecraftMemoryStream ms = new MinecraftMemoryStream())
+            ByteWriter data = new ByteWriter();
+            data.WriteUnsignedByte(Discriminator);
+            data.WriteBoolean(HasMore);
+            data.WriteString(Name);
+
+            data.WriteVarInt(Ids.Count);
+            foreach (var id in Ids)
             {
-                ms.WriteByte(Discriminator);
-                ms.WriteBoolean(HasMore);
-                ms.WriteString(Name);
-
-                ms.WriteVarInt(Ids.Count);
-                foreach (var id in Ids)
-                {
-                    ms.WriteString(id.Key);
-                    ms.WriteVarInt(id.Value);
-                }
-
-                ms.WriteStringArray(Substitutions);
-                
-                if (Dummies != null && Dummies.Count > 0)
-                    ms.WriteStringArray(Dummies);
-                
-                data = ms.ToArray();
+                data.WriteString(id.Key);
+                data.WriteVarInt(id.Value);
             }
-            return data;
+
+            data.WriteStringArray(Substitutions);
+
+            if (Dummies != null && Dummies.Count > 0)
+                data.WriteStringArray(Dummies);
+            return data.AsSpan().ToArray();
         }
         /// <summary>只读取HasMore字段</summary>
         public static bool ReadHasMore(List<byte> data) => ProtocolHandler.ReadBoolean(data ?? throw new ArgumentNullException(nameof(data)), 1);

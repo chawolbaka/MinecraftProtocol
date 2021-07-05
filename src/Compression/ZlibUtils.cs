@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Ionic.Zlib;
 
 namespace MinecraftProtocol.Compression
@@ -62,6 +65,25 @@ namespace MinecraftProtocol.Compression
                     decompressedBuffer.Write(buffer, 0, read);
                 return decompressedBuffer.ToArray();
             }
+        }
+
+        public static async Task<byte[]> CompressAsync(Memory<byte> to_compress, CancellationToken cancellationToken = default)
+        {
+            byte[] data;
+            using MemoryStream ms = new MemoryStream();
+            using ZlibStream stream = new ZlibStream(ms, CompressionMode.Compress);
+            await stream.WriteAsync(to_compress, cancellationToken).ConfigureAwait(false);
+            data = ms.ToArray();
+            return data;
+        }
+
+        public static async Task<byte[]> DecompressAsync(ReadOnlyMemory<byte> to_decompress, int size_uncompressed)
+        {
+            byte[] packetData_decompressed = new byte[size_uncompressed];
+            using MemoryStream ms = new MemoryStream(to_decompress.Span.ToArray(), false);
+            using ZlibStream stream = new ZlibStream(ms, CompressionMode.Decompress);
+            await stream.ReadAsync(packetData_decompressed, 0, size_uncompressed).ConfigureAwait(false);
+            return packetData_decompressed;
         }
     }
 }

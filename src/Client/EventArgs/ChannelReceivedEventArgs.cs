@@ -1,13 +1,14 @@
-﻿using System;
+﻿using MinecraftProtocol.IO;
+using System;
 
 namespace MinecraftProtocol.Client
 {
     public class ChannelReceivedEventArgs : PacketEventArgs
     {
-        public byte[] Data { get; }
+        public ByteReader Data { get; }
 
-        public ChannelReceivedEventArgs(byte[] data) : this(data, DateTime.Now) { }
-        public ChannelReceivedEventArgs(byte[] data, DateTime time) : base(time)
+        public ChannelReceivedEventArgs(ByteReader data) : this(data, DateTime.Now) { }
+        public ChannelReceivedEventArgs(ByteReader data, DateTime time) : base(time)
         {
             Data = data;
         }
