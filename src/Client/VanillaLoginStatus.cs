@@ -16,7 +16,6 @@ namespace MinecraftProtocol.Client
         EncryptionResponse,
         SetCompression,
         Success,
-        Failed,
-        Disconnected
+        Failed
     }
 }

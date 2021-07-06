@@ -26,8 +26,6 @@ namespace MinecraftProtocol.Client
         public virtual int ProtocolVersion { get; set; } = -1;
 
 
-        public delegate void DisconnectEventHandler(MinecraftClient sender, DisconnectEventArgs args);
-
         /// <summary>
         /// 接收到包事件
         /// </summary>
@@ -45,6 +43,12 @@ namespace MinecraftProtocol.Client
         /// </summary>
         public abstract event LoginEventHandler LoginSuccess;
         public delegate void LoginEventHandler(MinecraftClient sender, LoginEventArgs args);
+
+        /// <summary>
+        /// TCP断开连接事件
+        /// </summary>
+        public abstract event DisconnectEventHandler Disconnected;
+        public delegate void DisconnectEventHandler(MinecraftClient sender, DisconnectEventArgs args);
 
         /// <summary>
         /// TCP连接状态

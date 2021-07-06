@@ -10,7 +10,7 @@ using MinecraftProtocol.Utils;
 namespace MinecraftProtocol.IO
 {
 
-    public sealed class PacketReader : IDisposable
+    public sealed class PacketListener : IDisposable
     {
         public int ReceiveBufferSize
         {
@@ -24,22 +24,23 @@ namespace MinecraftProtocol.IO
             set => ThrowIfDisposed(() => _compressionThreshold = value);
         }
 
-        public CryptoHandler Crypto => ThrowIfDisposed( _crypto);
+        public CryptoHandler Crypto => ThrowIfDisposed(_crypto);
 
         public event EventHandler<PacketReceivedEventArgs> PacketReceived;
         public event EventHandler<UnhandledExceptionEventArgs> UnhandledException;
 
         private Socket _socket;
         private CryptoHandler _crypto;
-        private CancellationToken cancellationToken;
+        private CancellationTokenSource cancellationTokenSource;
+        private CancellationToken _cancellationToken;
         private int _offset;
         private int _receiveBufferSize;
         private int _compressionThreshold;
         private byte[] _buffer;
         private ManualResetEvent ReceiveSignal = new ManualResetEvent(false);
 
-        public PacketReader(Socket socket) : this(socket, socket.ReceiveBufferSize) { }
-        public PacketReader(Socket socket, int receiveBufferSize)
+        public PacketListener(Socket socket) : this(socket, socket.ReceiveBufferSize) { }
+        public PacketListener(Socket socket, int receiveBufferSize)
         {
             if (receiveBufferSize < 32)
                 throw new ArgumentOutOfRangeException(nameof(receiveBufferSize), $"{nameof(receiveBufferSize)} too short.");
@@ -48,7 +49,7 @@ namespace MinecraftProtocol.IO
 
             _socket = socket;
             _buffer = new byte[receiveBufferSize];
-            ReceiveBufferSize = receiveBufferSize;
+            _receiveBufferSize = receiveBufferSize;
             _compressionThreshold = -1;
             _crypto = new CryptoHandler();
         }
@@ -57,17 +58,17 @@ namespace MinecraftProtocol.IO
         {
             if (token == null)
                 throw new ArgumentNullException(nameof(token));
-            cancellationToken = token;
+            _cancellationToken = token;
             return Task.Run(Start);
         }
 
         public void Start()
         {
-            if (NetworkUtils.CheckConnect(_socket))
+            if (!NetworkUtils.CheckConnect(_socket))
                 throw new InvalidOperationException("socket is not connected");
 
-            if (cancellationToken == default)
-                cancellationToken = new CancellationTokenSource().Token;
+            if (_cancellationToken == default)
+                _cancellationToken = (cancellationTokenSource = new CancellationTokenSource()).Token;
 
             using SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
             eventArgs.UserToken = _socket;
@@ -77,7 +78,7 @@ namespace MinecraftProtocol.IO
             UpdateBuffer(eventArgs);
             try
             {
-                while (!_disposed&&!cancellationToken.IsCancellationRequested)
+                while (!_disposed&&!_cancellationToken.IsCancellationRequested)
                 {
                     DateTime ReceiveStart = DateTime.Now;
                     int PacketLength = VarInt.Read(() =>
@@ -95,7 +96,7 @@ namespace MinecraftProtocol.IO
                     else
                     {
                         int read = 0;
-                        while (!_disposed && !cancellationToken.IsCancellationRequested && read < PacketLength)
+                        while (!_disposed && !_cancellationToken.IsCancellationRequested && read < PacketLength)
                         {
                             if (PacketLength - read < eventArgs.BytesTransferred - _offset)
                             {
@@ -113,7 +114,7 @@ namespace MinecraftProtocol.IO
                         }
                     }
 
-                    if (_disposed || cancellationToken.IsCancellationRequested)
+                    if (_disposed || _cancellationToken.IsCancellationRequested)
                         break;
 
                     PacketReceived?.Invoke(this, new PacketReceivedEventArgs(DateTime.Now - ReceiveStart, Packet.Depack(Data, _compressionThreshold)));
@@ -150,8 +151,8 @@ namespace MinecraftProtocol.IO
             if (e.BytesTransferred <= 0 && !NetworkUtils.CheckConnect(e.UserToken as Socket))
                 throw new SocketException((int)SocketError.ConnectionReset);
 
-           if (!_disposed && Crypto.Enable)
-                Crypto.Decrypt(_buffer, 0, e.BytesTransferred).AsSpan(0, e.BytesTransferred).CopyTo(_buffer);
+           if (!_disposed && _crypto.Enable)
+                _crypto.Decrypt(_buffer, 0, e.BytesTransferred).AsSpan(0, e.BytesTransferred).CopyTo(_buffer);
 
             ReceiveSignal.Reset();
             _offset = 0;
@@ -169,12 +170,13 @@ namespace MinecraftProtocol.IO
             _disposed = true;
             if (!disposed && disposing)
             {
+                cancellationTokenSource?.Cancel();
                 _buffer = null;
                 _socket = null;
                 _crypto = null;
             }
         }
-        ~PacketReader()
+        ~PacketListener()
         {
             Dispose(false);
         }
@@ -211,7 +213,7 @@ namespace MinecraftProtocol.IO
             public Exception Exception { get; }
 
             /// <summary>
-            /// 异常发生的事件
+            /// 异常发生的时间
             /// </summary>
             public DateTime Time { get; }
 
