@@ -30,8 +30,8 @@ namespace MinecraftProtocol.Packets.Client
                 throw new OverflowException($"message too long, max is {MaxMessageLength}");
             else if (protocolVersion < ProtocolVersionNumbers.V16w38a && message.Length > OldMaxMessageLength)
                 throw new OverflowException($"message too long, max is {OldMaxMessageLength}");
-            this.ID = GetPacketID(protocolVersion);
-            this.Message = Message;
+            ID = GetPacketID(protocolVersion);
+            Message = Message;
             WriteString(message);
         }
 

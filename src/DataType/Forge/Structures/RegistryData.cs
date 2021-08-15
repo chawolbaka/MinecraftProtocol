@@ -62,8 +62,6 @@ namespace MinecraftProtocol.DataType.Forge
                 data.WriteStringArray(Dummies);
             return data.AsSpan().ToArray();
         }
-        /// <summary>只读取HasMore字段</summary>
-        public static bool ReadHasMore(List<byte> data) => ProtocolHandler.ReadBoolean(data ?? throw new ArgumentNullException(nameof(data)), 1);
         public static RegistryData Read(ReadOnlySpan<byte> data)
         {
             if (data.Length < 1)

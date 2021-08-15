@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Net;
 using System.Text;
+using System.Linq;
+using System.Collections;
 using System.Collections.Generic;
 using MinecraftProtocol.Auth;
 using MinecraftProtocol.DataType;
@@ -8,12 +10,8 @@ using MinecraftProtocol.DataType.Forge;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Packets.Both;
 using MinecraftProtocol.Packets.Server;
-using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Compatible;
-using System.Collections;
-using System.Threading.Tasks;
 using MinecraftProtocol.Client.Channels;
-using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.Client
 {
@@ -23,49 +21,62 @@ namespace MinecraftProtocol.Client
     /// </summary>
     public class ForgeClient : VanillaClient
     {
-        public override string ServerHost { get => base.ServerHost + "\0FML\0"; protected set => base.ServerHost = value; }
-        public override string ToString() => base.ToString().Replace("\0FML\0", "");
-
+     
         public event ForgeLoginEventHandler ForgeLoginStatusChanged { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
         public delegate void ForgeLoginEventHandler(MinecraftClient sender, ForgeLoginEventArgs args);
-        
         private ForgeLoginEventHandler _loginStatusChanged;
 
-        private void UpdateLoginStatus(ForgeLoginStatus value)
+        public virtual byte FMLProtocolVersion { get; set; }
+
+        public virtual ForgeLoginStatus ForgeLoginState
         {
-            if (value == ForgeLoginStatus.Success)
-                 _loginSuccess?.Invoke(this, new ForgeLoginEventArgs(value));
-            
-            _loginStatusChanged?.Invoke(this, new ForgeLoginEventArgs(value));
+            get => ThrowIfDisposed(_forgeLoginState);
+            protected set
+            {
+                _forgeLoginState = value;
+                if (value == ForgeLoginStatus.Success)
+                {
+                    _loginSuccess?.Invoke(this, new ForgeLoginEventArgs(value));
+                    _joined = true;
+                }
+                _loginStatusChanged?.Invoke(this, new ForgeLoginEventArgs(value));
+            }
         }
         public virtual FMLHandshakeClientState HandshakeState
         {
             get => ThrowIfDisposed(_handshakeState);
             protected set
             {
-                Channel["FML|HS"].Send(new HandshakeAck(value));
                 _handshakeState = value;
-                UpdateLoginStatus(ForgeLoginStatus.HandshakeAck);
+                if (value == FMLHandshakeClientState.COMPLETE)
+                    ForgeLoginState = ForgeLoginStatus.Success;
+                else
+                    ForgeLoginState = ForgeLoginStatus.HandshakeAck;
+                
+                Channel["FML|HS"].Send(new HandshakeAck(value));
             }
         }
+        protected ForgeLoginStatus _forgeLoginState;
         protected FMLHandshakeClientState _handshakeState;
 
 
         public virtual ClientChannelManager Channel => _channelManager;
         protected ClientChannelManager _channelManager;
+        
 
         public virtual ModList ClientModList => ThrowIfDisposed(_clientModList);
         public virtual ModList ServerModList => ThrowIfDisposed(_serverModList);
         protected ModList _clientModList;
         protected ModList _serverModList;
+        protected string[] _serverChannels;
 
         public ForgeClient(string host, IPAddress ip, ushort port,  ModList clientMods, IClientSettings settings, int protocolVersion) : base(host, ip, port, settings, protocolVersion)
         {
             if (clientMods is null || clientMods.Count < 1)
                 throw new ArgumentNullException(nameof(ModList), "缺少必要的客户端mod");
+            ServerHost += "\0FML\0";
             _clientModList = clientMods;
             _channelManager = new ClientChannelManager(this);
-            LoginSuccess += RegisterEvent;
         }
         public ForgeClient(string host, IPAddress ip, ushort port, ModList clientMods, int protocolVersion) : this(host, ip, port, clientMods, null, protocolVersion) { }
         public ForgeClient(string host, IPEndPoint remoteEP, ModList clientMods, int protocolVersion) : this(host, remoteEP.Address, (ushort)remoteEP.Port, clientMods, null, protocolVersion) { }
@@ -75,173 +86,134 @@ namespace MinecraftProtocol.Client
         public ForgeClient(IPEndPoint remoteEP, ModList clientMods, int protocolVersion) : this(null, remoteEP.Address, (ushort)remoteEP.Port, clientMods, null, protocolVersion) { }
         public ForgeClient(IPEndPoint remoteEP, ModList clientMods, IClientSettings settings, int protocolVersion) : this(null, remoteEP.Address, (ushort)remoteEP.Port, clientMods, settings, protocolVersion) { }
 
-        private void RegisterEvent(MinecraftClient client,LoginEventArgs e)
-        {
-            //注册频道接收到消息后的处理事件
-            foreach (var channel in Channel)
-            {
-                //如果没有可读的频道就不注册事件了
-                if (channel.CanRead)
-                {
-                    //防止启动大量的线程，所以提前获取一下包ID
-                    PluginChannelPacketID = PluginChannelPacket.GetPacketID(ProtocolVersion, Bound.Server);
-                    client.PacketReceived += PluginChannelReceived;
-                    break;
-                }
-            }
-        }
-        private void ClaerRegisterEvent()
-        {
-            PacketReceived -= PluginChannelReceived;
-        }
-        private int PluginChannelPacketID;
-        private void PluginChannelReceived(MinecraftClient client, PacketReceivedEventArgs e)
-        {
-            if (e.Packet.ID != PluginChannelPacketID)
-                return;
-            else
-                Task.Run(() =>
-                {
-                    if (PluginChannelPacket.Verify(e.Packet, client.ProtocolVersion, Bound.Server, true, out PluginChannelPacket pcp))
-                    {
-                        foreach (var channel in Channel)
-                        {
-                            if (channel.CanRead && channel.Name == pcp.Channel)
-                                channel.TriggerEvent(pcp.Data);
-                        }
-                    }
-                });
-        }        
-
-        public override bool Join(SessionToken token, out ChatMessage disconnectReason)
+        public override bool Join(SessionToken token)
         {
             ThrowIfDisposed();
-            disconnectReason = null;
-            try
+            if (!base.Join(token))
+                return false;
+            _joined = false;
+            _handshakeState = FMLHandshakeClientState.START;
+            ForgeLoginState = ForgeLoginStatus.Start;
+            int count = 0;
+            while (ForgeLoginState != ForgeLoginStatus.Failed&&HandshakeState != FMLHandshakeClientState.COMPLETE)
             {
-                //发送原版的登录包
-                Packet LoginSuccessPacket = SendLoginPacket(token);
-                SetPlayer(LoginSuccessPacket);
+                Packet packet = ReadPacket();
+                if (++count > 20960)
+                    throw new OverflowException("异常的登录过程，服务端发送的数据包过多");
+                else if (DisconnectPacket.Verify(packet, ProtocolVersion, out DisconnectPacket dp))
+                    OnDisconnectLoginReceived(dp);
+                else if (DisconnectLoginPacket.Verify(packet, ProtocolVersion, out DisconnectLoginPacket dlp))
+                    OnDisconnectLoginReceived(dlp);
+                else if (!PluginChannelPacket.Verify(packet, ProtocolVersion, Bound.Server, true, out PluginChannelPacket pcp))
+                    continue;
+                else if (ForgeLoginState == ForgeLoginStatus.Start)
+                    OnHandshakeStartState(pcp);
+                else if (ForgeLoginState == ForgeLoginStatus.ServerRegisterChannel)
+                    OnServerRegisterChannelAfter(pcp);
+                else if (ForgeLoginState == ForgeLoginStatus.SendModList)
+                    OnSendModListAfter(pcp);
+                else if (HandshakeState == FMLHandshakeClientState.WAITINGSERVERDATA)
+                    OnWaitServerData(pcp);
+                else if (pcp.Data[0] == HandshakeAck.Discriminator)
+                    OnHandshakeAckState(pcp);
+            }
+            return ForgeLoginState == ForgeLoginStatus.Success;
+        }
+        protected virtual void OnHandshakeStartState(PluginChannelPacket packet)
+        {
+            if (packet.Channel != "REGISTER")
+            {
+                ForgeLoginState = ForgeLoginStatus.Failed;
+                throw new LoginException("错误的登录流程");
+            }
+            _serverChannels = Encoding.UTF8.GetString(packet.Data).Split('\0');
+            ForgeLoginState = ForgeLoginStatus.ServerRegisterChannel;
+        }
 
-                //S→C: 注册插件频道
-                PluginChannelPacket RegisterChannelPacket = ReadPluginMessage();
-                string[] ServerChannels;
-                if (RegisterChannelPacket.Channel == "REGISTER")
-                    ServerChannels = Encoding.UTF8.GetString(RegisterChannelPacket.Data).Split('\0');
-                else
-                    throw new LoginException("错误的登录流程");
+        protected virtual void OnServerRegisterChannelAfter(PluginChannelPacket packet)
+        {
+            FMLProtocolVersion = ServerHello.Read(packet.Data).FMLProtocolVersion;
+            ForgeLoginState = ForgeLoginStatus.ServerHello;
 
-                UpdateLoginStatus(ForgeLoginStatus.ServerRegisterChannel);
+            if (_channelManager.Empty)
+                _channelManager.Registry(_serverChannels).SendToServer();
+            ForgeLoginState = ForgeLoginStatus.ClientRegisterChannel;
 
-                //S→C: A ServerHello packet is sent on FML|HS including the player's dimension (0 if it's the first login)
-                PluginChannelPacket ServerHelloPacket = ReadPluginMessage();
-                byte FMLProtocolVersion = ServerHello.Read(ServerHelloPacket.Data).FMLProtocolVersion;
-                UpdateLoginStatus(ForgeLoginStatus.ServerHello);
+            Channel["FML|HS"].Send(new ClientHello(FMLProtocolVersion));
+            ForgeLoginState = ForgeLoginStatus.ClientHello;
 
-                //C→S: 注册插件频道
-                if (_channelManager.Empty)
-                    _channelManager.Registry(ServerChannels).SendToServer();
-                UpdateLoginStatus(ForgeLoginStatus.ClientRegisterChannel);
+            Channel["FML|HS"].Send(_clientModList);
+            ForgeLoginState = ForgeLoginStatus.SendModList;
+        }
 
-                //C→S: 通过 FML|HS 频道发送一个ClientHello
-                Channel["FML|HS"].Send(new ClientHello(FMLProtocolVersion));
-                UpdateLoginStatus(ForgeLoginStatus.ClientHello);
+        protected virtual void OnSendModListAfter(PluginChannelPacket packet)
+        {
+            _serverModList = ModList.Read(packet.Data);
+            ForgeLoginState = ForgeLoginStatus.ReceiveModList;
+            HandshakeState = FMLHandshakeClientState.WAITINGSERVERDATA;
+        }
 
-                //C→S: 发送客户端mod列表, 服务器会拿去和自己的比较,如果有缺少就断开连接。
-                var x = NetworkUtils.CheckConnect(TCP);
-                Channel["FML|HS"].Send(_clientModList);
-                UpdateLoginStatus(ForgeLoginStatus.SendModList);
-
-                //S→C: A ModList packet is sent.
-                PluginChannelPacket ServerModListPacket = ReadPluginMessage();
-                _serverModList = ModList.Read(ServerModListPacket.Data);
-                UpdateLoginStatus(ForgeLoginStatus.ReceiveModList);
-
-                //C→S: A HandshakeAck packet is sent, with the phase being WAITINGSERVERDATA (2).
-                HandshakeState = FMLHandshakeClientState.WAITINGSERVERDATA;
-
-                //S→C: A series of RegistryData packets is sent, with hasMore being true for all packets except the last.
-                if (ProtocolVersion >= ProtocolVersionNumbers.V1_8)
+        protected virtual void OnWaitServerData(PluginChannelPacket packet)
+        {
+            if (ProtocolVersion >= ProtocolVersionNumbers.V1_8)
+            {
+                if (!RegistryData.Read(packet.Data).HasMore)
                 {
-                    while (RegistryData.Read(ReadPluginMessage().Data).HasMore) { }
-                    UpdateLoginStatus(ForgeLoginStatus.RegistryData);
+                    ForgeLoginState = ForgeLoginStatus.RegistryData;
+                    HandshakeState = FMLHandshakeClientState.WAITINGSERVERCOMPLETE;
                 }
-
-                //C→S: A HandshakeAck packet is sent with phase being WAITINGSERVERCOMPLETE (3).
+            }
+            else if (packet.Data[0] != ModIdData.Discriminator)
+            {
                 HandshakeState = FMLHandshakeClientState.WAITINGSERVERCOMPLETE;
-
-                while (HandshakeState != FMLHandshakeClientState.COMPLETE)
-                {
-                    try
-                    {
-                        PluginChannelPacket StatePacket = ReadPluginMessage();
-                        if (StatePacket.Data.Length != 2)
-                            continue;
-                        else if (HandshakeAck.Read(StatePacket.Data) == FMLHandshakeServerState.WAITINGCACK)
-                            HandshakeState = FMLHandshakeClientState.PENDINGCOMPLETE;
-                        else if (HandshakeAck.Read(StatePacket.Data) == FMLHandshakeServerState.COMPLETE)
-                            HandshakeState = FMLHandshakeClientState.COMPLETE;
-                    }
-                    catch (InvalidCastException) { }
-                }
-                _joined = true;
-                UpdateLoginStatus(ForgeLoginStatus.Success);
-                return true;
-            }
-            catch (InvalidPacketException ipe)
-            {
-                if (DisconnectLoginPacket.Verify(ipe.Packet, ProtocolVersion, out DisconnectLoginPacket dlp))
-                {
-                    disconnectReason = dlp.Reason;
-                    Disconnect(disconnectReason.ToString()); return false;
-                }
-                else if (DisconnectPacket.Verify(ipe.Packet, ProtocolVersion, out DisconnectPacket dp))
-                {
-                    disconnectReason = dp.Reason;
-                    Disconnect(disconnectReason.ToString()); return false;
-                }
-                else
-                    throw;
             }
         }
-
-        protected virtual PluginChannelPacket ReadPluginMessage()
+        protected virtual void OnHandshakeAckState(PluginChannelPacket packet)
         {
-            Packet packet = ReadPacket();
-            if (PluginChannelPacket.Verify(packet, ProtocolVersion, Bound.Server, true, out PluginChannelPacket pcp))
-                return pcp;
-            else
-                throw new InvalidPacketException(packet);
+            if (HandshakeAck.Read(packet.Data) == FMLHandshakeServerState.WAITINGCACK)
+                HandshakeState = FMLHandshakeClientState.PENDINGCOMPLETE;
+            if (HandshakeAck.Read(packet.Data) == FMLHandshakeServerState.COMPLETE)
+                HandshakeState = FMLHandshakeClientState.COMPLETE;
         }
 
-        public virtual void SendPluginMessage(string channel, IForgeStructure forgeStruct)
+        protected override void OnLoginSuccessReceived(LoginSuccessPacket lsp)
         {
-            SendPacket(new PluginChannelPacket(channel, forgeStruct, ProtocolVersion, Bound.Client, true));
+            SetPlayer(lsp);
+            VanillaLoginState = VanillaLoginStatus.Success;
         }
 
-        public virtual void SendPluginMessage(string channel, byte[] data)
+        protected override void OnDisconnectLoginReceived(DisconnectPacket dp)
         {
-            SendPacket(new PluginChannelPacket(channel, data, ProtocolVersion, Bound.Client, true));
+            ForgeLoginState = ForgeLoginStatus.Failed;
+            _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
+            DisconnectAsync(dp.Json);
+        }
+        
+        protected override void OnDisconnectLoginReceived(DisconnectLoginPacket dlp)
+        {
+            ForgeLoginState = ForgeLoginStatus.Failed;
+            DisconnectAsync(dlp.Json);
         }
 
         public override void Disconnect(string reason, bool reuseSocket = false)
         {
             base.Disconnect(reason,reuseSocket);
-            _handshakeState = FMLHandshakeClientState.START;
+            
             _serverModList = null;
-            ClaerRegisterEvent();
+            Channel.Reset();
         }
 
-        public class ClientChannelManager:IEnumerable<Channel>
+        public override string ToString() => base.ToString().Replace("\0FML\0", "");
+
+        public class ClientChannelManager : IEnumerable<Channel>
         {
-            
             public bool Empty => _channels.Count <= 0;
             public Channel this[string channel] => _channels[channel];
 
             private bool IsSend = false;
+            private int PluginChannelPacketID;
             private MinecraftClient _client;
             private Dictionary<string, Channel> _channels = new Dictionary<string, Channel>();
-
 
             public ClientChannelManager(MinecraftClient client) : this(client, null) { }
             public ClientChannelManager(MinecraftClient client, params string[] channels)
@@ -249,7 +221,16 @@ namespace MinecraftProtocol.Client
                 if (channels != null && channels.Length > 0)
                     Registry(channels);
                 _client = client;
+                _client.LoginSuccess += (client, e) =>
+                {
+                    PluginChannelPacketID = PluginChannelPacket.GetPacketID(_client.ProtocolVersion, Bound.Server);
+                    if (_channels.Any(c => c.Value.CanRead))
+                        _client.PacketReceived += PluginChannelReceived;
+                };
+                _client.Disconnected += (client, e) => client.PacketReceived -= PluginChannelReceived;
             }
+
+
             public ClientChannelManager Registry(string channel) => Registry(new WriteOlnyClientChannel(channel, _client));
             public ClientChannelManager Registry(params string[] channels)
             {
@@ -276,17 +257,29 @@ namespace MinecraftProtocol.Client
                 if (IsSend)
                     throw new InvalidOperationException("无法重复注册频道。");
                 IsSend = true;
-
                 _client.SendPacket(new PluginChannelPacket(
                     "REGISTER", Encoding.UTF8.GetBytes(string.Join('\0', _channels.Keys)), _client.ProtocolVersion, Bound.Client, _client is ForgeClient));
             }
-
+            private void PluginChannelReceived(MinecraftClient client, PacketReceivedEventArgs e)
+            {
+                if (e.Packet.ID == PluginChannelPacketID && PluginChannelPacket.Verify(e.Packet, client.ProtocolVersion, Bound.Server, true, out PluginChannelPacket pcp))
+                {
+                    foreach (var channel in _channels.Values)
+                    {        
+                        if (channel.CanRead && channel.Name == pcp.Channel)
+                            channel.TriggerEvent(pcp.Data);
+                    }
+                }
+            }
             IEnumerator IEnumerable.GetEnumerator() => _channels.Values.GetEnumerator();
             public IEnumerator<Channel> GetEnumerator() => _channels.Values.GetEnumerator();
             public void Remove(string channel) => _channels.Remove(channel);
             public void Clear() => _channels.Clear();
-
-
+            public void Reset()
+            {
+                IsSend = false;
+                Clear();
+            }
         }
     }
 }

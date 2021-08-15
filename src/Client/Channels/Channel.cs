@@ -1,11 +1,11 @@
-﻿using MinecraftProtocol.DataType.Forge;
-using MinecraftProtocol.IO;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using MinecraftProtocol.IO;
+using MinecraftProtocol.DataType.Forge;
 
 namespace MinecraftProtocol.Client.Channels
 {
-    public abstract class Channel
+    public abstract class Channel : IEquatable<Channel>
     {
         public virtual string Name => _channelName;
         protected string _channelName;
@@ -27,6 +27,7 @@ namespace MinecraftProtocol.Client.Channels
             }
         }
 
+        public abstract void Send(ByteWriter writer);
         public abstract void Send(IEnumerable<byte> data);
         public virtual void Send(IForgeStructure data)
         {
@@ -34,7 +35,12 @@ namespace MinecraftProtocol.Client.Channels
                 Send(data.ToBytes());
         }
 
-        public override string ToString() => _channelName;
+        public override bool Equals(object obj) => obj is Channel channel && channel.Name == _channelName;
+        
+        public bool Equals(Channel other) => other.Name == _channelName;
+        
         public override int GetHashCode() => _channelName.GetHashCode();
+
+        public override string ToString() => _channelName;
     }
 }

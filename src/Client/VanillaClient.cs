@@ -9,14 +9,13 @@ using System.Security.Cryptography;
 using MinecraftProtocol.Auth;
 using MinecraftProtocol.Auth.Yggdrasil;
 using MinecraftProtocol.DataType;
-using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Crypto;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Packets.Client;
 using MinecraftProtocol.Packets.Server;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
-using MinecraftProtocol.Utils;
+using MinecraftProtocol.Utils; 
 using MinecraftProtocol.Entity;
 using MinecraftProtocol.IO;
 
@@ -64,16 +63,23 @@ namespace MinecraftProtocol.Client
         protected LoginEventHandler _loginSuccess;
         protected DisconnectEventHandler _kicked;
         protected DisconnectEventHandler _disconnected;
+        protected SessionToken _loginToken;
         protected Player _player;
 
         private VanillaLoginEventHandler _loginStatusChanged;
-        private void UpdateLoginStatus(VanillaLoginStatus status)
-        {
-            if (status == VanillaLoginStatus.Success)
-                _loginSuccess?.Invoke(this, new VanillaLoginEventArgs(status));
 
-            _loginStatusChanged?.Invoke(this, new VanillaLoginEventArgs(status));
+        private VanillaLoginStatus _vanillaLoginState;
+        public virtual VanillaLoginStatus VanillaLoginState
+        {
+            get => ThrowIfDisposed(_vanillaLoginState);
+            protected set
+            {
+                _vanillaLoginState = value;
+               
+                _loginStatusChanged?.Invoke(this, new VanillaLoginEventArgs(value));
+            }
         }
+
 
 
         protected IClientSettings _settings;
@@ -124,6 +130,7 @@ namespace MinecraftProtocol.Client
         public override bool Connect()
         {
             ThrowIfDisposed();
+            //初始化数据包监听器
             PacketListen = new PacketListener(TCP ??= new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp));
             PacketListen.PacketReceived += (sender, e) =>
             {
@@ -151,13 +158,15 @@ namespace MinecraftProtocol.Client
                 else
                     e.Handled = false;
             };
+
+            //连接TCP
             if (!TCP.Connected)
             {
                 TCP.Connect(ServerIP, ServerPort);
                 if (!(_connected = NetworkUtils.CheckConnect(TCP)))
                     return false;
 
-                UpdateLoginStatus(VanillaLoginStatus.Connected);
+                VanillaLoginState = VanillaLoginStatus.Connected;
                 return true;
             }
             else
@@ -166,11 +175,9 @@ namespace MinecraftProtocol.Client
             }    
         }
 
-        public override bool Join(string playerName, out ChatMessage disconnectReason) => Join(new SessionToken(null, playerName, null, null), out disconnectReason);
-        public virtual bool Join(string email, string password) => Join(email, password, out _, out _);
-        public virtual bool Join(string email, string password, out ChatMessage disconnectReason) => Join(email, password, out _, out disconnectReason);
-        public virtual bool Join(string email, string password, out SessionToken token) => Join(email, password, out token, out _);
-        public virtual bool Join(string email, string password, out SessionToken token, out ChatMessage disconnectReason)
+        public override bool Join(string playerName) => Join(new SessionToken(null, playerName, null, null));
+        public virtual bool Join(string email, string password) => Join(email, password, out _);
+        public virtual bool Join(string email, string password, out SessionToken token)
         {
             ThrowIfDisposed();
 
@@ -179,93 +186,98 @@ namespace MinecraftProtocol.Client
             if (string.IsNullOrEmpty(password))
                 throw new ArgumentNullException(nameof(password));
 
-            SessionToken Token = YggdrasilService.Authenticate(email, password);
-            token = Token;
-            return Join(Token, out disconnectReason);
-        }
-        public virtual bool Join(SessionToken token) => Join(token, out _);
-        public virtual bool Join(SessionToken token, out ChatMessage disconnectReason)
-        {
-            ThrowIfDisposed();
-
-            if (Joined)
-                throw new InvalidOperationException("玩家已加入服务器.");
-
-            Packet lastPacket = SendLoginPacket(token);
-            if (lastPacket == null)
-            {
-                disconnectReason = null;
-                DisconnectAsync();
-                return false;
-            }
-            else if (LoginSuccessPacket.Verify(lastPacket, ProtocolVersion, out LoginSuccessPacket lsp))
-            {
-                SetPlayer(lsp);
-                _joined = true;
-                disconnectReason = null;
-                UpdateLoginStatus(VanillaLoginStatus.Success);
-                return true;
-            }
-            else if (DisconnectLoginPacket.Verify(lastPacket, ProtocolVersion, out DisconnectLoginPacket dp))
-            {
-                UpdateLoginStatus(VanillaLoginStatus.Failed);
-                disconnectReason = dp.Reason;
-                DisconnectAsync(dp.Json);
-                return false;
-            }
-            else
-                throw new InvalidPacketException("登录末期接到了无法被处理的包", lastPacket);
+            token = YggdrasilService.Authenticate(email, password);
+            return Join(token);
         }
 
-        protected virtual Packet SendLoginPacket(SessionToken token)
+        public virtual bool Join(SessionToken token)
         {
             ThrowIfNotConnected();
 
+            if (Joined)
+                throw new InvalidOperationException("玩家已加入服务器.");
             if (token == null)
                 throw new ArgumentNullException(nameof(token));
             if (string.IsNullOrEmpty(token.PlayerName))
-                throw new ArgumentNullException(nameof(token.PlayerName),"玩家名不可为空");
+                throw new ArgumentNullException(nameof(token.PlayerName), "玩家名不可为空");
             if (ProtocolVersion < 0)
                 throw new LoginException("协议号不能小于0");
 
+            _loginToken = token;
+
             //开始握手
             SendPacket(new HandshakePacket(ServerHost, ServerPort, ProtocolVersion, HandshakePacket.State.Login));
-            UpdateLoginStatus(VanillaLoginStatus.Handshake);
+            VanillaLoginState = VanillaLoginStatus.Handshake;
+
             //申请加入服务器
             SendPacket(new LoginStartPacket(token.PlayerName, ProtocolVersion));
-            UpdateLoginStatus(VanillaLoginStatus.LoginStart);
-
-            Packet ServerResponse = ReadPacket();
-            if (ServerResponse != null && EncryptionRequestPacket.Verify(ServerResponse, ProtocolVersion, out EncryptionRequestPacket EncryptionRequest))
+            VanillaLoginState = VanillaLoginStatus.LoginStart;
+            int count = 0;
+            while (VanillaLoginState != VanillaLoginStatus.Success&& VanillaLoginState != VanillaLoginStatus.Failed)
             {
-                //原版遇到这种情况是直接断开连接的,所以这边也直接断开吧
-                if (token.AccessToken == null)
-                    throw new LoginException($"服务器开启了正版验证，但是{nameof(SessionToken)}中没有提供可用的AccessToken。", Disconnect);
-
-                UpdateLoginStatus(VanillaLoginStatus.EncryptionRequest);
-                byte[] SessionKey = CryptoUtils.GenerateSecretKey();
-                string ServerHash = CryptoUtils.GetServerHash(EncryptionRequest.ServerID, SessionKey, EncryptionRequest.PublicKey);
-                YggdrasilService.Join(token, ServerHash);
-                RSA RSAService = RSA.Create();
-                RSAService.ImportSubjectPublicKeyInfo(EncryptionRequest.PublicKey, out _);
-                SendPacket(new EncryptionResponsePacket(
-                    RSAService.Encrypt(SessionKey, RSAEncryptionPadding.Pkcs1),
-                    RSAService.Encrypt(EncryptionRequest.VerifyToken, RSAEncryptionPadding.Pkcs1),
-                    ProtocolVersion));
-                UpdateLoginStatus(VanillaLoginStatus.EncryptionResponse);
-
-                PacketListen.Crypto.Init(SessionKey);
-                ServerResponse = ReadPacket();
+                Packet packet = ReadPacket();
+                if (++count > 20960)
+                    throw new OverflowException("异常的登录过程，服务端发送的数据包过多");
+                else if (EncryptionRequestPacket.Verify(packet, ProtocolVersion, out EncryptionRequestPacket erp))
+                    OnEncryptionRequestReceived(erp);
+                else if (SetCompressionPacket.Verify(packet, ProtocolVersion, out int? threshold) && threshold.HasValue)
+                    OnSetCompressionReceived(threshold.Value);
+                else if (LoginSuccessPacket.Verify(packet, ProtocolVersion, out LoginSuccessPacket lsp))
+                    OnLoginSuccessReceived(lsp);
+                else if (DisconnectLoginPacket.Verify(packet, ProtocolVersion, out DisconnectLoginPacket dlp))
+                    OnDisconnectLoginReceived(dlp);
             }
-            if (ServerResponse != null && SetCompressionPacket.Verify(ServerResponse, ProtocolVersion, out int? threshold))
-            {
-                CompressionThreshold = threshold.Value;
-                PacketListen.CompressionThreshold = threshold.Value;
-                UpdateLoginStatus(VanillaLoginStatus.SetCompression);
-                ServerResponse = ReadPacket();
-            }
-            return ServerResponse;
+            return VanillaLoginState == VanillaLoginStatus.Success;
         }
+
+        protected virtual void OnEncryptionRequestReceived(EncryptionRequestPacket encryptionRequest)
+        {
+            if (_loginToken.AccessToken == null)
+                throw new LoginException($"服务器开启了正版验证，但是{nameof(SessionToken)}中没有提供可用的AccessToken。", Disconnect);
+
+            VanillaLoginState = VanillaLoginStatus.EncryptionRequest;
+            byte[] SessionKey = CryptoUtils.GenerateSecretKey();
+            string ServerHash = CryptoUtils.GetServerHash(encryptionRequest.ServerID, SessionKey, encryptionRequest.PublicKey);
+            YggdrasilService.Join(_loginToken, ServerHash);
+            RSA RSAService = RSA.Create();
+            RSAService.ImportSubjectPublicKeyInfo(encryptionRequest.PublicKey, out _);
+            SendPacket(new EncryptionResponsePacket(
+                RSAService.Encrypt(SessionKey, RSAEncryptionPadding.Pkcs1),
+                RSAService.Encrypt(encryptionRequest.VerifyToken, RSAEncryptionPadding.Pkcs1),
+                ProtocolVersion));
+            VanillaLoginState = VanillaLoginStatus.EncryptionResponse;
+
+            PacketListen.Crypto.Init(SessionKey);
+        }
+
+        protected virtual void OnSetCompressionReceived(int threshold)
+        {
+            CompressionThreshold = threshold;
+            PacketListen.CompressionThreshold = threshold;
+            VanillaLoginState = VanillaLoginStatus.SetCompression;
+        }
+
+        protected virtual void OnLoginSuccessReceived(LoginSuccessPacket lsp)
+        {
+            SetPlayer(lsp);
+            VanillaLoginState = VanillaLoginStatus.Success;
+            _loginSuccess?.Invoke(this, new VanillaLoginEventArgs(VanillaLoginStatus.Success));
+            _joined = true;
+        }
+
+        protected virtual void OnDisconnectLoginReceived(DisconnectPacket dp)
+        {
+            VanillaLoginState = VanillaLoginStatus.Failed;
+            _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
+            DisconnectAsync(dp.Json);
+        }
+
+        protected virtual void OnDisconnectLoginReceived(DisconnectLoginPacket dlp)
+        {
+            VanillaLoginState = VanillaLoginStatus.Failed;
+            DisconnectAsync(dlp.Json);
+        }
+
 
         /// <summary>
         /// 获取Player，如果未加入服务器会返回null
@@ -334,7 +346,6 @@ namespace MinecraftProtocol.Client
                     read += TCP.Send(data.AsSpan().Slice(read));
                 }
             }
-                
         }
         protected virtual bool UpdateConnectStatus() => _connected = NetworkUtils.CheckConnect(TCP);
         protected ConcurrentQueue<(DateTime ReceivedTime, TimeSpan RoundTripTime, Packet Packet)> ReceiveQueue = new ConcurrentQueue<(DateTime, TimeSpan, Packet)>();
@@ -343,13 +354,13 @@ namespace MinecraftProtocol.Client
         {
             if (ReceivePacketCancellationToken != null)
                 return;
-            ReceivePacketCancellationToken = cancellationToken ?? new CancellationTokenSource();
+            if (VanillaLoginState != VanillaLoginStatus.Success)
+                throw new InvalidOperationException("未登录服务器");
 
+            ReceivePacketCancellationToken = cancellationToken ?? new CancellationTokenSource();
             PacketQueueHandleThread = new Thread(() =>
             {
-                lock (DisconnectLock)
-                    if (Joined)
-                        PacketListen.StartAsync(ReceivePacketCancellationToken.Token);
+                lock (DisconnectLock) PacketListen.StartAsync(ReceivePacketCancellationToken.Token);
                 try
                 {
                     while (Joined || (ReceivePacketCancellationToken != null && !ReceivePacketCancellationToken.IsCancellationRequested))

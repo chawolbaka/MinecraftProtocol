@@ -4,7 +4,6 @@ using System.Security.Cryptography;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
-using System.Net.Http.Headers;
 
 namespace MinecraftProtocol.DataType
 {

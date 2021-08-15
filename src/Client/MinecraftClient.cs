@@ -71,15 +71,7 @@ namespace MinecraftProtocol.Client
         /// </summary>
         /// <param name="playerName">玩家名</param>
         /// <returns>登录是否成功</returns>
-        public virtual bool Join(string playerName) => Join(playerName, out _);
-
-        /// <summary>
-        /// 发送登录服务器的请求
-        /// </summary>
-        /// <param name="playerName">玩家名</param>
-        /// <param name="disconnectReason">无法加入服务器的原因(如果登陆失败)</param>
-        /// <returns>登录是否成功</returns>
-        public abstract bool Join(string playerName, out ChatMessage disconnectReason);
+        public abstract bool Join(string playerName);
 
         /// <summary>
         /// 断开连接

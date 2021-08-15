@@ -137,6 +137,15 @@ namespace MinecraftProtocol.Packets
             return result;
         }
 
+        /// <summary>
+        /// 把只读包转换回可写入的包，仅用于一些特殊情况下
+        /// （这种转换非常不安全，因为只读包的目的是让一个包可以被多个线程同时读取，如果出现互相修改很容易出现问题，所以只允许程序集内使用，如果外部需要使用请使用反射）
+        /// </summary>
+        internal Packet AsPacket()
+        {
+            return _packet;
+        }
+
         public ReadOnlySpan<byte> AsSpan()
         {
             return _packet.AsSpan();
@@ -146,6 +155,21 @@ namespace MinecraftProtocol.Packets
         {
             offset = _packet.Count;
             return _packet.AsSpan().ToArray();
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is ReadOnlyPacket rop)
+                return offset == rop.offset && _packet.Equals(rop._packet);
+
+            else if (obj is Packet p)
+                return _packet.Equals(p);
+            else
+                return false;
+        }
+        public override string ToString()
+        {
+            return _packet.ToString();
         }
 
         public override int GetHashCode()

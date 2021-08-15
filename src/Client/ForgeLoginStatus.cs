@@ -6,6 +6,7 @@ namespace MinecraftProtocol.Client
 {
     public enum ForgeLoginStatus
     {
+        Start,
         ServerRegisterChannel,
         ServerHello,
         ClientRegisterChannel,
@@ -14,6 +15,7 @@ namespace MinecraftProtocol.Client
         ReceiveModList,
         RegistryData,
         HandshakeAck,
-        Success
+        Success,
+        Failed
     }
 }

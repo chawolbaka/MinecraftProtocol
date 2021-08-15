@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.IO;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -15,7 +16,7 @@ namespace MinecraftProtocol.Client.Channels
             _channelName = channel;
         }
 
+        public override void Send(ByteWriter writer) => throw new NotSupportedException();
         public override void Send(IEnumerable<byte> data) => throw new NotSupportedException();
-        
     }
 }
