@@ -28,5 +28,7 @@ namespace MinecraftProtocol.Packets
         /// 获取数据包的Data
         /// </summary>
         byte[] ToArray();
+
+        IPacket Clone();
     }
 }

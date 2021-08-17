@@ -27,7 +27,7 @@ namespace MinecraftProtocol.Packets
         public Packet(int packetID, byte[] packetData)
         {
             ID = packetID;
-            _data = packetData;
+            _data = packetData ?? new byte[DEFUALT_CAPACITY];
             _size = _data.Length;
         }
         public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID, packetData.ToArray()) { }
@@ -125,6 +125,7 @@ namespace MinecraftProtocol.Packets
 
         
         public Packet Clone() => new Packet(ID, AsSpan());
+        IPacket IPacket.Clone() => Clone();
 
         public override string ToString()
         {

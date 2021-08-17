@@ -46,7 +46,7 @@ namespace MinecraftProtocol.Packets
 
 
         public virtual byte[] Pack(int compress = -1) => _packet.Pack(compress);
-
+        IPacket IPacket.Clone() => new ReadOnlyPacket(_packet) { offset = this.offset };
 
         public bool ReadBoolean() => _packet[offset++] == 0x01;
 
