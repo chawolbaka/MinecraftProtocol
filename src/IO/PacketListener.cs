@@ -116,8 +116,8 @@ namespace MinecraftProtocol.IO
 
                     if (_disposed || _cancellationToken.IsCancellationRequested)
                         break;
-
-                    PacketReceived?.Invoke(this, new PacketReceivedEventArgs(DateTime.Now - ReceiveStart, Packet.Depack(Data, _compressionThreshold)));
+                    if (Data.Length >= 3) //varint+varint+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
+                        PacketReceived?.Invoke(this, new PacketReceivedEventArgs(DateTime.Now - ReceiveStart, Packet.Depack(Data, _compressionThreshold)));
                 }
             }
             catch (Exception e)
