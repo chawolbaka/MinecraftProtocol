@@ -7,6 +7,174 @@ namespace MinecraftProtocol.Compatible
 {
     public static class ProtocolVersionNumbers
     {
+        /// <summary>1.17.1</summary>
+        public const int V1_17_1 = 756;
+        /// <summary>1.17</summary>
+        public const int V1_17 = 755;
+        /// <summary>1.16.5</summary>
+        public const int V1_16_5 = 754;
+        /// <summary>1.16.4</summary>
+        public const int V1_16_4 = 754;
+        /// <summary>1.16.3</summary>
+        public const int V1_16_3 = 753;
+        /// <summary>1.16.3-rc1</summary>
+        public const int V1_16_3M_Mrc1 = 752;
+        /// <summary>1.16.2</summary>
+        public const int V1_16_2 = 751;
+        /// <summary>1.16.2-rc2</summary>
+        public const int V1_16_2M_Mrc2 = 750;
+        /// <summary>1.16.2-rc1</summary>
+        public const int V1_16_2M_Mrc1 = 749;
+        /// <summary>1.16.2 Pre-Release 3</summary>
+        public const int V1_16_2_pre3 = 748;
+        /// <summary>1.16.2 Pre-Release 2</summary>
+        public const int V1_16_2_pre2 = 746;
+        /// <summary>1.16.2 Pre-Release 1</summary>
+        public const int V1_16_2_pre1 = 744;
+        /// <summary>20w30a</summary>
+        public const int V20w30a = 743;
+        /// <summary>20w29a</summary>
+        public const int V20w29a = 741;
+        /// <summary>20w28a</summary>
+        public const int V20w28a = 740;
+        /// <summary>20w27a</summary>
+        public const int V20w27a = 738;
+        /// <summary>1.16.1</summary>
+        public const int V1_16_1 = 736;
+        /// <summary>1.16</summary>
+        public const int V1_16 = 735;
+        /// <summary>1.16-rc1</summary>
+        public const int V1_16M_Mrc1 = 734;
+        /// <summary>1.16 Pre-Release 8</summary>
+        public const int V1_16_pre8 = 733;
+        /// <summary>1.16 Pre-Release 7</summary>
+        public const int V1_16_pre7 = 732;
+        /// <summary>1.16 Pre-Release 6</summary>
+        public const int V1_16_pre6 = 730;
+        /// <summary>1.16 Pre-Release 5</summary>
+        public const int V1_16_pre5 = 729;
+        /// <summary>1.16 Pre-Release 4</summary>
+        public const int V1_16_pre4 = 727;
+        /// <summary>1.16 Pre-Release 3</summary>
+        public const int V1_16_pre3 = 725;
+        /// <summary>1.16 Pre-Release 2</summary>
+        public const int V1_16_pre2 = 722;
+        /// <summary>1.16 Pre-Release 1</summary>
+        public const int V1_16_pre1 = 721;
+        /// <summary>20w22a</summary>
+        public const int V20w22a = 719;
+        /// <summary>20w21a</summary>
+        public const int V20w21a = 718;
+        /// <summary>20w20b</summary>
+        public const int V20w20b = 717;
+        /// <summary>20w20a</summary>
+        public const int V20w20a = 716;
+        /// <summary>20w19a</summary>
+        public const int V20w19a = 715;
+        /// <summary>20w18a</summary>
+        public const int V20w18a = 714;
+        /// <summary>20w17a</summary>
+        public const int V20w17a = 713;
+        /// <summary>20w16a</summary>
+        public const int V20w16a = 712;
+        /// <summary>20w15a</summary>
+        public const int V20w15a = 711;
+        /// <summary>20w14a</summary>
+        public const int V20w14a = 710;
+        /// <summary>20w14∞</summary>
+        public const int V20w14INFINITAS = 709;
+        /// <summary>20w13b</summary>
+        public const int V20w13b = 709;
+        /// <summary>20w13a</summary>
+        public const int V20w13a = 708;
+        /// <summary>20w12a</summary>
+        public const int V20w12a = 707;
+        /// <summary>20w11a</summary>
+        public const int V20w11a = 706;
+        /// <summary>20w10a</summary>
+        public const int V20w10a = 705;
+        /// <summary>20w09a</summary>
+        public const int V20w09a = 704;
+        /// <summary>20w08a</summary>
+        public const int V20w08a = 703;
+        /// <summary>20w07a</summary>
+        public const int V20w07a = 702;
+        /// <summary>20w06a</summary>
+        public const int V20w06a = 701;
+        /// <summary>1.15.2</summary>
+        public const int V1_15_2 = 578;
+        /// <summary>1.15.2 Pre-Release 2</summary>
+        public const int V1_15_2_pre2 = 577;
+        /// <summary>1.15.2 Pre-Release 1</summary>
+        public const int V1_15_2_pre1 = 576;
+        /// <summary>1.15.1</summary>
+        public const int V1_15_1 = 575;
+        /// <summary>1.15.1 Pre-Release 1</summary>
+        public const int V1_15_1_pre1 = 574;
+        /// <summary>1.15</summary>
+        public const int V1_15 = 573;
+        /// <summary>1.15 Pre-Release 7</summary>
+        public const int V1_15_pre7 = 572;
+        /// <summary>1.15 Pre-Release 6</summary>
+        public const int V1_15_pre6 = 571;
+        /// <summary>1.15 Pre-Release 5</summary>
+        public const int V1_15_pre5 = 570;
+        /// <summary>1.15 Pre-Release 4</summary>
+        public const int V1_15_pre4 = 569;
+        /// <summary>1.15 Pre-Release 3</summary>
+        public const int V1_15_pre3 = 567;
+        /// <summary>1.15 Pre-Release 2</summary>
+        public const int V1_15_pre2 = 566;
+        /// <summary>1.15 Pre-Release 1</summary>
+        public const int V1_15_pre1 = 565;
+        /// <summary>19w46b</summary>
+        public const int V19w46b = 564;
+        /// <summary>19w46a</summary>
+        public const int V19w46a = 563;
+        /// <summary>19w45b</summary>
+        public const int V19w45b = 562;
+        /// <summary>19w45a</summary>
+        public const int V19w45a = 561;
+        /// <summary>19w44a</summary>
+        public const int V19w44a = 560;
+        /// <summary>19w42a</summary>
+        public const int V19w42a = 559;
+        /// <summary>19w41a</summary>
+        public const int V19w41a = 558;
+        /// <summary>19w40a</summary>
+        public const int V19w40a = 557;
+        /// <summary>19w39a</summary>
+        public const int V19w39a = 556;
+        /// <summary>19w38b</summary>
+        public const int V19w38b = 555;
+        /// <summary>19w38a</summary>
+        public const int V19w38a = 554;
+        /// <summary>19w37a</summary>
+        public const int V19w37a = 553;
+        /// <summary>19w36a</summary>
+        public const int V19w36a = 552;
+        /// <summary>19w35a</summary>
+        public const int V19w35a = 551;
+        /// <summary>19w34a</summary>
+        public const int V19w34a = 550;
+        /// <summary>1.14.4</summary>
+        public const int V1_14_4 = 498;
+        /// <summary>1.14.4 Pre-Release 7</summary>
+        public const int V1_14_4_pre7 = 497;
+        /// <summary>1.14.4 Pre-Release 6</summary>
+        public const int V1_14_4_pre6 = 496;
+        /// <summary>1.14.4 Pre-Release 5</summary>
+        public const int V1_14_4_pre5 = 495;
+        /// <summary>1.14.4 Pre-Release 4</summary>
+        public const int V1_14_4_pre4 = 494;
+        /// <summary>1.14.4 Pre-Release 3</summary>
+        public const int V1_14_4_pre3 = 493;
+        /// <summary>1.14.4 Pre-Release 2</summary>
+        public const int V1_14_4_pre2 = 492;
+        /// <summary>1.14.4 Pre-Release 1</summary>
+        public const int V1_14_4_pre1 = 491;
+        /// <summary>1.14.3 - Combat Test</summary>
+        public const int V1_14_3__M_M__Combat__Test = 500;
         /// <summary>1.14.3</summary>
         public const int V1_14_3 = 490;
         /// <summary>1.14.3 Pre-Release 4</summary>
@@ -704,6 +872,28 @@ namespace MinecraftProtocol.Compatible
         /// <summary>13w41a</summary>
         public const int V13w41a = 0;
 
+        public static Dictionary<string,int> GetRawPairs()
+        {
+            Dictionary<string, int> ProtocolVersionDictionary = new Dictionary<string, int>();
+            WriteRaw(ProtocolVersionDictionary);
+            return ProtocolVersionDictionary;
+        }
+        public static void WriteRaw(IDictionary<string, int> source)
+        {
+            Type t = typeof(ProtocolVersionNumbers);
+            foreach (var c in t.GetFields())
+            {
+                source.Add(
+                    key: c.Name
+                    .TrimStart('V')
+                    .Replace("_pre", " Pre-Release ")
+                    .Replace("M_M", "-")
+                    .Replace("__", " ")
+                    .Replace('_', '.')
+                    .Replace("INFINITAS", "∞"),
+                    value: (int)c.GetValue(null)); ;
+            }
+        }
         //public static void PrintFromWiki()
         //{
         //    System.Net.WebClient tmp = new System.Net.WebClient();
@@ -749,7 +939,7 @@ namespace MinecraftProtocol.Compatible
         //        /// <summary>1.12.2</summary>
         //        //public const int V17w45a = 343;
         //        Console.WriteLine($"/// <summary>{item.Key.Replace("-pre", " Pre-Release ")}".TrimEnd() + "</summary>");
-        //        Console.WriteLine($"public const int V{item.Key.Replace(" Pre-Release ", "_pre").Replace('.', '_').Replace('-', '_')} = {item.Value};");
+        //        Console.WriteLine($"public const int V{item.Key.Replace(" Pre-Release ", "_pre").Replace('.', '_').Replace(" ","__").Replace('-', 'M_M').Replace("∞", "INFINITAS")} = {item.Value};");
         //    }
         //}
     }
