@@ -38,8 +38,8 @@ namespace MinecraftProtocol.Packets.Client
              * Added packet: 0xFC Encryption Key Response
              */
 #if !DROP_PRE_RELEASE
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9) return 0x01;
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3) return 0x02;
+            if (protocolVersion >= ProtocolVersions.V1_13_pre9) return 0x01;
+            if (protocolVersion >= ProtocolVersions.V1_13_pre3) return 0x02;
             else return 0x01;
 #else
             return 0x01;

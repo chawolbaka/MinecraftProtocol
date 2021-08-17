@@ -38,7 +38,7 @@ namespace MinecraftProtocol.Packets.Both
             _protocolVersion = protocolVersion;
 
             WriteString(channel);
-            if (_protocolVersion <= ProtocolVersionNumbers.V14w31a)
+            if (_protocolVersion <= ProtocolVersions.V14w31a)
             {
                 if (HasForge)
                     WriteVarShort(Data.Length).WriteBytes(Data);
@@ -71,12 +71,12 @@ namespace MinecraftProtocol.Packets.Both
                  * Changed ID of Plugin Message (serverbound) from 0x17 to 0x18
                  */
 
-                if (protocolVersion >= ProtocolVersionNumbers.V1_14)         return 0x0B;
-                if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)    return 0x0A;
-                if (protocolVersion >= ProtocolVersionNumbers.V17w31a)       return 0x09;
-                if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5)    return 0x0A;
-                if (protocolVersion >= ProtocolVersionNumbers.V15w43a)       return 0x08;
-                if (protocolVersion >= ProtocolVersionNumbers.V15w36a)       return 0x18;
+                if (protocolVersion >= ProtocolVersions.V1_14)         return 0x0B;
+                if (protocolVersion >= ProtocolVersions.V1_13_pre7)    return 0x0A;
+                if (protocolVersion >= ProtocolVersions.V17w31a)       return 0x09;
+                if (protocolVersion >= ProtocolVersions.V1_12_pre5)    return 0x0A;
+                if (protocolVersion >= ProtocolVersions.V15w43a)       return 0x08;
+                if (protocolVersion >= ProtocolVersions.V15w36a)       return 0x18;
                 else                                                         return 0x17;
             }
             else if(bound == Bound.Server)
@@ -90,14 +90,19 @@ namespace MinecraftProtocol.Packets.Both
                  * Changed ID of Plugin Message (clientbound) from 0x3F to 0x18
                  */
 
-                if (protocolVersion >= ProtocolVersionNumbers.V1_14)     return 0x09;
-                if (protocolVersion >= ProtocolVersionNumbers.V17w46a)   return 0x19;
-                if (protocolVersion >= ProtocolVersionNumbers.V15w36a)   return 0x18;
+                if (protocolVersion >= ProtocolVersions.V1_14)     return 0x09;
+                if (protocolVersion >= ProtocolVersions.V17w46a)   return 0x19;
+                if (protocolVersion >= ProtocolVersions.V15w36a)   return 0x18;
                 else                                                     return 0x3F;
             }
             else
                 throw new InvalidCastException();
             
+        }
+        public static PluginChannelPacket Depack(ReadOnlyPacket packet, int protocolVersion, Bound bound, bool hasForge)
+        {
+            //怎么让基类的隐藏?
+            return null;
         }
         public static bool Verify(ReadOnlyPacket packet, int protocolVersion, Bound bound, bool hasForge) => Verify(packet, protocolVersion, bound, hasForge, out _);
         public static bool Verify(ReadOnlyPacket packet, int protocolVersion, Bound bound, bool hasForge, out PluginChannelPacket pcp)
@@ -117,9 +122,9 @@ namespace MinecraftProtocol.Packets.Both
                 ReadOnlySpan<byte> buffer = packet.AsSpan();
                 string channel = buffer.AsString(out buffer);
                 byte[] data;
-                if (protocolVersion <= ProtocolVersionNumbers.V14w31a && hasForge)
+                if (protocolVersion <= ProtocolVersions.V14w31a && hasForge)
                     data = buffer.Slice(VarShort.GetLength(buffer)).ToArray();
-                else if (protocolVersion <= ProtocolVersionNumbers.V14w31a)
+                else if (protocolVersion <= ProtocolVersions.V14w31a)
                     data = buffer.Slice(2).ToArray();
                 else
                     data = buffer.ToArray();

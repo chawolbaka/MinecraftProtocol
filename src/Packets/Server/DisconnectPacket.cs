@@ -43,12 +43,12 @@ namespace MinecraftProtocol.Packets.Server
                  * 15w36a(67)
                  * Changed ID of Disconnect (play) from 0x40 to 0x19
                  */
-                if (protocolVersion >= ProtocolVersionNumbers.V1_14)        return 0x1A;
-                if (protocolVersion >= ProtocolVersionNumbers.V17w46a)      return 0x1B;
-                if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5)   return 0x1A;
-                if (protocolVersion >= ProtocolVersionNumbers.V17w13a)      return 0x1B;
-                if (protocolVersion >= ProtocolVersionNumbers.V15w43a)      return 0x1A;
-                if (protocolVersion >= ProtocolVersionNumbers.V15w36a)      return 0x19;
+                if (protocolVersion >= ProtocolVersions.V1_14)        return 0x1A;
+                if (protocolVersion >= ProtocolVersions.V17w46a)      return 0x1B;
+                if (protocolVersion >= ProtocolVersions.V1_12_pre5)   return 0x1A;
+                if (protocolVersion >= ProtocolVersions.V17w13a)      return 0x1B;
+                if (protocolVersion >= ProtocolVersions.V15w43a)      return 0x1A;
+                if (protocolVersion >= ProtocolVersions.V15w36a)      return 0x19;
                 else                                                        return 0x40;
             
         }

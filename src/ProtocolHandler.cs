@@ -203,7 +203,7 @@ namespace MinecraftProtocol
         {
             int ArrayLength;
             int EndPos;
-            if (protocolVersion>=ProtocolVersionNumbers.V14w21a)
+            if (protocolVersion>=ProtocolVersions.V14w21a)
                 ArrayLength = ReadVarInt(cache, offset, out EndPos, true);
             else
                 ArrayLength = ReadShort(cache, offset, out EndPos, true);

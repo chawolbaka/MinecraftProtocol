@@ -155,7 +155,7 @@ namespace MinecraftProtocol.Client
 
         protected virtual void OnWaitServerData(PluginChannelPacket packet)
         {
-            if (ProtocolVersion >= ProtocolVersionNumbers.V1_8)
+            if (ProtocolVersion >= ProtocolVersions.V1_8)
             {
                 if (!RegistryData.Read(packet.Data).HasMore)
                 {

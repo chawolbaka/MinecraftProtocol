@@ -41,8 +41,8 @@ namespace MinecraftProtocol.Packets.Client
              */
 
 #if !DROP_PRE_RELEASE
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9)       return 0x00;
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3)  return 0x01;
+            if (protocolVersion >= ProtocolVersions.V1_13_pre9)       return 0x00;
+            else if (protocolVersion >= ProtocolVersions.V1_13_pre3)  return 0x01;
             else return 0x00;
 #else
             return 0x01;

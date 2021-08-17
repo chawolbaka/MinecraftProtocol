@@ -115,7 +115,7 @@ namespace MinecraftProtocol.Client
             Settings = settings;
             ProtocolVersion = protocolVersion >= 0 ? protocolVersion : throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议号不能小于0");
             if (Settings == null)
-                Settings = ProtocolVersion >= ProtocolVersionNumbers.V1_12_pre3 ? ClientSettings.Default : ClientSettings.LegacyDefault;
+                Settings = ProtocolVersion >= ProtocolVersions.V1_12_pre3 ? ClientSettings.Default : ClientSettings.LegacyDefault;
             _loginSuccess += (sender, e) => _player.Init(this);
         }
         public VanillaClient(string host, IPAddress serverIP, ushort serverPort, int protocolVersion) : this(host, serverIP, serverPort, null, protocolVersion) { }
@@ -213,7 +213,7 @@ namespace MinecraftProtocol.Client
             SendPacket(new LoginStartPacket(token.PlayerName, ProtocolVersion));
             VanillaLoginState = VanillaLoginStatus.LoginStart;
             int count = 0;
-            while (VanillaLoginState != VanillaLoginStatus.Success&& VanillaLoginState != VanillaLoginStatus.Failed)
+            while (VanillaLoginState != VanillaLoginStatus.Success && VanillaLoginState != VanillaLoginStatus.Failed)
             {
                 Packet packet = ReadPacket();
                 if (++count > 20960)
@@ -224,8 +224,14 @@ namespace MinecraftProtocol.Client
                     OnSetCompressionReceived(threshold.Value);
                 else if (LoginSuccessPacket.Verify(packet, ProtocolVersion, out LoginSuccessPacket lsp))
                     OnLoginSuccessReceived(lsp);
+                else if (DisconnectPacket.Verify(packet, ProtocolVersion, out DisconnectPacket dp))
+                    OnDisconnectLoginReceived(dp);
                 else if (DisconnectLoginPacket.Verify(packet, ProtocolVersion, out DisconnectLoginPacket dlp))
                     OnDisconnectLoginReceived(dlp);
+#if DEBUG
+                else
+                    throw new LoginException($"收到未知的包，id = {packet.ID}");
+#endif
             }
             return VanillaLoginState == VanillaLoginStatus.Success;
         }
@@ -267,6 +273,7 @@ namespace MinecraftProtocol.Client
 
         protected virtual void OnDisconnectLoginReceived(DisconnectPacket dp)
         {
+            //DisconnectPacket一般不会在原版登录阶段收到，但Forge登录阶段会，而且可能会有什么插件会乱发...
             VanillaLoginState = VanillaLoginStatus.Failed;
             _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
             DisconnectAsync(dp.Json);

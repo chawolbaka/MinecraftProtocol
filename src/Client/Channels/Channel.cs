@@ -15,12 +15,12 @@ namespace MinecraftProtocol.Client.Channels
         public abstract bool CanRead { get; }
         public abstract bool CanSend { get; }
 
-        internal virtual void TriggerEvent(byte[] data)
+        internal virtual void TriggerEvent(ReadOnlyMemory<byte> data)
         {
             if (!CanRead || Received == null) return;
             foreach (EventHandler<ChannelReceivedEventArgs> x in Received.GetInvocationList())
             {
-                ChannelReceivedEventArgs eventArgs = new ChannelReceivedEventArgs(new ByteReader(data,false));
+                ChannelReceivedEventArgs eventArgs = new ChannelReceivedEventArgs(new ByteReader(data));
                 x.Invoke(this, eventArgs);
                 if (eventArgs.IsCancelled)
                     return;

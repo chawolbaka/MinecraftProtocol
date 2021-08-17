@@ -26,9 +26,9 @@ namespace MinecraftProtocol.Packets.Client
              * 16w38a(306)
              * Max length for Chat Message (serverbound) (0x02) changed from 100 to 256.
              */
-            if (protocolVersion >= ProtocolVersionNumbers.V16w38a && message.Length > MaxMessageLength)
+            if (protocolVersion >= ProtocolVersions.V16w38a && message.Length > MaxMessageLength)
                 throw new OverflowException($"message too long, max is {MaxMessageLength}");
-            else if (protocolVersion < ProtocolVersionNumbers.V16w38a && message.Length > OldMaxMessageLength)
+            else if (protocolVersion < ProtocolVersions.V16w38a && message.Length > OldMaxMessageLength)
                 throw new OverflowException($"message too long, max is {OldMaxMessageLength}");
             ID = GetPacketID(protocolVersion);
             Message = Message;
@@ -56,13 +56,13 @@ namespace MinecraftProtocol.Packets.Client
              * Changed ID of Chat Message from 0x01 to 0x02
              */
 
-            if (protocolVersion >= ProtocolVersionNumbers.V1_14)            return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)  return 0x02;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w45a)     return 0x01;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w31a)     return 0x02;
+            if (protocolVersion >= ProtocolVersions.V1_14)            return 0x03;
+            else if (protocolVersion >= ProtocolVersions.V1_13_pre7)  return 0x02;
+            else if (protocolVersion >= ProtocolVersions.V17w45a)     return 0x01;
+            else if (protocolVersion >= ProtocolVersions.V17w31a)     return 0x02;
             //else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)     return 0x03;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)     return 0x02;
+            else if (protocolVersion >= ProtocolVersions.V17w13a)     return 0x03;
+            else if (protocolVersion >= ProtocolVersions.V15w43a)     return 0x02;
             else return 0x01;
         }
         public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
@@ -80,7 +80,7 @@ namespace MinecraftProtocol.Packets.Client
             try
             {
                 string Message = packet.ReadString();
-                if (protocolVersion >= ProtocolVersionNumbers.V16w38a && Message.Length > MaxMessageLength)
+                if (protocolVersion >= ProtocolVersions.V16w38a && Message.Length > MaxMessageLength)
                     return false;
                 else if (Message.Length > OldMaxMessageLength)
                     return false;

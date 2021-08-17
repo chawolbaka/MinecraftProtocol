@@ -131,7 +131,7 @@ namespace MinecraftProtocol.Packets
 
         public byte[] ReadByteArray(int protocolVersion)
         {
-            int ArrayLength = protocolVersion >= ProtocolVersionNumbers.V14w21a ? ReadVarInt() : ReadShort();
+            int ArrayLength = protocolVersion >= ProtocolVersions.V14w21a ? ReadVarInt() : ReadShort();
             byte[] result = _packet.AsSpan().Slice(offset, ArrayLength).ToArray();
             offset += ArrayLength;
             return result;

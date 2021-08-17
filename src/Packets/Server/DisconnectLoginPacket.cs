@@ -38,8 +38,8 @@ namespace MinecraftProtocol.Packets.Server
              * Changed the ID of Disconnect (login) from 0x00 to 0x01
              */
 #if !DROP_PRE_RELEASE
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9) return 0x00;
-            if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3) return 0x01;
+            if (protocolVersion >= ProtocolVersions.V1_13_pre9) return 0x00;
+            if (protocolVersion >= ProtocolVersions.V1_13_pre3) return 0x01;
             else return 0x00;
 #else
             return 0x00;

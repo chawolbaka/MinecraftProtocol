@@ -32,7 +32,7 @@ namespace MinecraftProtocol.Packets.Server
             this.Json = json;
             WriteString(json);
             //14w02a:Added 'Position' to Chat Message Clientbound
-            if (protocolVersion >= ProtocolVersionNumbers.V14w02a)
+            if (protocolVersion >= ProtocolVersions.V14w02a)
             {
                 this.Position = position;
                 WriteUnsignedByte(position);
@@ -52,10 +52,10 @@ namespace MinecraftProtocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Chat Message (clientbound) changed from 0x02 to 0x0F
              */
-            if (protocolVersion >= ProtocolVersionNumbers.V17w45a)      return 0x0E;
-            if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5)   return 0x0F;
-            if (protocolVersion >= ProtocolVersionNumbers.V17w13a)      return 0x10;
-            if (protocolVersion >= ProtocolVersionNumbers.V15w36a)      return 0X0F;
+            if (protocolVersion >= ProtocolVersions.V17w45a)      return 0x0E;
+            if (protocolVersion >= ProtocolVersions.V1_12_pre5)   return 0x0F;
+            if (protocolVersion >= ProtocolVersions.V17w13a)      return 0x10;
+            if (protocolVersion >= ProtocolVersions.V15w36a)      return 0X0F;
             else                                                        return 0x02;
 
         }
@@ -76,7 +76,7 @@ namespace MinecraftProtocol.Packets.Server
 
                 string Json = packet.ReadString();
                 byte? Position = null;
-                if (protocolVersion >= ProtocolVersionNumbers.V14w02a && !packet.IsReadToEnd)
+                if (protocolVersion >= ProtocolVersions.V14w02a && !packet.IsReadToEnd)
                     Position = packet.ReadUnsignedByte();
                 if (packet.IsReadToEnd)
                     scmp = new ServerChatMessagePacket(packet, Json, Position);

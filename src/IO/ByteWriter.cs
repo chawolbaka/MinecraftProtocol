@@ -208,7 +208,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteByteArray(ReadOnlySpan<byte> array, int protocolVersion)
         {
             //14w21a: All byte arrays have VarInt length prefixes instead of short
-            if (protocolVersion >= ProtocolVersionNumbers.V14w21a)
+            if (protocolVersion >= ProtocolVersions.V14w21a)
                 WriteVarInt(array.Length);
             else
                 WriteShort((short)array.Length);

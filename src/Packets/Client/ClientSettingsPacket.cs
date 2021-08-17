@@ -34,9 +34,9 @@ namespace MinecraftProtocol.Packets.Client
         {
             if (string.IsNullOrWhiteSpace(clientSettings.Locale))
                 throw new ArgumentNullException(nameof(clientSettings.Locale));
-            if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre3 && clientSettings.Locale.Length > 16)
+            if (protocolVersion >= ProtocolVersions.V1_12_pre3 && clientSettings.Locale.Length > 16)
                 throw new ArgumentOutOfRangeException(nameof(clientSettings.Locale), "max length is 16");
-            if (protocolVersion < ProtocolVersionNumbers.V1_12_pre3 && clientSettings.Locale.Length > 7)
+            if (protocolVersion < ProtocolVersions.V1_12_pre3 && clientSettings.Locale.Length > 7)
                 throw new ArgumentOutOfRangeException(nameof(clientSettings.Locale), "max length is 7");
 
             Locale = clientSettings.Locale;
@@ -51,16 +51,16 @@ namespace MinecraftProtocol.Packets.Client
             WriteVarInt((int)ChatMode);
             WriteBoolean(ChatColors);
 
-            if (protocolVersion > ProtocolVersionNumbers.V14w03a)
+            if (protocolVersion > ProtocolVersions.V14w03a)
                 WriteUnsignedByte((byte)DisplayedSkinParts);
             else
             {
-                if (protocolVersion <= ProtocolVersionNumbers.V14w02a)
+                if (protocolVersion <= ProtocolVersions.V14w02a)
                     WriteByte(0);
-                if (protocolVersion <= ProtocolVersionNumbers.V14w03a)
+                if (protocolVersion <= ProtocolVersions.V14w03a)
                     WriteBoolean((DisplayedSkinParts & DisplayedSkinParts.Cape) == DisplayedSkinParts.Cape);
             }
-            if (protocolVersion > ProtocolVersionNumbers.V14w03a)
+            if (protocolVersion > ProtocolVersions.V14w03a)
                 WriteVarInt((int)MainHandDefine);
         }
 
@@ -88,13 +88,13 @@ namespace MinecraftProtocol.Packets.Client
              * 15w31a(49)
              * Changed ID of Client Settings from 0x15 to 0x16
              */
-            if (protocolVersion >= ProtocolVersionNumbers.V1_14)      return 0x05;
-            if (protocolVersion >= ProtocolVersionNumbers.V17w45a)    return 0x03;
-            if (protocolVersion >= ProtocolVersionNumbers.V17w31a)    return 0x04;
-            if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x05;
-            if (protocolVersion >= ProtocolVersionNumbers.V15w43a)    return 0x04;
-            if (protocolVersion >= ProtocolVersionNumbers.V15w36a)    return 0x03;
-            if (protocolVersion >= ProtocolVersionNumbers.V15w31a)    return 0x16;
+            if (protocolVersion >= ProtocolVersions.V1_14)      return 0x05;
+            if (protocolVersion >= ProtocolVersions.V17w45a)    return 0x03;
+            if (protocolVersion >= ProtocolVersions.V17w31a)    return 0x04;
+            if (protocolVersion >= ProtocolVersions.V1_12_pre5) return 0x05;
+            if (protocolVersion >= ProtocolVersions.V15w43a)    return 0x04;
+            if (protocolVersion >= ProtocolVersions.V15w36a)    return 0x03;
+            if (protocolVersion >= ProtocolVersions.V15w31a)    return 0x16;
             else return 0x15;
             
         }
@@ -119,18 +119,18 @@ namespace MinecraftProtocol.Packets.Client
                 MainHand? MainHandDefine = null;
 
                 //14w03a(6): Client Settings 'show cape' type changed from boolean to unsigned byte
-                if (protocolVersion > ProtocolVersionNumbers.V14w03a)
+                if (protocolVersion > ProtocolVersions.V14w03a)
                     DisplayedSkinParts = (DisplayedSkinParts)packet.ReadUnsignedByte();
                 //15w31a(49): Added VarInt enum main hand to Client Settings
-                if (protocolVersion > ProtocolVersionNumbers.V15w31a)
+                if (protocolVersion > ProtocolVersions.V15w31a)
                     MainHandDefine = (MainHand)packet.ReadVarInt();
                 else
                 {
                     //14w02a(5): Removed Client Settings' 'Difficulty'
-                    if (protocolVersion <= ProtocolVersionNumbers.V14w02a)
+                    if (protocolVersion <= ProtocolVersions.V14w02a)
                         packet.ReadByte();
                     //14w03a(6): Client Settings 'show cape' type changed from boolean to unsigned byte
-                    if (protocolVersion <= ProtocolVersionNumbers.V14w03a)
+                    if (protocolVersion <= ProtocolVersions.V14w03a)
                         DisplayedSkinParts = packet.ReadBoolean() ? DisplayedSkinParts.Cape : DisplayedSkinParts.None;
                 }
 

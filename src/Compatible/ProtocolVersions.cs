@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MinecraftProtocol.Compatible
 {
-    public static class ProtocolVersionNumbers
+    public static class ProtocolVersions
     {
         /// <summary>1.17.1</summary>
         public const int V1_17_1 = 756;
@@ -880,7 +880,7 @@ namespace MinecraftProtocol.Compatible
         }
         public static void WriteRaw(IDictionary<string, int> source)
         {
-            Type t = typeof(ProtocolVersionNumbers);
+            Type t = typeof(ProtocolVersions);
             foreach (var c in t.GetFields())
             {
                 source.Add(

@@ -33,17 +33,17 @@ namespace MinecraftProtocol.Packets.Server
              * Changed ID of Set Compression from 0x46 to 0x1D
              */
 
-            if (protocolVersion >= ProtocolVersionNumbers.V14w28a)
+            if (protocolVersion >= ProtocolVersions.V14w28a)
             {
 #if !DROP_PRE_RELEASE
-                if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre9)        return 0x03;
-                else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre3)   return 0x04;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w46a)      return 0x03;
+                if (protocolVersion >= ProtocolVersions.V1_13_pre9)        return 0x03;
+                else if (protocolVersion >= ProtocolVersions.V1_13_pre3)   return 0x04;
+                else if (protocolVersion >= ProtocolVersions.V15w46a)      return 0x03;
 #else
                 if (protocolVersion >= ProtocolVersionNumbers.V15w46a) return 0x03;
 #endif
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w43a) return 0x1E;
-                else if (protocolVersion >= ProtocolVersionNumbers.V15w36a) return 0x1D;
+                else if (protocolVersion >= ProtocolVersions.V15w43a) return 0x1E;
+                else if (protocolVersion >= ProtocolVersions.V15w36a) return 0x1D;
                 else return 0x46;
             }
             else
@@ -66,7 +66,7 @@ namespace MinecraftProtocol.Packets.Server
                 throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
 
             threshold = null;
-            if (protocolVersion < ProtocolVersionNumbers.V14w28a)
+            if (protocolVersion < ProtocolVersions.V14w28a)
                 return false;
 
             try

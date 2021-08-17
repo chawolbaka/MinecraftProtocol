@@ -16,9 +16,9 @@ namespace MinecraftProtocol.Packets.Server
         {
             get
             {
-                if (ProtocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1)
+                if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
                     return BitConverter.ToInt64(_data, 0);
-                else if (ProtocolVersion >= ProtocolVersionNumbers.V14w31a)
+                else if (ProtocolVersion >= ProtocolVersions.V14w31a)
                     return VarInt.Read(_data);
                 else
                     return BitConverter.ToInt32(_data, 0);
@@ -51,14 +51,14 @@ namespace MinecraftProtocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Keep Alive from 0x00 to 0x1F
              */
-            if (protocolVersion >= ProtocolVersionNumbers.V1_14)              return 0x20;//不知道什么时候更新成这个的
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_13_pre7)    return 0x21;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w46a)       return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5)    return 0x1F;
-            else if (protocolVersion >= ProtocolVersionNumbers.V17w13a)       return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w46a)       return 0x1F;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w43a)       return 0x20;
-            else if (protocolVersion >= ProtocolVersionNumbers.V15w36a)       return 0x1F;
+            if (protocolVersion >= ProtocolVersions.V1_14)              return 0x20;//不知道什么时候更新成这个的
+            else if (protocolVersion >= ProtocolVersions.V1_13_pre7)    return 0x21;
+            else if (protocolVersion >= ProtocolVersions.V17w46a)       return 0x20;
+            else if (protocolVersion >= ProtocolVersions.V1_12_pre5)    return 0x1F;
+            else if (protocolVersion >= ProtocolVersions.V17w13a)       return 0x20;
+            else if (protocolVersion >= ProtocolVersions.V15w46a)       return 0x1F;
+            else if (protocolVersion >= ProtocolVersions.V15w43a)       return 0x20;
+            else if (protocolVersion >= ProtocolVersions.V15w36a)       return 0x1F;
             else                                                              return 0x00;
         }
         public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out byte[] _);
@@ -80,11 +80,11 @@ namespace MinecraftProtocol.Packets.Server
             if (packet.ID != GetPacketID(protocolVersion))
                 return false;
 
-            if (protocolVersion >= ProtocolVersionNumbers.V1_12_2_pre1 && packet.Count == 8)
+            if (protocolVersion >= ProtocolVersions.V1_12_2_pre1 && packet.Count == 8)
                 code = packet.ReadAll();
-            else if (protocolVersion >= ProtocolVersionNumbers.V14w31a && packet.Count <= 5 && packet.Count > 0)
+            else if (protocolVersion >= ProtocolVersions.V14w31a && packet.Count <= 5 && packet.Count > 0)
                 code = packet.ReadAll();
-            else if (protocolVersion < ProtocolVersionNumbers.V14w31a && packet.Count == 4)
+            else if (protocolVersion < ProtocolVersions.V14w31a && packet.Count == 4)
                 code = packet.ReadAll();
 
             return !(code is null);
