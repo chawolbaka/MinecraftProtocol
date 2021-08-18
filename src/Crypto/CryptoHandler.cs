@@ -10,7 +10,6 @@ namespace MinecraftProtocol.Crypto
 {
     public class CryptoHandler
     {
-        
         public bool Enable => _enable;
         private bool _enable;
         public byte[] Key => _key != null ? (byte[])_key.Clone() : throw new InvalidOperationException("未初始化。");

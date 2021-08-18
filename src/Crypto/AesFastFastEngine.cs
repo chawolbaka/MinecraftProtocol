@@ -2,20 +2,15 @@
 using System.Linq;
 using BouncyCastle.Crypto;
 using BouncyCastle.Crypto.Parameters;
-#if AES_NI
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-#endif
+
 
 namespace MinecraftProtocol.Crypto
 {
     public class AesFastFastEngine : IBlockCipher
     {
-#if AES_NI
         public static bool IsSupported => Sse2.IsSupported && Aes.IsSupported;
-#else
-        public static bool IsSupported => false;
-#endif
 
         public string AlgorithmName => "AES";
 
@@ -25,7 +20,6 @@ namespace MinecraftProtocol.Crypto
 
         private const int BLOCK_SIZE = 16;
 
-#if AES_NI
         private Vector128<byte>[] _roundKeys;
         private bool _forEncryption;
 
@@ -105,27 +99,10 @@ namespace MinecraftProtocol.Crypto
 
             return Aes.DecryptLast(data, _roundKeys[0]);
         }
-#else
-        public void Init(bool forEncryption, ICipherParameters parameters)
+
+        public void Reset()
         {
             throw new NotImplementedException();
         }
-
-        public int ProcessBlock(byte[] inBuf, int inOff, byte[] outBuf, int outOff)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int ProcessBlock(ReadOnlySpan<byte> input, Span<byte> output)
-        {
-            throw new NotImplementedException();
-        }
-#endif
-
-        public virtual void Reset()
-        {
-
-        }
-
     }
 }

@@ -10,8 +10,6 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '3.1.402'
+        dotnet-version: '5.0.400'
     - name: Build
       run: dotnet build --configuration Release
-    - name: Build AES-NI
-      run: dotnet build --configuration Release -p:DefineConstants=AES_NI
