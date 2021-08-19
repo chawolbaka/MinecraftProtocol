@@ -10,12 +10,12 @@
 ps：英文完全不会，C#只学了一点点(真的非常少,摸鱼非常严重)，里面大量代码的从别人那边抄来的(来源我记得的话会尽量写在下面的)
 
 ### Building
-[安装.Net Core SDK 3.1](https://dotnet.microsoft.com/download/dotnet-core/3.1 "安装.Net Core SDK 3.1")
+[安装.Net Core SDK 5.0](https://dotnet.microsoft.com/download/dotnet-core/5.0 "安装.Net Core SDK 5.0")
 
     git clone https://github.com/chawolbaka/MinecraftProtocol.git
-    cd MinecraftProtocol\src\
+    cd MinecraftProtocol\Protocol.Core\
     dotnet publish -c Release
-编译好后你可以在 "bin\Release\netstandard2.1\publish" 里面找到文件
+编译好后你可以在 "bin\Release\net5.0\publish" 里面找到文件
 
 ### 抄袭列表
 https://github.com/Naamloos/Obsidian  
