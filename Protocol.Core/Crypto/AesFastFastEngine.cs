@@ -89,11 +89,11 @@ namespace MinecraftProtocol.Crypto
             for (int i = 1; i < _roundKeys.Length - 1; i++)
                 data = Aes.Encrypt(data, _roundKeys[i]);
 
-            return Aes.EncryptLast(data, _roundKeys.Last());
+            return Aes.EncryptLast(data, _roundKeys[_roundKeys.Length-1]);
         }
         private Vector128<byte> DecryptBlock(Vector128<byte> data)
         {
-            data = Sse2.Xor(data, _roundKeys.Last());
+            data = Sse2.Xor(data, _roundKeys[_roundKeys.Length - 1]);
             for (int i = _roundKeys.Length - 2; i > 0; i--)
                 data = Aes.Decrypt(data, _roundKeys[i]);
 
@@ -102,7 +102,7 @@ namespace MinecraftProtocol.Crypto
 
         public void Reset()
         {
-            throw new NotImplementedException();
+
         }
     }
 }
