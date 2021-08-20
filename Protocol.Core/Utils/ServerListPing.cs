@@ -22,7 +22,6 @@ namespace MinecraftProtocol.Utils
     public class ServerListPing
     {
         private const ushort DEFAULT_PORT = 25565;
-        private const string REG_IPv4 = @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$";
 
         public string Host { get; set; }
         public IPAddress ServerIP { get; set; }
@@ -48,22 +47,22 @@ namespace MinecraftProtocol.Utils
                 throw new ArgumentNullException(nameof(host));
             if (port == 0)
                 throw new ArgumentOutOfRangeException(nameof(port), port, "incorrect port supplied");
-
+            
+            Host = host;
+            ServerPort = port;
             EnableDnsRoundRobin = useDnsRoundRobin;
-            if (!Regex.Match(host, REG_IPv4).Success)//域名的正则我写不出来...(这个都是抄来的)
+            if (!IPAddress.TryParse(host, out IPAddress ip))
             {
                 IPAddressList = (IPAddress[])Dns.GetHostEntry(host).AddressList.Clone();
                 if (IPAddressList.Length > 0)
                     ServerIP = IPAddressList[0];
-                else //IPv6 or error addr
-                    ServerIP = IPAddress.Parse(host);
+                else
+                    throw new ArgumentException("incorrect host supplied");
             }
             else
             {
-                ServerIP = IPAddress.Parse(host);
+               ServerIP = ip;
             }
-            Host = host;
-            ServerPort = port;
         }
 
         /// <summary>
@@ -152,7 +151,6 @@ namespace MinecraftProtocol.Utils
                 return Send(socket, false);
         }
         
-        
         /// <summary>
         /// 向服务器发送ServerListPing相关的包并解析返回的json
         /// </summary>
@@ -161,23 +159,12 @@ namespace MinecraftProtocol.Utils
         /// <exception cref="SocketException"/>
         /// <exception cref="PacketException"/>
         /// <exception cref="JsonException"/>
-        public PingReply Send(Socket tcp) => Send(tcp, true);
-
-
-        /// <summary>
-        /// 向服务器发送ServerListPing相关的包并解析返回的json
-        /// </summary>
-        /// <exception cref="ArgumentNullException"/>
-        /// <exception cref="InvalidPacketException"/>
-        /// <exception cref="SocketException"/>
-        /// <exception cref="PacketException"/>
-        /// <exception cref="JsonException"/>
-        public PingReply Send(Socket socket, bool reuseSocket)
+        public PingReply Send(Socket socket, bool reuseSocket=true)
         {
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-            PingReply PingResult; string JsonResult;           
+                
             if (EnableDnsRoundRobin&&IPAddressList!=null&&IPAddressList.Length>1)
                 DnsRoundRobinHandler();
             if(!socket.Connected)
@@ -192,32 +179,19 @@ namespace MinecraftProtocol.Utils
             socket.Send(PingRequest.Pack());
 
             //Receive Packet
-            int PacketLength = ProtocolHandler.GetPacketLength(socket);
-            if (PacketLength > 0)
+            Packet ResponsePacket = ProtocolUtils.ReceivePacket(socket);
+            if (PingResponsePacket.Verify(ResponsePacket,out PingResponsePacket PingResponse)&&!string.IsNullOrWhiteSpace(PingResponse.Json))
             {
-                List<byte> Packet = new List<byte>(NetworkUtils.ReceiveData(PacketLength, socket));
-                int PacketID = ProtocolHandler.ReadVarInt(Packet);
-                if (PacketID != PingResponsePacket.GetPacketID())
-                    throw new InvalidPacketException("Invalid ping response packet id ", new Packet(PacketID, Packet.ToArray()));
-           
-                JsonResult = ProtocolHandler.ReadString(Packet);
-                if (!string.IsNullOrWhiteSpace(JsonResult))
-                {
-                    PingResult = ResolveJson(JsonResult);
-                    PingResult.Elapsed = EnableDelayDetect ? GetTime(socket) : null;
-                    PingResult.Json = JsonResult;
-                }
-                else
-                {
-                    PingResult = null;
-                }
+                PingReply PingResult = ResolveJson(PingResponse.Json);
+                PingResult.Elapsed = EnableDelayDetect ? GetTime(socket) : null;
+                PingResult.Json = PingResponse.Json;
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Disconnect(reuseSocket);
+                return PingResult;
             }
             else
-                throw new PacketException($"Response Packet Length too Small (PacketLength:{PacketLength})");
-
-            return PingResult;
+                throw new InvalidPacketException("Invalid response packet", ResponsePacket);
+            
         }
 
         /// <summary>
@@ -252,7 +226,7 @@ namespace MinecraftProtocol.Utils
                 socket.Send(RequestPacket);
 
                 //http://wiki.vg/Server_List_Ping#Pong
-                ReadOnlySpan<byte> ResponesPacket = NetworkUtils.ReceiveData(ProtocolHandler.GetPacketLength(socket), socket);
+                ReadOnlySpan<byte> ResponesPacket = NetworkUtils.ReceiveData(ProtocolUtils.ReceivePacketLength(socket), socket);
                 sw.Stop();
 
                 //校验
