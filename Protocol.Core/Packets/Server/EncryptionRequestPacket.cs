@@ -6,29 +6,40 @@ namespace MinecraftProtocol.Packets.Server
     /// <summary>
     /// https://wiki.vg/Protocol#Encryption_Request
     /// </summary>
-    public class EncryptionRequestPacket : Packet
+    public partial class EncryptionRequestPacket : DefinedPacket
     {
-        public string ServerID { get; }
-        public byte[] PublicKey { get; }
-        public byte[] VerifyToken { get; }
+        [PacketProperty]
+        public string _serverID;
 
-        private EncryptionRequestPacket(ReadOnlyPacket packet, string serverID, byte[] publicKey, byte[] verifyToken) : base(packet)
+        [PacketProperty]
+        public byte[] _publicKey;
+        
+        [PacketProperty]
+        public byte[] _verifyToken;
+
+        protected override void CheckProperty()
         {
-            this.ServerID = serverID;
-            this.PublicKey = publicKey;
-            this.VerifyToken = verifyToken;
+            base.CheckProperty();
+            if (_publicKey is null)
+             throw new ArgumentNullException(nameof(PublicKey));
+            if(_verifyToken is null)
+                throw new ArgumentNullException(nameof(VerifyToken));
         }
-        public EncryptionRequestPacket(string serverID, byte[] publicKey, int protocolVersion) : this(serverID, publicKey, Guid.NewGuid().ToByteArray(), protocolVersion) { }
-        public EncryptionRequestPacket(string serverID, byte[] publicKey, byte[] verifyToken, int protocolVersion) : base(GetPacketID(protocolVersion))
+        protected override void Write()
         {
-            this.ServerID = serverID;
-            this.PublicKey = publicKey ?? throw new ArgumentNullException(nameof(publicKey));
-            this.VerifyToken = verifyToken ?? throw new ArgumentNullException(nameof(verifyToken));
             WriteString(ServerID);
-            WriteByteArray(publicKey, protocolVersion);
-            WriteByteArray(verifyToken, protocolVersion);
+            WriteByteArray(PublicKey, ProtocolVersion);
+            WriteByteArray(VerifyToken, ProtocolVersion);
         }
-        public static int GetPacketID(int protocolVersion)
+
+        protected override void Read()
+        {
+            _serverID = Reader.ReadString();
+            _publicKey = Reader.ReadByteArray(ProtocolVersion);
+            _verifyToken = Reader.ReadByteArray(ProtocolVersion);
+        }
+
+        public static int GetPacketId(int protocolVersion)
         {
             /* 1.13-pre9(391)
              * Encryption Request is again 0x01
@@ -46,30 +57,6 @@ namespace MinecraftProtocol.Packets.Server
             return 0x01;
 #endif
         }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out EncryptionRequestPacket erp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
 
-            erp = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-
-            try
-            {
-                string ServerID = packet.ReadString();
-                byte[] PublicKey = packet.ReadByteArray(protocolVersion);
-                byte[] VerifyToken = packet.ReadByteArray(protocolVersion);
-                if (packet.IsReadToEnd)
-                    erp = new EncryptionRequestPacket(packet, ServerID, PublicKey, VerifyToken);
-                return !(erp is null);
-            }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
-        }
     }
 }

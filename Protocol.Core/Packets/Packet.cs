@@ -17,6 +17,8 @@ namespace MinecraftProtocol.Packets
 
         public virtual int ID { get; set; }
 
+        public virtual bool IsReadOnly => false;
+
         public Packet() : this(-1) { }
         public Packet(int packetID) : this(packetID, DEFUALT_CAPACITY) { }
         public Packet(int packetID, int capacity)
@@ -28,7 +30,7 @@ namespace MinecraftProtocol.Packets
         {
             ID = packetID;
             _data = packetData ?? new byte[DEFUALT_CAPACITY];
-            _size = _data.Length;
+            _size = packetData is not null ? _data.Length : 0;
         }
         public Packet(int packetID, ReadOnlySpan<byte> packetData) : this(packetID, packetData.ToArray()) { }
         public Packet(IPacket packet) : this(packet.ID, packet.ToArray()) { }
@@ -120,12 +122,15 @@ namespace MinecraftProtocol.Packets
         }
 
 
-        public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
-        public virtual ReadOnlyPacket AsReadOnly() => new ReadOnlyPacket(this);
-
         
-        public Packet Clone() => new Packet(ID, AsSpan());
-        IPacket IPacket.Clone() => Clone();
+        /// <summary>
+        /// 浅拷贝一个受保护的只读Packet
+        /// </summary>
+        public virtual ReadOnlyPacket AsReadOnly() => new ReadOnlyPacket(this);
+        public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
+
+        public virtual Packet Clone() => new Packet(ID, AsSpan());
+        object ICloneable.Clone() => Clone();
 
         public override string ToString()
         {

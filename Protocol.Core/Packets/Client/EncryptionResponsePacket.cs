@@ -4,29 +4,36 @@ using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Packets.Client
 {
-    public class EncryptionResponsePacket : Packet
+    public partial class EncryptionResponsePacket : DefinedPacket
     {
-        public byte[] SharedSecret { get; }
-        public byte[] VerifyToken { get; }
-
-
-        private EncryptionResponsePacket(ReadOnlyPacket packet, byte[] sharedSecret, byte[] verifyToken) : base(packet)
+        [PacketProperty]
+        private byte[] _sharedSecret;
+        
+        [PacketProperty]
+        private byte[] _verifyToken;
+        
+        protected override void CheckProperty()
         {
-            SharedSecret = sharedSecret;
-            VerifyToken = verifyToken;
-        }
-        public EncryptionResponsePacket(byte[] sharedSecret, byte[] verifyToken, int protocolVersion)
-        {
-            
-            this.ID = GetPacketID(protocolVersion);
-            this.SharedSecret = sharedSecret ?? throw new ArgumentNullException(nameof(sharedSecret));
-            this.VerifyToken = verifyToken ?? throw new ArgumentNullException(nameof(verifyToken));
-            WriteByteArray(SharedSecret, protocolVersion);
-            WriteByteArray(VerifyToken, protocolVersion);
+            base.CheckProperty();
+            if (_sharedSecret == null || _sharedSecret.Length == 0)
+                throw new ArgumentNullException(nameof(SharedSecret));
+            if (_verifyToken == null || _verifyToken.Length == 0)
+                throw new ArgumentNullException(nameof(VerifyToken));
         }
 
+        protected override void Write()
+        {
+            WriteByteArray(_sharedSecret, ProtocolVersion);
+            WriteByteArray(_verifyToken, ProtocolVersion);
+        }
 
-        public static int GetPacketID(int protocolVersion)
+        protected override void Read()
+        {
+            _sharedSecret = Reader.ReadByteArray(ProtocolVersion);
+            _sharedSecret = Reader.ReadByteArray(ProtocolVersion);
+        }
+
+        public static int GetPacketId(int protocolVersion)
         {
             /* 
              * 1.13-pre9(391)
@@ -45,30 +52,5 @@ namespace MinecraftProtocol.Packets.Client
             return 0x01;
 #endif
         }
-        public bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
-        public bool Verify(ReadOnlyPacket packet, int protocolVersion,out EncryptionResponsePacket erp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            erp = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-
-            try
-            {
-                byte[] SharedSecret = packet.ReadByteArray(protocolVersion);
-                byte[] VerifyToken = packet.ReadByteArray(protocolVersion);
-                if (packet.IsReadToEnd)
-                    erp = new EncryptionResponsePacket(packet, SharedSecret, VerifyToken);
-                return !(erp is null);
-            }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
-        }
-
     }
 }

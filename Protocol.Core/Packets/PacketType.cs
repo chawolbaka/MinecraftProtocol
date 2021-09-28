@@ -1,0 +1,105 @@
+﻿using MinecraftProtocol.Packets.Client;
+using MinecraftProtocol.Packets.Server;
+using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace MinecraftProtocol.Packets
+{
+    public class PacketType
+    {
+        public string Name { get; }
+        public Func<int, int> GetID { get; }
+        
+        public PacketType(string name, Func<int, int> getID)
+        {
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            GetID = getID ?? throw new ArgumentNullException(nameof(getID));
+        }
+
+
+        public static bool operator ==(PacketType left, CompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetID(right.ProtocolVersion);
+        public static bool operator !=(PacketType left, CompatiblePacket right) => !(left == right);
+        public static bool operator ==(CompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetID(left.ProtocolVersion);
+        public static bool operator !=(CompatiblePacket left, PacketType right) => !(left == right);
+
+
+        public static bool operator ==(PacketType left, ReadOnlyCompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetID(right.ProtocolVersion);
+        public static bool operator !=(PacketType left, ReadOnlyCompatiblePacket right) => !(left == right);
+        public static bool operator ==(ReadOnlyCompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetID(left.ProtocolVersion);
+        public static bool operator !=(ReadOnlyCompatiblePacket left, PacketType right) => !(left == right);
+
+
+        public override bool Equals(object obj)
+        {
+            return obj is PacketType pt && pt.Name == Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            return Name;
+        }
+
+        public static readonly PacketType Handshake = new PacketType(nameof(HandshakePacket), (ver) => HandshakePacket.GetPacketId());
+
+        public static class Status
+        {
+            /// <summary>从服务端发送到客户端Packet</summary>
+            public static class Server
+            {
+                public static readonly PacketType Response = new PacketType(nameof(PingResponsePacket), (ver) => PingResponsePacket.GetPacketID());
+                public static readonly PacketType Pong = new PacketType(nameof(PongPacket), (ver) => PongPacket.GetPacketId());
+            }
+
+            /// <summary>从客户端发送到服务端Packet</summary>
+            public static class Client
+            {
+                public static readonly PacketType Request = new PacketType(nameof(PingRequestPacket), (ver) => PingRequestPacket.GetPacketId());
+                public static readonly PacketType Ping = new PacketType(nameof(PingPacket), (ver) => PingPacket.GetPacketId());
+            }
+        }
+
+        public static class Login
+        {
+            /// <summary>从服务端发送到客户端Packet</summary>
+            public static class Server
+            {
+                public static readonly PacketType Disconnect = new PacketType(nameof(DisconnectLoginPacket), (ver) => DisconnectLoginPacket.GetPacketId(ver));
+                public static readonly PacketType LoginSuccess = new PacketType(nameof(LoginSuccessPacket), (ver) => LoginSuccessPacket.GetPacketId(ver));
+                public static readonly PacketType SetCompression = new PacketType(nameof(SetCompressionPacket), (ver) => SetCompressionPacket.GetPacketId(ver));
+                public static readonly PacketType EncryptionRequest = new PacketType(nameof(EncryptionRequestPacket), (ver) => EncryptionRequestPacket.GetPacketId(ver));
+            }
+
+            /// <summary>从客户端发送到服务端Packet</summary>
+            public static class Client
+            {
+                public static readonly PacketType LoginStart = new PacketType(nameof(LoginStartPacket), (ver) => LoginStartPacket.GetPacketId(ver));
+                public static readonly PacketType EncryptionResponse = new PacketType(nameof(EncryptionResponsePacket), (ver) => EncryptionResponsePacket.GetPacketId(ver));
+            }
+        }
+
+        public static class Play
+        {
+            /// <summary>从服务端发送到客户端Packet</summary>
+            public static class Server
+            {
+                public static readonly PacketType PluginChannel = new PacketType(nameof(ServerPluginChannelPacket), (ver) => ServerPluginChannelPacket.GetPacketId(ver));
+                public static readonly PacketType KeepAlive = new PacketType(nameof(KeepAliveRequestPacket), (ver) => KeepAliveRequestPacket.GetPacketId(ver));
+                public static readonly PacketType ChatMessage = new PacketType(nameof(ServerChatMessagePacket), (ver) => ServerChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType Disconnect = new PacketType(nameof(DisconnectPacket), (ver) => DisconnectPacket.GetPacketId(ver));
+            }
+
+            /// <summary>从客户端发送到服务端Packet</summary>
+            public static class Client
+            {
+                public static readonly PacketType KeepAlive = new PacketType(nameof(KeepAliveResponsePacket), (ver) => KeepAliveResponsePacket.GetPacketId(ver));
+                public static readonly PacketType ChatMessage = new PacketType(nameof(ClientChatMessagePacket), (ver) => ClientChatMessagePacket.GetPacketId(ver));
+            }
+        }
+    }
+}

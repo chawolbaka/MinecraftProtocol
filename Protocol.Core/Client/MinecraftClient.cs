@@ -62,6 +62,12 @@ namespace MinecraftProtocol.Client
         public abstract bool Connect();
 
         /// <summary>
+        /// 连接TCP
+        /// </summary>
+        /// <returns>连接是否成功</returns>
+        public virtual Task<bool> ConnectAsync() => Task.Run(Connect);
+
+        /// <summary>
         /// 玩家是否已进入服务器
         /// </summary>
         public abstract bool Joined { get; }

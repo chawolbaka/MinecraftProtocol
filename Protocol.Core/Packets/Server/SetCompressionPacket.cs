@@ -1,23 +1,28 @@
 ﻿using System;
-using MinecraftProtocol.Compression;
 using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Packets.Server
 {
-    public class SetCompressionPacket : Packet
+    public partial class SetCompressionPacket : DefinedPacket
     {
-        public int Threshold { get; }
+        [PacketProperty]
+        public int _threshold;
 
-        private SetCompressionPacket(ReadOnlyPacket packet, int threshold) : base(packet) { this.Threshold = threshold; }
-        public SetCompressionPacket(int threshold, int protocolVersion)
+        protected override void Write()
         {
-            this.ID = GetPacketID(protocolVersion);
-            this.Threshold = threshold;
-            WriteVarInt(threshold);
+            if (ProtocolVersion < ProtocolVersions.V14w28a)
+                throw new InvalidPacketException($"协议版本\"{ProtocolVersion}\"中不存在数据包压缩包(至少需要14w28a以上版本)", this);
+            WriteVarInt(_threshold);
         }
-        
 
-        public static int GetPacketID(int protocolVersion)
+        protected override void Read()
+        {
+            if (ProtocolVersion < ProtocolVersions.V14w28a)
+                throw new PacketNotFoundException($"协议版本\"{ProtocolVersion}\"中不存在数据包压缩包(至少需要14w28a以上版本)", this);
+            _threshold = Reader.ReadVarInt();
+        }
+
+        public static int GetPacketId(int protocolVersion)
         {
 
             /*
@@ -47,40 +52,7 @@ namespace MinecraftProtocol.Packets.Server
                 else return 0x46;
             }
             else
-                throw new PacketNotFoundException($"协议版本\"{protocolVersion}\"中不存在数据包压缩包(需要14w28a以上的版本才有)");
-        }
-
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out int? _);
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out SetCompressionPacket scp)
-        {
-            scp = null;
-            if (Verify(packet, protocolVersion, out int? threshold))
-                scp = new SetCompressionPacket(packet, threshold.Value);
-            return !(scp is null);
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out int? threshold)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            threshold = null;
-            if (protocolVersion < ProtocolVersions.V14w28a)
-                return false;
-
-            try
-            {
-                if (packet.ID != GetPacketID(protocolVersion))
-                    return false;
-
-                threshold = packet.ReadVarInt();
-                return packet.IsReadToEnd;
-            }
-            catch (PacketNotFoundException) { return false; }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
+                return UnsupportPacketId;
         }
     }
 }

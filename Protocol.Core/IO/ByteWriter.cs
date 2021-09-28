@@ -50,8 +50,8 @@ namespace MinecraftProtocol.IO
        
         protected const int DEFUALT_CAPACITY = 16;
 
-        protected byte[] _data;
-        protected int _size = 0;
+        internal protected byte[] _data;
+        internal protected int _size = 0;
         protected int _version;
 
         public ByteWriter() : this(DEFUALT_CAPACITY) { }

@@ -7,36 +7,40 @@ namespace MinecraftProtocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Protocol#Chat_Message_.28serverbound.29
     /// </summary>
-    public class ClientChatMessagePacket:Packet
+    public partial class ClientChatMessagePacket : DefinedPacket
     {
         /// <summary>For New Version(>=16w38a)</summary>
         public const int MaxMessageLength = 256;
         /// <summary>For Old Version(16w38a ago)</summary>
         public const int OldMaxMessageLength = 100;
 
-        public string Message { get; }
+        [PacketProperty]
+        private string _message;
 
-        private ClientChatMessagePacket(ReadOnlyPacket packet, string message) : base(packet)
-        {
-            Message = message;
-        }
-        public ClientChatMessagePacket(string message, int protocolVersion)
+        protected override void CheckProperty()
         {
             /*       
              * 16w38a(306)
              * Max length for Chat Message (serverbound) (0x02) changed from 100 to 256.
              */
-            if (protocolVersion >= ProtocolVersions.V16w38a && message.Length > MaxMessageLength)
+            base.CheckProperty();
+            if (ProtocolVersion >= ProtocolVersions.V16w38a && _message.Length > MaxMessageLength)
                 throw new OverflowException($"message too long, max is {MaxMessageLength}");
-            else if (protocolVersion < ProtocolVersions.V16w38a && message.Length > OldMaxMessageLength)
+            else if (ProtocolVersion < ProtocolVersions.V16w38a && _message.Length > OldMaxMessageLength)
                 throw new OverflowException($"message too long, max is {OldMaxMessageLength}");
-            ID = GetPacketID(protocolVersion);
-            Message = Message;
-            WriteString(message);
         }
 
+        protected override void Write()
+        {
+            WriteString(_message);
+        }
 
-        public static int GetPacketID(int protocolVersion)
+        protected override void Read()
+        {
+            _message = AsReadOnly().ReadString();
+        }
+
+        public static int GetPacketId(int protocolVersion)
         {
             /*
              * 1.13-pre7(389)
@@ -64,33 +68,6 @@ namespace MinecraftProtocol.Packets.Client
             else if (protocolVersion >= ProtocolVersions.V17w13a)     return 0x03;
             else if (protocolVersion >= ProtocolVersions.V15w43a)     return 0x02;
             else return 0x01;
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out _);
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out ClientChatMessagePacket ccmp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            ccmp = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-
-            try
-            {
-                string Message = packet.ReadString();
-                if (protocolVersion >= ProtocolVersions.V16w38a && Message.Length > MaxMessageLength)
-                    return false;
-                else if (Message.Length > OldMaxMessageLength)
-                    return false;
-                if (packet.IsReadToEnd)
-                    ccmp = new ClientChatMessagePacket(packet, Message);
-                return !(ccmp is null);
-            }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
         }
     }
 }

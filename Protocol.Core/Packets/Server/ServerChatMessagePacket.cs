@@ -8,39 +8,43 @@ namespace MinecraftProtocol.Packets.Server
     /// <summary>
     /// https://wiki.vg/Protocol#Chat_Message_.28clientbound.29
     /// </summary>
-    public class ServerChatMessagePacket : Packet
+    public partial class ServerChatMessagePacket : DefinedPacket
     {
-        public ChatMessage Message => _message ??= ChatMessage.Deserialize(Json);
-        public string Json { get; }
-        /// <summary>
-        /// 0: chat (chat box), 1: system message (chat box), 2: game info (above hotbar).
-        /// </summary>
-        public byte? Position { get; }
+        public ChatMessage Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json),"json is empty");
         private ChatMessage _message;
 
-        private ServerChatMessagePacket(ReadOnlyPacket packet,string json, byte? position) : base(packet)
+        [PacketProperty]
+        public string _json;
+        
+        [PacketProperty]
+        public byte? _position; // 0: chat (chat box), 1: system message (chat box), 2: game info (above hotbar).
+
+        protected override void CheckProperty()
         {
-            this.Json = json;
-            this.Position = position;
+            base.CheckProperty();
+            if (string.IsNullOrWhiteSpace(_json))
+                throw new ArgumentNullException(nameof(Json));
         }
-        public ServerChatMessagePacket(ChatMessage chatMessage, byte position, int protocolVersion) : this(chatMessage.Serialize(), position, protocolVersion) { }
-        public ServerChatMessagePacket(string json, byte position, int protocolVersion) : base(GetPacketID(protocolVersion))
+
+        protected override void Write()
         {
-            if (string.IsNullOrEmpty(json))
-                throw new ArgumentNullException(nameof(json));
-            
-            this.Json = json;
-            WriteString(json);
+            WriteString(Json);
             //14w02a:Added 'Position' to Chat Message Clientbound
-            if (protocolVersion >= ProtocolVersions.V14w02a)
-            {
-                this.Position = position;
-                WriteUnsignedByte(position);
-            }
+            if (ProtocolVersion >= ProtocolVersions.V14w02a)
+                WriteUnsignedByte(_position ?? 0);
+
             if (Count > 32767)
-                throw new ArgumentOutOfRangeException(nameof(json));
+                throw new ArgumentOutOfRangeException(nameof(Json));
         }
-        public static int GetPacketID(int protocolVersion)
+
+        protected override void Read()
+        {
+            _json = Reader.ReadString();
+            if (ProtocolVersion >= ProtocolVersions.V14w02a && !Reader.IsReadToEnd)
+                _position = Reader.ReadUnsignedByte();
+        }
+
+        public static int GetPacketId(int protocolVersion)
         {
             /*
              * 17w45a(343)
@@ -56,35 +60,8 @@ namespace MinecraftProtocol.Packets.Server
             if (protocolVersion >= ProtocolVersions.V1_12_pre5)   return 0x0F;
             if (protocolVersion >= ProtocolVersions.V17w13a)      return 0x10;
             if (protocolVersion >= ProtocolVersions.V15w36a)      return 0X0F;
-            else                                                        return 0x02;
+            else                                                  return 0x02;
 
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out ServerChatMessagePacket scmp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            scmp = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-            try
-            {
-                if (packet.Count > 32767)
-                    return false;
-
-                string Json = packet.ReadString();
-                byte? Position = null;
-                if (protocolVersion >= ProtocolVersions.V14w02a && !packet.IsReadToEnd)
-                    Position = packet.ReadUnsignedByte();
-                if (packet.IsReadToEnd)
-                    scmp = new ServerChatMessagePacket(packet, Json, Position);
-                return !(scmp is null);
-            }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
         }
     }
 }

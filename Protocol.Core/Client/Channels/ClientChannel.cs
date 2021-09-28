@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using MinecraftProtocol.IO;
-using MinecraftProtocol.Packets.Both;
+using MinecraftProtocol.Packets.Client;
 
 namespace MinecraftProtocol.Client.Channels
 {
@@ -34,7 +34,7 @@ namespace MinecraftProtocol.Client.Channels
 
         protected virtual void SendPluginChannelPacket(byte[] data)
         {
-            PluginChannelPacket packet = new PluginChannelPacket(_channelName, data, _client.ProtocolVersion, Bound.Client, _client is ForgeClient);
+            ClientPluginChannelPacket packet = new ClientPluginChannelPacket(_channelName, data, _client is ForgeClient, _client.ProtocolVersion);
             _client.SendPacket(packet);
         }
     }

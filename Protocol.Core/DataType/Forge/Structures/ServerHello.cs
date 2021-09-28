@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
 
 namespace MinecraftProtocol.DataType.Forge
@@ -26,10 +27,12 @@ namespace MinecraftProtocol.DataType.Forge
 
         public byte[] ToBytes()
         {
+            ByteWriter writer = new ByteWriter();
+            writer.WriteUnsignedByte(Discriminator);
+            writer.WriteUnsignedByte(FMLProtocolVersion);
             if (OverrideDimension.HasValue)
-                return ProtocolHandler.ConcatBytes(new byte[] { Discriminator, FMLProtocolVersion }, ProtocolHandler.GetBytes(OverrideDimension.Value));
-            else
-                return new byte[] { Discriminator, FMLProtocolVersion };
+                writer.WriteInt(OverrideDimension.Value);
+            return writer.AsSpan().ToArray();
         }
 
         public static ServerHello Read(ReadOnlySpan<byte> data)
@@ -44,21 +47,6 @@ namespace MinecraftProtocol.DataType.Forge
             int version = data[1];
             if (version > 1)
                 return new ServerHello(data[1], data.Slice(2, 4).AsInt());
-            else
-                return new ServerHello(data[1], null);
-        }
-        public static ServerHello Read(List<byte> data)
-        {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-            if (data.Count < 1)
-                throw new ArgumentOutOfRangeException(nameof(data), "data length too short");
-            if (data[0] != Discriminator)
-                throw new InvalidCastException($"Invalid Discriminator {data[0]}");
-
-            int version = data[1];
-            if (version > 1)
-                return new ServerHello(data[1], ProtocolHandler.ReadInt(data, 2, true));
             else
                 return new ServerHello(data[1], null);
         }

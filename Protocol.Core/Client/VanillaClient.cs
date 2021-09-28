@@ -18,6 +18,8 @@ using MinecraftProtocol.Compression;
 using MinecraftProtocol.Utils; 
 using MinecraftProtocol.Entity;
 using MinecraftProtocol.IO;
+using MinecraftProtocol.IO.Extensions;
+using MinecraftProtocol.DataType.Chat;
 
 namespace MinecraftProtocol.Client
 {
@@ -134,15 +136,16 @@ namespace MinecraftProtocol.Client
             PacketListen = new PacketListener(TCP ??= new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp));
             PacketListen.PacketReceived += (sender, e) =>
             {
-                if (DisconnectPacket.Verify(e.Packet, ProtocolVersion, out DisconnectPacket dp))
+                if (e.Packet == PacketType.Play.Server.Disconnect)
                 {
-                    _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, e.ReceivedTime));
-                    DisconnectAsync(dp.Reason.ToString());
+                    ChatMessage reason = e.Packet.AsDisconnect()?.Reason;
+                    _kicked?.Invoke(this, new DisconnectEventArgs(reason, e.ReceivedTime));
+                    DisconnectAsync(reason?.ToString());
                 }
-                else if (_autoKeepAlive && KeepAliveRequestPacket.Verify(e.Packet.AsReadOnly(), ProtocolVersion))
-                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsSpan(), ProtocolVersion));
+                else if (_autoKeepAlive && e.Packet == PacketType.Play.Server.KeepAlive)
+                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsCompatibleReadOnly()));
                 else
-                    ReceiveQueue.Enqueue((e.ReceivedTime, e.RoundTripTime, e.Packet));
+                    ReceiveQueue.TryAdd((e.ReceivedTime, e.RoundTripTime, e.Packet));
             };
             PacketListen.UnhandledException += (sender, e) =>
             {
@@ -150,7 +153,7 @@ namespace MinecraftProtocol.Client
                 {
                     StopListen();
                     if (!_disposed)
-                        Disconnect();
+                        Disconnect(e.Exception.Message);
                     e.Handled = true;
                 }
                 else if (e.Exception is OverflowException oe && oe.StackTrace.Contains(nameof(VarInt)))
@@ -206,7 +209,7 @@ namespace MinecraftProtocol.Client
             _loginToken = token;
 
             //开始握手
-            SendPacket(new HandshakePacket(ServerHost, ServerPort, ProtocolVersion, HandshakePacket.State.Login));
+            SendPacket(new HandshakePacket(ServerHost, ServerPort, HandshakePacket.State.Login, ProtocolVersion));
             VanillaLoginState = VanillaLoginStatus.Handshake;
 
             //申请加入服务器
@@ -218,15 +221,15 @@ namespace MinecraftProtocol.Client
                 Packet packet = ReadPacket();
                 if (++count > 20960)
                     throw new OverflowException("异常的登录过程，服务端发送的数据包过多");
-                else if (EncryptionRequestPacket.Verify(packet, ProtocolVersion, out EncryptionRequestPacket erp))
+                else if (EncryptionRequestPacket.TryRead(packet, ProtocolVersion, out EncryptionRequestPacket erp))
                     OnEncryptionRequestReceived(erp);
-                else if (SetCompressionPacket.Verify(packet, ProtocolVersion, out int? threshold) && threshold.HasValue)
-                    OnSetCompressionReceived(threshold.Value);
-                else if (LoginSuccessPacket.Verify(packet, ProtocolVersion, out LoginSuccessPacket lsp))
+                else if (SetCompressionPacket.TryRead(packet, ProtocolVersion, out SetCompressionPacket scp))
+                    OnSetCompressionReceived(scp.Threshold);
+                else if (LoginSuccessPacket.TryRead(packet, ProtocolVersion, out LoginSuccessPacket lsp))
                     OnLoginSuccessReceived(lsp);
-                else if (DisconnectPacket.Verify(packet, ProtocolVersion, out DisconnectPacket dp))
+                else if (DisconnectPacket.TryRead(packet, ProtocolVersion, out DisconnectPacket dp))
                     OnDisconnectLoginReceived(dp);
-                else if (DisconnectLoginPacket.Verify(packet, ProtocolVersion, out DisconnectLoginPacket dlp))
+                else if (DisconnectLoginPacket.TryRead(packet, ProtocolVersion, out DisconnectLoginPacket dlp))
                     OnDisconnectLoginReceived(dlp);
 #if DEBUG
                 else
@@ -306,7 +309,7 @@ namespace MinecraftProtocol.Client
             LoginSuccessPacket lsp;
             if (packet is LoginSuccessPacket)
                 lsp = packet as LoginSuccessPacket;
-            else if (!LoginSuccessPacket.Verify(packet, ProtocolVersion, out lsp))
+            else if (!LoginSuccessPacket.TryRead(packet, ProtocolVersion, out lsp))
                 throw new InvalidPacketException(packet);
             _player = new Player(lsp.PlayerName, UUID.Parse(lsp.PlayerUUID));
         }
@@ -315,7 +318,7 @@ namespace MinecraftProtocol.Client
         //抄的,不知道为什么要加readonly 也不知道去掉会有什么区别
         private readonly object SendPacketLock = new object();
         private readonly object ReadPacketLock = new object();
-        protected virtual Packet ReadPacket()
+        protected virtual CompatiblePacket ReadPacket()
         {
             lock (ReadPacketLock)
             {
@@ -324,9 +327,9 @@ namespace MinecraftProtocol.Client
                     throw new SocketException((int)SocketError.ConnectionReset);
 
                 if (PacketListen.Crypto.Enable)
-                    return Packet.Depack(PacketListen.Crypto.Decrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), CompressionThreshold);
+                    return CompatiblePacket.Depack(PacketListen.Crypto.Decrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), ProtocolVersion, CompressionThreshold);
                 else
-                    return Packet.Depack(NetworkUtils.ReceiveData(PacketLength, TCP), CompressionThreshold);
+                    return CompatiblePacket.Depack(NetworkUtils.ReceiveData(PacketLength, TCP), ProtocolVersion,CompressionThreshold);
             }
         }
         public override void SendPacket(IPacket packet)
@@ -355,7 +358,7 @@ namespace MinecraftProtocol.Client
             }
         }
         protected virtual bool UpdateConnectStatus() => _connected = NetworkUtils.CheckConnect(TCP);
-        protected ConcurrentQueue<(DateTime ReceivedTime, TimeSpan RoundTripTime, Packet Packet)> ReceiveQueue = new ConcurrentQueue<(DateTime, TimeSpan, Packet)>();
+        protected BlockingCollection<(DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet)> ReceiveQueue = new BlockingCollection<(DateTime, TimeSpan, CompatiblePacket)>();
         protected CancellationTokenSource ReceivePacketCancellationToken;
         public override void StartListen(CancellationTokenSource cancellationToken = default)
         {
@@ -367,29 +370,30 @@ namespace MinecraftProtocol.Client
             ReceivePacketCancellationToken = cancellationToken ?? new CancellationTokenSource();
             PacketQueueHandleThread = new Thread(() =>
             {
-                lock (DisconnectLock) PacketListen.StartAsync(ReceivePacketCancellationToken.Token);
+                lock (DisconnectLock)
+                {
+                    PacketListen.ProtocolVersion = ProtocolVersion;
+                    PacketListen.StartAsync(ReceivePacketCancellationToken.Token);
+                }
+
                 try
                 {
                     while (Joined || (ReceivePacketCancellationToken != null && !ReceivePacketCancellationToken.IsCancellationRequested))
                     {
-                        if (_packetReceived != null && ReceiveQueue.TryDequeue(out var data))
-                        {
+                        if (ReceiveQueue.TryTake(out (DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet) data, Timeout.Infinite, ReceivePacketCancellationToken.Token)&&data!=default)
                             foreach (PacketReceivedEventHandler Method in _packetReceived.GetInvocationList())
                             {
                                 //ReadOnlyPacket内部有个offset，所以必须保证大家拿到的不指向同一个引用。
-                                PacketReceivedEventArgs EventArgs = new PacketReceivedEventArgs(data.Packet.AsReadOnly(), data.RoundTripTime, data.ReceivedTime);
+                                PacketReceivedEventArgs EventArgs = new PacketReceivedEventArgs(data.Packet.AsCompatibleReadOnly(), data.RoundTripTime, data.ReceivedTime);
                                 Method.Invoke(this, EventArgs);
                                 if (EventArgs.IsCancelled)
                                     break;
                             }
-                        }
-                        else
-                        {
-                            Thread.Sleep(200);   
-                        }
                     }
                 }
+                catch (OperationCanceledException) { }
                 catch (ObjectDisposedException) { }
+                finally { ReceivePacketCancellationToken?.Cancel(); }
             });
             PacketQueueHandleThread.Name = nameof(PacketQueueHandleThread);
             PacketQueueHandleThread.IsBackground = true;
@@ -424,8 +428,8 @@ namespace MinecraftProtocol.Client
                 _joined = false;
 				_connected = false;
                 TCP = null;
-                PacketListen.Dispose();
-                ReceiveQueue?.Clear();
+                PacketListen?.Dispose();
+                ReceiveQueue?.Dispose();
                 CompressionThreshold = -1;
                 _player = null;
                 PacketQueueHandleThread = null;
@@ -449,7 +453,7 @@ namespace MinecraftProtocol.Client
                 _joined = false;
                 _connected = false;
                 ReceivePacketCancellationToken?.Cancel();
-                ReceiveQueue?.Clear();
+                ReceiveQueue?.Dispose();
                 TCP?.Dispose();
             }
             TCP?.Close();

@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Protocol#Keep_Alive_.28serverbound.29
     /// </summary>
-    public class KeepAliveResponsePacket : Packet
+    public partial class KeepAliveResponsePacket : DefinedPacket
     {
         /*
          * 1.12.2-pre1, -pre2(339)
@@ -17,28 +17,30 @@ namespace MinecraftProtocol.Packets.Client
          * 14w31a(32)
          * Changed the type of Keep Alive ID from Int to VarInt (Clientbound)
          */
-        private int ProtocolVersion;
-        public long Code
+        [PacketProperty]
+        private long _code;
+
+        protected override void Write()
         {
-            get {
-                if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
-                    return SpanConvert.AsLong(_data);
-                else if (ProtocolVersion >= ProtocolVersions.V14w31a)
-                    return SpanConvert.AsVarInt(_data);
-                else
-                    return SpanConvert.AsInt(_data);
-            }
+            if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
+                WriteLong(_code);
+            else if (ProtocolVersion >= ProtocolVersions.V14w31a)
+                WriteVarInt((int)_code);
+            else
+                WriteInt((int)_code);
         }
-        private KeepAliveResponsePacket(ReadOnlyPacket packet, int protocolVersion) : base(packet)
+
+        protected override void Read()
         {
-            this.ProtocolVersion = protocolVersion;
+            if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
+                _code = Reader.ReadLong();
+            else if (ProtocolVersion >= ProtocolVersions.V14w31a)
+                _code = Reader.ReadVarInt();
+            else
+                _code = Reader.ReadInt();
         }
-        public KeepAliveResponsePacket(ReadOnlySpan<byte> code, int protocolVersion) : base(GetPacketID(protocolVersion))
-        {
-            this.ProtocolVersion = protocolVersion;
-            WriteBytes(code);
-        }
-        public static int GetPacketID(int protocolVersion)
+
+        public static int GetPacketId(int protocolVersion)
         {
             /*
              * 1.13-pre7(389)
@@ -68,35 +70,7 @@ namespace MinecraftProtocol.Packets.Client
             else if (protocolVersion >= ProtocolVersions.V17w13a)         return 0x0C;
             else if (protocolVersion >= ProtocolVersions.V15w43a)         return 0x0B;
             else if (protocolVersion >= ProtocolVersions.V15w36a)         return 0x0A;
-            else                                                                return 0x00;
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion,out byte[] _);
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out KeepAliveResponsePacket karp)
-        {
-            karp = null;
-            if (Verify(packet, protocolVersion))
-                karp = new KeepAliveResponsePacket(packet, protocolVersion);
-            return karp == null;
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out byte[] code)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            code = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-
-            if (protocolVersion >= ProtocolVersions.V1_12_2_pre1 && packet.Count == 8)
-                code = packet.ReadAll();
-            else if (protocolVersion >= ProtocolVersions.V14w31a && packet.Count <= 5 && packet.Count > 0)
-                code = packet.ReadAll();
-            else if (protocolVersion < ProtocolVersions.V14w31a && packet.Count == 4)
-                code = packet.ReadAll();
-
-            return !(code is null);
+            else                                                          return 0x00;
         }
     }
 }

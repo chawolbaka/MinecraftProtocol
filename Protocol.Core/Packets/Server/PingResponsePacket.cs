@@ -1,45 +1,37 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace MinecraftProtocol.Packets.Server
 {
     /// <summary>
     /// https://wiki.vg/Server_List_Ping#Response
     /// </summary>
-    public class PingResponsePacket:Packet
+    public partial class PingResponsePacket : DefinedPacket
     {
-        private const int id = 0x00;
-        public string Json { get; }
+        [PacketProperty]
+        public string _content;
 
-        private PingResponsePacket(ReadOnlyPacket packet, string json) : base(packet) { this.Json = json; }
-        public PingResponsePacket(string json) : base(id)
+        public PingResponsePacket(ReadOnlyPacket packet) : this(packet,-1) { }
+        public PingResponsePacket(string content) : this(content, -1) { }
+
+        protected override void CheckProperty()
         {
-            if (string.IsNullOrEmpty(json))
-                throw new ArgumentNullException(nameof(json));
-            this.Json = json;
-            WriteString(json);
+            if (string.IsNullOrWhiteSpace(_content))
+                throw new ArgumentNullException(nameof(Content));
         }
+
+        protected override void Write()
+        {
+            WriteString(_content);
+        }
+
+        protected override void Read()
+        {
+            _content = Reader.ReadString();
+        }
+
+        private const int id = 0x00;
+        public static int GetPacketId(int protocol) => id;
         public static int GetPacketID() => id;
 
-        public static bool Verify(ReadOnlyPacket packet,out PingResponsePacket prp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-
-            prp = null;
-            if (packet.ID != id)
-                return false;
-
-            try
-            {
-                string ResponseJson = packet.ReadString();
-                if (packet.IsReadToEnd)
-                    prp = new PingResponsePacket(packet, ResponseJson);
-                return !(prp is null);
-            }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
-        }
     }
 }

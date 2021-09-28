@@ -7,29 +7,37 @@ namespace MinecraftProtocol.Packets.Server
     /// <summary>
     /// https://wiki.vg/Protocol#Disconnect_.28play.29
     /// </summary>
-    public class DisconnectPacket : Packet
+    public partial class DisconnectPacket : DefinedPacket
     {
+        [PacketProperty]
+        public string _json;
 
-        public ChatMessage Reason => _reason ??= ChatMessage.Deserialize(Json);
-        public string Json { get; private set; }
-        private ChatMessage _reason;
+        public ChatMessage Reason => !string.IsNullOrWhiteSpace(_json) ? ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
 
-        private DisconnectPacket(ReadOnlyPacket packet, string json) : base(packet) { this.Json = json; }
-        public DisconnectPacket(ChatMessage reason, int protocolVersion) : base(GetPacketID(protocolVersion))
+        public DisconnectPacket(ChatMessage message, int protocolVersion) : this(message.Serialize(), protocolVersion)
         {
-            this._reason = reason ?? throw new ArgumentNullException(nameof(reason));
-            this.Json = _reason.Serialize();
-            WriteString(Json);
-        }
-        public DisconnectPacket(string json, int protocolVersion) : base(GetPacketID(protocolVersion))
-        {
-            if (string.IsNullOrWhiteSpace(json))
-                throw new ArgumentNullException(nameof(json));
-            this.Json = json;
-            WriteString(Json);
+            if (message is null)
+                throw new ArgumentNullException(nameof(message));
         }
 
-        public static int GetPacketID(int protocolVersion)
+        protected override void CheckProperty()
+        {
+            base.CheckProperty();
+            if (string.IsNullOrWhiteSpace(_json))
+                throw new ArgumentNullException(nameof(Json));
+        }
+
+        protected override void Write()
+        {
+            WriteString(_json);
+        }
+
+        protected override void Read()
+        {
+            _json = Reader.ReadString();
+        }
+
+        public static int GetPacketId(int protocolVersion)
         {
                 /* 
                  * 17w46a(345)
@@ -51,30 +59,6 @@ namespace MinecraftProtocol.Packets.Server
                 if (protocolVersion >= ProtocolVersions.V15w36a)      return 0x19;
                 else                                                        return 0x40;
             
-        }
-
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out _);
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out DisconnectPacket dp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            dp = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-
-            try
-            {
-                string json = packet.ReadString();
-                if (packet.IsReadToEnd)
-                    dp = new DisconnectPacket(packet, json);
-                return !(dp is null);
-            }
-            catch (ArgumentOutOfRangeException) { return false; }
-            catch (IndexOutOfRangeException) { return false; }
-            catch (OverflowException) { return false; }
         }
 
     }

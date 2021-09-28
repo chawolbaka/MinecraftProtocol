@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.DataType.Forge
 {
@@ -93,9 +94,9 @@ namespace MinecraftProtocol.DataType.Forge
         }
 
         public override bool Equals(object obj) => Equals(obj as ModList);
-        public bool Equals(ModList other) => ProtocolHandler.Compare(this._modList, other?._modList);
-        public bool Equals(ModInfo[] other) => ProtocolHandler.Compare(this._modList, other);
-        public bool Equals(List<ModInfo> other) => ProtocolHandler.Compare(this._modList, other);
+        public bool Equals(ModList other) => CollectionUtils.Compare(this._modList, other?._modList);
+        public bool Equals(ModInfo[] other) => CollectionUtils.Compare(this._modList, other);
+        public bool Equals(List<ModInfo> other) => CollectionUtils.Compare(this._modList, other);
 
         public override int GetHashCode()
         {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.DataType.Forge
 {
@@ -99,9 +100,9 @@ namespace MinecraftProtocol.DataType.Forge
 
 
             return
-                ProtocolHandler.Compare(Ids, other?.Ids) &&
-                ProtocolHandler.Compare(Dummies, other?.Dummies) &&
-                ProtocolHandler.Compare(Substitutions, other?.Substitutions);
+                CollectionUtils.Compare(Ids, other?.Ids) &&
+                CollectionUtils.Compare(Dummies, other?.Dummies) &&
+                CollectionUtils.Compare(Substitutions, other?.Substitutions);
 
         }
         public override int GetHashCode()

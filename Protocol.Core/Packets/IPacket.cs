@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace MinecraftProtocol.Packets
 {
-    public interface IPacket
+    public interface IPacket : ICloneable
     {
         byte this[int index] { get; set; }
 
@@ -19,6 +19,11 @@ namespace MinecraftProtocol.Packets
         int Count { get; }
 
         /// <summary>
+        /// 是不是只读包
+        /// </summary>
+        bool IsReadOnly { get; }
+
+        /// <summary>
         /// 创建完整的数据包
         /// </summary>
         /// <param name="compress">压缩阚值</param>
@@ -28,7 +33,5 @@ namespace MinecraftProtocol.Packets
         /// 获取数据包的Data
         /// </summary>
         byte[] ToArray();
-
-        IPacket Clone();
     }
 }

@@ -24,8 +24,16 @@ namespace MinecraftProtocol.IO
             set => ThrowIfDisposed(() => _compressionThreshold = value);
         }
 
+        public int ProtocolVersion
+        {
+            get => ThrowIfDisposed(_protocolVersion);
+            set => ThrowIfDisposed(() => _protocolVersion = value);
+        }
+
         public CryptoHandler Crypto => ThrowIfDisposed(_crypto);
 
+        public event EventHandler<ListenEventArgs> StartListen;
+        public event EventHandler<ListenEventArgs> StopListen;
         public event EventHandler<PacketReceivedEventArgs> PacketReceived;
         public event EventHandler<UnhandledExceptionEventArgs> UnhandledException;
 
@@ -36,6 +44,7 @@ namespace MinecraftProtocol.IO
         private int _offset;
         private int _receiveBufferSize;
         private int _compressionThreshold;
+        private int _protocolVersion;
         private byte[] _buffer;
         private ManualResetEvent ReceiveSignal = new ManualResetEvent(false);
 
@@ -51,15 +60,19 @@ namespace MinecraftProtocol.IO
             _buffer = new byte[receiveBufferSize];
             _receiveBufferSize = receiveBufferSize;
             _compressionThreshold = -1;
+            _protocolVersion = -1;
             _crypto = new CryptoHandler();
         }
 
-        public Task StartAsync(CancellationToken token)
+        public void StartAsync(CancellationToken token)
         {
-            if (token == null)
+            if (token == default)
                 throw new ArgumentNullException(nameof(token));
             _cancellationToken = token;
-            return Task.Run(Start);
+            Thread thread = new Thread(Start);
+            thread.Name = nameof(PacketListener);
+            thread.IsBackground = true;
+            thread.Start();
         }
 
         public void Start()
@@ -70,6 +83,7 @@ namespace MinecraftProtocol.IO
             if (_cancellationToken == default)
                 _cancellationToken = (cancellationTokenSource = new CancellationTokenSource()).Token;
 
+            StartListen?.Invoke(this, new ListenEventArgs(false));
             using SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
             eventArgs.UserToken = _socket;
             eventArgs.RemoteEndPoint = _socket.RemoteEndPoint;
@@ -116,9 +130,10 @@ namespace MinecraftProtocol.IO
 
                     if (_disposed || _cancellationToken.IsCancellationRequested)
                         break;
-                    if (Data.Length >= 3) //varint+varint+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
-                        PacketReceived?.Invoke(this, new PacketReceivedEventArgs(DateTime.Now - ReceiveStart, Packet.Depack(Data, _compressionThreshold)));
+                    if (Data.Length >= 3) //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
+                        PacketReceived?.Invoke(this, new PacketReceivedEventArgs(DateTime.Now - ReceiveStart, CompatiblePacket.Depack(Data, _protocolVersion, _compressionThreshold)));
                 }
+                StopListen?.Invoke(this, new ListenEventArgs(true));
             }
             catch (Exception e)
             {
@@ -195,13 +210,25 @@ namespace MinecraftProtocol.IO
         }
 
 
+        public class ListenEventArgs : EventArgs
+        {
+            public DateTime Time { get; }
+            public bool IsStop { get; }
+
+            public ListenEventArgs(bool isStop)
+            {
+                Time = DateTime.Now;
+                IsStop = isStop;
+            }
+        }
+
         public class PacketReceivedEventArgs : EventArgs
         {
             public DateTime ReceivedTime { get; }
             public TimeSpan RoundTripTime { get; }
-            public Packet Packet { get; }
+            public CompatiblePacket Packet { get; }
 
-            public PacketReceivedEventArgs(TimeSpan roundTripTime, Packet packet)
+            public PacketReceivedEventArgs(TimeSpan roundTripTime, CompatiblePacket packet)
             {
                 ReceivedTime = DateTime.Now;
                 RoundTripTime = roundTripTime;

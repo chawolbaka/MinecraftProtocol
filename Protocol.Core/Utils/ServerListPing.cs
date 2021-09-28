@@ -173,18 +173,18 @@ namespace MinecraftProtocol.Utils
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, ServerPort, -1, HandshakePacket.State.GetStatus);
+            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, ServerPort, HandshakePacket.State.GetStatus, -1);
             socket.Send(Handshake.Pack());
             Packet PingRequest = new PingRequestPacket();
             socket.Send(PingRequest.Pack());
 
             //Receive Packet
             Packet ResponsePacket = ProtocolUtils.ReceivePacket(socket);
-            if (PingResponsePacket.Verify(ResponsePacket,out PingResponsePacket PingResponse)&&!string.IsNullOrWhiteSpace(PingResponse.Json))
+            if (PingResponsePacket.TryRead(ResponsePacket, -1, out PingResponsePacket PingResponse) && !string.IsNullOrWhiteSpace(PingResponse.Content))
             {
-                PingReply PingResult = ResolveJson(PingResponse.Json);
+                PingReply PingResult = ResolveJson(PingResponse.Content);
                 PingResult.Elapsed = EnableDelayDetect ? GetTime(socket) : null;
-                PingResult.Json = PingResponse.Json;
+                PingResult.Json = PingResponse.Content;
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Disconnect(reuseSocket);
                 return PingResult;

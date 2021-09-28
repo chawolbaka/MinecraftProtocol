@@ -5,16 +5,27 @@ namespace MinecraftProtocol.Packets.Client
     /// <summary>
     /// http://wiki.vg/Server_List_Ping#Request
     /// </summary>
-    public class PingRequestPacket : Packet
+    public class PingRequestPacket : DefinedPacket
     {
-        private const int id= 0x00;
-        public PingRequestPacket() : base(id) { }
-        public static int GetPacketID() => id;
-        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out _);
-        public static bool Verify(ReadOnlyPacket packet, out PingRequestPacket prp)
+        private const int id = 0x00;
+        public PingRequestPacket() : base(id,-1) { }
+
+        public static int GetPacketId() => id;
+        public static int GetPacketId(int protocolVersion) => id;
+
+        protected override void CheckProperty()
         {
-            prp = packet.ID == id && packet.Count == 0 ? new PingRequestPacket() : null;
-            return !(prp is null);
+
+        }
+
+        protected override void Read()
+        {
+            throw new NotImplementedException();
+        }
+
+        protected override void Write()
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -9,31 +9,32 @@ namespace MinecraftProtocol.Packets.Server
     /// <summary>
     /// https://wiki.vg/Protocol#Keep_Alive_.28clientbound.29
     /// </summary>
-    public class KeepAliveRequestPacket : Packet
+    public partial class KeepAliveRequestPacket : DefinedPacket
     {
-        private int ProtocolVersion;
-        public long Code
+        [PacketProperty]
+        private long _code;
+
+        protected override void Write()
         {
-            get
-            {
-                if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
-                    return BitConverter.ToInt64(_data, 0);
-                else if (ProtocolVersion >= ProtocolVersions.V14w31a)
-                    return VarInt.Read(_data);
-                else
-                    return BitConverter.ToInt32(_data, 0);
-            }
+            if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
+                WriteLong(_code);
+            else if (ProtocolVersion >= ProtocolVersions.V14w31a)
+                WriteVarInt((int)_code);
+            else
+                WriteInt((int)_code);
         }
-        private KeepAliveRequestPacket(ReadOnlyPacket packet, int protocolVersion) : base(packet)
+
+        protected override void Read()
         {
-            this.ProtocolVersion = protocolVersion;
+            if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
+                _code = Reader.ReadLong();
+            else if (ProtocolVersion >= ProtocolVersions.V14w31a)
+                _code = Reader.ReadVarInt();
+            else
+                _code = Reader.ReadInt();
         }
-        public KeepAliveRequestPacket(ReadOnlySpan<byte> code, int protocolVersion) : base(GetPacketID(protocolVersion))
-        {
-            this.ProtocolVersion = protocolVersion;
-            WriteBytes(code);
-        }
-        public static int GetPacketID(int protocolVersion)
+
+        public static int GetPacketId(int protocolVersion)
         {
             /*
              * 1.13-pre7(389)
@@ -59,35 +60,7 @@ namespace MinecraftProtocol.Packets.Server
             else if (protocolVersion >= ProtocolVersions.V15w46a)       return 0x1F;
             else if (protocolVersion >= ProtocolVersions.V15w43a)       return 0x20;
             else if (protocolVersion >= ProtocolVersions.V15w36a)       return 0x1F;
-            else                                                              return 0x00;
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion) => Verify(packet, protocolVersion, out byte[] _);
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out KeepAliveRequestPacket karp)
-        {
-            karp = null;
-            if (Verify(packet, protocolVersion))
-                karp = new KeepAliveRequestPacket(packet, protocolVersion);
-            return karp == null;
-        }
-        public static bool Verify(ReadOnlyPacket packet, int protocolVersion, out byte[] code)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
-            if (protocolVersion < 0)
-                throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议版本不能使用负数");
-
-            code = null;
-            if (packet.ID != GetPacketID(protocolVersion))
-                return false;
-
-            if (protocolVersion >= ProtocolVersions.V1_12_2_pre1 && packet.Count == 8)
-                code = packet.ReadAll();
-            else if (protocolVersion >= ProtocolVersions.V14w31a && packet.Count <= 5 && packet.Count > 0)
-                code = packet.ReadAll();
-            else if (protocolVersion < ProtocolVersions.V14w31a && packet.Count == 4)
-                code = packet.ReadAll();
-
-            return !(code is null);
+            else                                                        return 0x00;
         }
     }
 }

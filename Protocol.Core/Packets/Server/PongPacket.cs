@@ -5,38 +5,29 @@ namespace MinecraftProtocol.Packets.Server
     /// <summary>
     /// https://wiki.vg/Server_List_Ping#Pong
     /// </summary>
-    public class PongPacket : Packet
+    public partial class PongPacket : DefinedPacket
     {
-        private const int id = 0x01;
-        public long Code { get; }
-        private PongPacket(ReadOnlyPacket packet, long code) : base(packet) { Code = code; }
-        public PongPacket(long code) : base(id)
-        {
-            this.Code = code; ;
-            WriteLong(code);
-        }
-        public static int GetPacketID() => id;
+        private const int Id = 0x01;
 
-        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out long? _);
-        public static bool Verify(ReadOnlyPacket packet, out PongPacket pp)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
+        [PacketProperty]
+        private long _code;
 
-            pp = null;
-            if (Verify(packet, out long? code))
-                pp = new PongPacket(packet, code.Value);
-            return !(pp is null);
-        }
-        public static bool Verify(ReadOnlyPacket packet, out long? code)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
+        public PongPacket(ReadOnlyPacket packet) : this(packet, -1) { }
+        public PongPacket(long code) : this(code, -1) { }
 
-            code = null;
-            if (packet.ID == id && packet.Count == 8)
-                code = packet.ReadLong();
-            return !(code is null);
+        protected override void CheckProperty() { }
+
+        protected override void Write()
+        {
+            WriteLong(_code);
         }
+
+        protected override void Read()
+        {
+            _code = Reader.ReadLong();
+        }
+
+        public static int GetPacketId(int protocolVersion) => Id;
+        public static int GetPacketId() => Id;
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.DataType.Forge
 {
@@ -71,9 +72,9 @@ namespace MinecraftProtocol.DataType.Forge
             if (other is null) return false;
 
             return
-                ProtocolHandler.Compare(Mapping,Mapping)&&
-                ProtocolHandler.Compare(BlockSubstitutions, other?.BlockSubstitutions) &&
-                ProtocolHandler.Compare(ItemSubstitutions, other?.ItemSubstitutions);
+                CollectionUtils.Compare(Mapping,Mapping)&&
+                CollectionUtils.Compare(BlockSubstitutions, other?.BlockSubstitutions) &&
+                CollectionUtils.Compare(ItemSubstitutions, other?.ItemSubstitutions);
         }
 
         public override int GetHashCode()

@@ -5,35 +5,28 @@ namespace MinecraftProtocol.Packets.Client
     /// <summary>
     /// https://wiki.vg/Server_List_Ping#Ping
     /// </summary>
-    public class PingPacket : Packet
+    public partial class PingPacket : DefinedPacket
     {
-        private const int id = 0x01;
-        public long Code { get; }
-        private PingPacket(ReadOnlyPacket packet, long code) : base(packet) { Code = code; }
-        public PingPacket(long code) : base(id)
-        {
-            this.Code = code;;
-            WriteLong(code);
-        }
-        public static int GetPacketID() => id;
+        private const int Id = 0x01;
 
-        public static bool Verify(ReadOnlyPacket packet) => Verify(packet, out long? _);
-        public static bool Verify(ReadOnlyPacket packet, out PingPacket pp)
-        {
-            pp = null;
-            if (Verify(packet, out long? code))
-                pp = new PingPacket(packet, code.Value);
-            return !(pp is null);
-        }
-        public static bool Verify(ReadOnlyPacket packet, out long? code)
-        {
-            if (packet is null)
-                throw new ArgumentNullException(nameof(packet));
+        [PacketProperty]
+        private long _code;
 
-            code = null;
-            if (packet.ID == id && packet.Count == 8)
-                code = packet.ReadLong();
-            return !(code is null);
+        public PingPacket(long code):this(code,-1) { }
+
+        protected override void CheckProperty() { }
+
+        protected override void Write()
+        {
+            WriteLong(_code);
         }
+
+        protected override void Read()
+        {
+            _code = Reader.ReadLong();
+        }
+
+        public static int GetPacketId(int protocolVersion) => Id;
+        public static int GetPacketId() => Id;
     }
 }
