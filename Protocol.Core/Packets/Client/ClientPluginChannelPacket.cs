@@ -3,6 +3,7 @@ using System.Text;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType.Forge;
+using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
 
 namespace MinecraftProtocol.Packets.Client
@@ -19,6 +20,7 @@ namespace MinecraftProtocol.Packets.Client
         protected bool _isForge;
 
         public ClientPluginChannelPacket(string channel, IForgeStructure structure, int protocolVersion) : this(channel, structure.ToBytes(), true, protocolVersion) { }
+        public ClientPluginChannelPacket(string channel, ByteWriter writer, int protocolVersion) : this(channel, writer.AsSpan().ToArray(), true, protocolVersion) { }
 
         protected override void CheckProperty()
         {
@@ -73,6 +75,7 @@ namespace MinecraftProtocol.Packets.Client
              * Changed ID of Plugin Message (serverbound) from 0x17 to 0x18
              */
 
+            if (protocolVersion >= ProtocolVersions.V1_17)      return 0x0A;
             if (protocolVersion >= ProtocolVersions.V1_14)      return 0x0B;
             if (protocolVersion >= ProtocolVersions.V1_13_pre7) return 0x0A;
             if (protocolVersion >= ProtocolVersions.V17w31a)    return 0x09;

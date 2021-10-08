@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using MinecraftProtocol.Compression;
 using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Packets.Server
@@ -52,15 +50,19 @@ namespace MinecraftProtocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Keep Alive from 0x00 to 0x1F
              */
-            if (protocolVersion >= ProtocolVersions.V1_14)              return 0x20;//不知道什么时候更新成这个的
-            else if (protocolVersion >= ProtocolVersions.V1_13_pre7)    return 0x21;
-            else if (protocolVersion >= ProtocolVersions.V17w46a)       return 0x20;
-            else if (protocolVersion >= ProtocolVersions.V1_12_pre5)    return 0x1F;
-            else if (protocolVersion >= ProtocolVersions.V17w13a)       return 0x20;
-            else if (protocolVersion >= ProtocolVersions.V15w46a)       return 0x1F;
-            else if (protocolVersion >= ProtocolVersions.V15w43a)       return 0x20;
-            else if (protocolVersion >= ProtocolVersions.V15w36a)       return 0x1F;
-            else                                                        return 0x00;
+            if (protocolVersion >= ProtocolVersions.V1_17)         return 0x21;
+            if (protocolVersion >= ProtocolVersions.V20w28a)       return 0x1F;
+            if (protocolVersion >= ProtocolVersions.V1_16)         return 0x20;
+            if (protocolVersion >= ProtocolVersions.V1_15)         return 0x21;
+            if (protocolVersion >= ProtocolVersions.V1_14)         return 0x20;//不知道什么时候更新成这个的
+            if (protocolVersion >= ProtocolVersions.V1_13_pre7)    return 0x21;
+            if (protocolVersion >= ProtocolVersions.V17w46a)       return 0x20;
+            if (protocolVersion >= ProtocolVersions.V1_12_pre5)    return 0x1F;
+            if (protocolVersion >= ProtocolVersions.V17w13a)       return 0x20;
+            if (protocolVersion >= ProtocolVersions.V15w46a)       return 0x1F;
+            if (protocolVersion >= ProtocolVersions.V15w43a)       return 0x20;
+            if (protocolVersion >= ProtocolVersions.V15w36a)       return 0x1F;
+            else                                                   return 0x00;
         }
     }
 }

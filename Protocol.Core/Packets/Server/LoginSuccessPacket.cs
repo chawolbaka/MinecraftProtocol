@@ -1,5 +1,6 @@
 ﻿using System;
 using MinecraftProtocol.Compatible;
+using MinecraftProtocol.DataType;
 
 namespace MinecraftProtocol.Packets.Server
 {
@@ -7,27 +8,32 @@ namespace MinecraftProtocol.Packets.Server
     {
         [PacketProperty]
         public string _playerName;
+
         [PacketProperty]
-        public string _playerUUID;
+        public UUID _playerUUID;
 
         protected override void CheckProperty()
         {
             base.CheckProperty();
-            if (_playerUUID.Length > 32)
-                throw new ArgumentOutOfRangeException(nameof(PlayerUUID), 32, "UUID max length is 32");
             if (_playerName.Length > 16)
                 throw new ArgumentOutOfRangeException(nameof(PlayerName), 16, "Player name too long, max is 16");
         }
 
         protected override void Write()
         {
-            WriteString(_playerUUID);
+            if (ProtocolVersion >= ProtocolVersions.V1_16)
+                WriteUUID(_playerUUID);
+            else
+                WriteString(_playerUUID.ToString().Replace('-',' '));
             WriteString(_playerName);
         }
 
         protected override void Read()
         {
-            _playerUUID = Reader.ReadString();
+            if (ProtocolVersion >= ProtocolVersions.V1_16)
+                _playerUUID = Reader.ReadUUID();
+            else
+                _playerUUID = UUID.Parse(Reader.ReadString());
             _playerName = Reader.ReadString();
         }
 

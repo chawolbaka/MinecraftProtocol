@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Compatible;
+using MinecraftProtocol.DataType;
 
 namespace MinecraftProtocol.Packets.Server
 {
@@ -10,7 +11,7 @@ namespace MinecraftProtocol.Packets.Server
     /// </summary>
     public partial class ServerChatMessagePacket : DefinedPacket
     {
-        public ChatMessage Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json),"json is empty");
+        public ChatMessage Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
         private ChatMessage _message;
 
         [PacketProperty]
@@ -18,6 +19,9 @@ namespace MinecraftProtocol.Packets.Server
         
         [PacketProperty]
         public byte? _position; // 0: chat (chat box), 1: system message (chat box), 2: game info (above hotbar).
+
+        [PacketProperty]
+        public UUID? _sender;
 
         protected override void CheckProperty()
         {
@@ -32,6 +36,8 @@ namespace MinecraftProtocol.Packets.Server
             //14w02a:Added 'Position' to Chat Message Clientbound
             if (ProtocolVersion >= ProtocolVersions.V14w02a)
                 WriteUnsignedByte(_position ?? 0);
+            if (ProtocolVersion >= ProtocolVersions.V1_16)
+                WriteUUID(_sender ?? throw new ArgumentNullException(nameof(Sender)));
 
             if (Count > 32767)
                 throw new ArgumentOutOfRangeException(nameof(Json));
@@ -42,6 +48,8 @@ namespace MinecraftProtocol.Packets.Server
             _json = Reader.ReadString();
             if (ProtocolVersion >= ProtocolVersions.V14w02a && !Reader.IsReadToEnd)
                 _position = Reader.ReadUnsignedByte();
+            if (ProtocolVersion >= ProtocolVersions.V1_16)
+                _sender = Reader.ReadUUID();
         }
 
         public static int GetPacketId(int protocolVersion)
@@ -56,6 +64,9 @@ namespace MinecraftProtocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Chat Message (clientbound) changed from 0x02 to 0x0F
              */
+            if (protocolVersion >= ProtocolVersions.V1_17)        return 0x0F;
+            if (protocolVersion >= ProtocolVersions.V1_16)        return 0x0E;
+            if (protocolVersion >= ProtocolVersions.V1_15)        return 0x0F;
             if (protocolVersion >= ProtocolVersions.V17w45a)      return 0x0E;
             if (protocolVersion >= ProtocolVersions.V1_12_pre5)   return 0x0F;
             if (protocolVersion >= ProtocolVersions.V17w13a)      return 0x10;

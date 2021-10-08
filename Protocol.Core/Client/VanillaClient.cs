@@ -161,6 +161,7 @@ namespace MinecraftProtocol.Client
                 else
                     e.Handled = false;
             };
+            ReceiveQueue = new BlockingCollection<(DateTime, TimeSpan, CompatiblePacket)>();
 
             //连接TCP
             if (!TCP.Connected)
@@ -311,7 +312,7 @@ namespace MinecraftProtocol.Client
                 lsp = packet as LoginSuccessPacket;
             else if (!LoginSuccessPacket.TryRead(packet, ProtocolVersion, out lsp))
                 throw new InvalidPacketException(packet);
-            _player = new Player(lsp.PlayerName, UUID.Parse(lsp.PlayerUUID));
+            _player = new Player(lsp.PlayerName, lsp.PlayerUUID);
         }
 
 
@@ -358,7 +359,7 @@ namespace MinecraftProtocol.Client
             }
         }
         protected virtual bool UpdateConnectStatus() => _connected = NetworkUtils.CheckConnect(TCP);
-        protected BlockingCollection<(DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet)> ReceiveQueue = new BlockingCollection<(DateTime, TimeSpan, CompatiblePacket)>();
+        protected BlockingCollection<(DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet)> ReceiveQueue;
         protected CancellationTokenSource ReceivePacketCancellationToken;
         public override void StartListen(CancellationTokenSource cancellationToken = default)
         {
