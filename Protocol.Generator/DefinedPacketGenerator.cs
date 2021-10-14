@@ -1,10 +1,8 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System;
 
 namespace Protocol.Generator
 {
@@ -134,7 +132,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 var AttributeProperty = pair.Value;
                 if (fieldSymbol.Name.Length == 0)
                     continue;
-                source.AppendLine($@"        public {(AttributeProperty.IsOverrideProperty? "override" : "virtual")} {fieldSymbol.Type} {AttributeProperty.PropertyName} => {fieldSymbol.Name};");
+                source.AppendLine($@"        public {(AttributeProperty.IsOverrideProperty? "override" : "virtual")} {fieldSymbol.Type} {AttributeProperty.PropertyName} => ThrowIfDisposed({fieldSymbol.Name});");
             }
 
 

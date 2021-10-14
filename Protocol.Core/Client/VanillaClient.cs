@@ -82,8 +82,6 @@ namespace MinecraftProtocol.Client
             }
         }
 
-
-
         protected IClientSettings _settings;
         public virtual IClientSettings Settings
         {
@@ -219,7 +217,7 @@ namespace MinecraftProtocol.Client
             int count = 0;
             while (VanillaLoginState != VanillaLoginStatus.Success && VanillaLoginState != VanillaLoginStatus.Failed)
             {
-                Packet packet = ReadPacket();
+                using Packet packet = ReadPacket();
                 if (++count > 20960)
                     throw new OverflowException("异常的登录过程，服务端发送的数据包过多");
                 else if (EncryptionRequestPacket.TryRead(packet, ProtocolVersion, out EncryptionRequestPacket erp))
@@ -382,6 +380,7 @@ namespace MinecraftProtocol.Client
                     while (Joined || (ReceivePacketCancellationToken != null && !ReceivePacketCancellationToken.IsCancellationRequested))
                     {
                         if (ReceiveQueue.TryTake(out (DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet) data, Timeout.Infinite, ReceivePacketCancellationToken.Token)&&data!=default)
+                        {
                             foreach (PacketReceivedEventHandler Method in _packetReceived.GetInvocationList())
                             {
                                 //ReadOnlyPacket内部有个offset，所以必须保证大家拿到的不指向同一个引用。
@@ -390,6 +389,8 @@ namespace MinecraftProtocol.Client
                                 if (EventArgs.IsCancelled)
                                     break;
                             }
+                            data.Packet.Dispose();
+                        }
                     }
                 }
                 catch (OperationCanceledException) { }

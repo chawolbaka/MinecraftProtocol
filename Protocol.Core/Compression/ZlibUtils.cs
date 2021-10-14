@@ -20,14 +20,14 @@ namespace MinecraftProtocol.Compression
         /// </summary>
         /// <param name="to_compress">Data to compress</param>
         /// <returns>Compressed data as a byte array</returns>
-        public static byte[] Compress(byte[] to_compress)
+        public static byte[] Compress(byte[] to_compress, int offset, int length)
         {
             byte[] data;
-            using (System.IO.MemoryStream memstream = new System.IO.MemoryStream())
+            using (MemoryStream memstream = new MemoryStream())
             {
                 using (ZlibStream stream = new ZlibStream(memstream, CompressionMode.Compress))
                 {
-                    stream.Write(to_compress, 0, to_compress.Length);
+                    stream.Write(to_compress, offset, length);
                 }
                 data = memstream.ToArray();
             }
@@ -40,13 +40,14 @@ namespace MinecraftProtocol.Compression
         /// <param name="to_decompress">Data to decompress</param>
         /// <param name="size_uncompressed">Size of the data once decompressed</param>
         /// <returns>Decompressed data as a byte array</returns>
-        public static byte[] Decompress(byte[] to_decompress, int size_uncompressed)
+        public static byte[] Decompress(byte[] to_decompress, int offset, int size_uncompressed)
         {
-            ZlibStream stream = new ZlibStream(new System.IO.MemoryStream(to_decompress, false), CompressionMode.Decompress);
-            byte[] packetData_decompressed = new byte[size_uncompressed];
-            stream.Read(packetData_decompressed, 0, size_uncompressed);
-            stream.Close();
-            return packetData_decompressed;
+            using (ZlibStream stream = new ZlibStream(new MemoryStream(to_decompress, false), CompressionMode.Decompress))
+            {
+                byte[] packetData_decompressed = new byte[size_uncompressed];
+                stream.Read(packetData_decompressed, offset, size_uncompressed);
+                return packetData_decompressed;
+            }
         }
 
         /// <summary>
@@ -56,14 +57,16 @@ namespace MinecraftProtocol.Compression
         /// <returns>Decompressed data as byte array</returns>
         public static byte[] Decompress(byte[] to_decompress)
         {
-            ZlibStream stream = new ZlibStream(new System.IO.MemoryStream(to_decompress, false), CompressionMode.Decompress);
-            byte[] buffer = new byte[16 * 1024];
-            using (System.IO.MemoryStream decompressedBuffer = new System.IO.MemoryStream())
+            using (ZlibStream stream = new ZlibStream(new MemoryStream(to_decompress, false), CompressionMode.Decompress))
             {
-                int read;
-                while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-                    decompressedBuffer.Write(buffer, 0, read);
-                return decompressedBuffer.ToArray();
+                byte[] buffer = new byte[16 * 1024];
+                using (MemoryStream decompressedBuffer = new MemoryStream())
+                {
+                    int read;
+                    while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                        decompressedBuffer.Write(buffer, 0, read);
+                    return decompressedBuffer.ToArray();
+                }
             }
         }
 

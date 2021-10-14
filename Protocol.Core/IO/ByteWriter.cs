@@ -2,15 +2,16 @@
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
 namespace MinecraftProtocol.IO
 {
-    public class ByteWriter: IEnumerable<byte>
+    public class ByteWriter : IEnumerable<byte>, IDisposable
     {
-        public virtual int Count => _size;
+        public virtual int Count => ThrowIfDisposed(_size);
 
         public virtual byte this[int index]
         {
@@ -23,6 +24,7 @@ namespace MinecraftProtocol.IO
             }
             set
             {
+                ThrowIfDisposed();
                 if (index > _size)
                     throw new IndexOutOfRangeException("Index was outside the bounds of the data array.");
                 _version++;
@@ -32,32 +34,35 @@ namespace MinecraftProtocol.IO
 
         public virtual int Capacity
         {
-            get => _data.Length;
+            get => ThrowIfDisposed(_data.Length);
             set
             {
+                ThrowIfDisposed();
                 if (value < _size)
                     throw new ArgumentOutOfRangeException(nameof(Capacity), "Capacity was less than the current size.");
                 if (value == _size)
                     return;
 
                 _version++;
-                byte[] temp = new byte[value];
+                byte[] temp = _dataPool.Rent(value);
                 Array.Copy(_data, temp, _size);
+                _dataPool.Return(_data);
                 _data = temp;
             }
         }
-        public virtual Span<byte> AsSpan() => _data.AsSpan(0, _size);
-       
-        protected const int DEFUALT_CAPACITY = 16;
+        public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(0, _size); }
 
+        protected static ArrayPool<byte> _dataPool = ArrayPool<byte>.Create();
+        protected const int DEFUALT_CAPACITY = 16;
+        
         internal protected byte[] _data;
         internal protected int _size = 0;
         protected int _version;
-
+        
         public ByteWriter() : this(DEFUALT_CAPACITY) { }
         public ByteWriter(int capacity)
         {
-            _data = new byte[capacity];
+            _data = _dataPool.Rent(capacity);
         }
 
 
@@ -232,9 +237,20 @@ namespace MinecraftProtocol.IO
             return this;
         }
 
+        public virtual void Clear()
+        {
+            if (_size > 0)
+            {
+                _dataPool.Return(_data);
+                _size = 0;
+                _data = _dataPool.Rent(DEFUALT_CAPACITY);
+            }
+        }
+
         private bool ExtraAllocate = IntPtr.Size > 4;
         protected virtual void TryAllocateCapacity(int writeLength)
         {
+            ThrowIfDisposed();
             if (writeLength + _size > Capacity)
                 Capacity += ExtraAllocate && writeLength < 128 ? writeLength * 2 : writeLength;
         }
@@ -242,6 +258,7 @@ namespace MinecraftProtocol.IO
 
         IEnumerator<byte> IEnumerable<byte>.GetEnumerator()
         {
+            ThrowIfDisposed();
             if (_size <= 0)
                 yield break;
 
@@ -256,6 +273,7 @@ namespace MinecraftProtocol.IO
 
         IEnumerator IEnumerable.GetEnumerator()
         {
+            ThrowIfDisposed();
             if (_size <= 0)
                 yield break;
 
@@ -266,6 +284,45 @@ namespace MinecraftProtocol.IO
                     throw new InvalidOperationException("data was modified, enumeration operation may not execute");
                 yield return _data[i];
             }
+        }
+
+        private bool _disposed = false;
+        public void Dispose()
+        {
+            bool disposed = _disposed;
+            _disposed = true;
+            if (!disposed&& _data!=null)
+            {
+                try
+                {
+                    _dataPool.Return(_data);
+                    _data = null;
+                }
+                catch (ArgumentException)
+                {
+                    //归还不是从池内租出来的会引发异常（不过我比较怀疑他是根据数组大小来判断的，如果不是2的倍数就报错）
+                }
+            }
+            GC.SuppressFinalize(this);
+        }
+
+
+        ~ByteWriter()
+        {
+            Dispose();
+        }
+
+        protected virtual void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(GetType().FullName);
+        }
+
+        protected virtual T ThrowIfDisposed<T>(T value)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(GetType().FullName);
+            return value;
         }
     }
 }

@@ -1,7 +1,5 @@
-﻿using MinecraftProtocol.Compatible;
-using MinecraftProtocol.IO;
+﻿using MinecraftProtocol.IO;
 using System;
-using System.Text;
 
 namespace MinecraftProtocol.Packets
 {
@@ -10,9 +8,10 @@ namespace MinecraftProtocol.Packets
         /// <summary>
         /// 当前版本没有的包
         /// </summary>
-        protected const int UnsupportPacketId = -25;
-        protected virtual int ProtocolVersion { get; set; }
-        protected virtual ByteReader Reader { get; private set; }
+        public const int UnsupportPacketId = -25;
+        public virtual int ProtocolVersion { get; protected set; }
+
+        protected virtual ByteReader Reader { get; }
 
         protected DefinedPacket(int id, int protocolVersion) : this(id, null, protocolVersion) {}
         protected DefinedPacket(int id, byte[] data, int protocolVersion) : base(id, data)
@@ -24,7 +23,7 @@ namespace MinecraftProtocol.Packets
         {
             //id由自动生成的代码设置
             _size = packet.Count;
-            _data = new byte[packet.Count];
+            _data = _dataPool.Rent(packet.Count);
             packet.AsSpan().CopyTo(_data);
             Reader = packet;
             ProtocolVersion = protcolVersion;
