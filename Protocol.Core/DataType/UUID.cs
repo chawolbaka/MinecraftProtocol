@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Net.Http;
 using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace MinecraftProtocol.DataType
 {
@@ -40,8 +41,12 @@ namespace MinecraftProtocol.DataType
         /// <summary>
         /// 通过玩家名向MojangAPI获取正版玩家的UUID
         /// </summary>
+        /// <param name="playerName">玩家名</param>
+        /// <param name="useCache">是否缓存获取从MojangAPI获取的uuid</param>
+        /// <param name="url">api地址</param>
         /// <exception cref="ArgumentNullException"/>
-        public static UUID? GetFromMojangAPI(string playerName,bool useCache = true, string url = "https://api.mojang.com/users/profiles/minecraft/")
+		/// <exception cref="FormatException"/>
+        public static async Task<UUID> GetFromMojangAsync(string playerName, bool useCache = true, string url = "https://api.mojang.com/users/profiles/minecraft/")
         {
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new ArgumentNullException(nameof(playerName));
@@ -49,18 +54,21 @@ namespace MinecraftProtocol.DataType
                 return Cache[playerName];
 
             HttpClient hc = new HttpClient();
-            var HttpResponse = hc.GetAsync(url + playerName).Result;
-            string json = HttpResponse.Content.ReadAsStringAsync().Result;
-            if (!string.IsNullOrWhiteSpace(json))
-            {
-                string id = JObject.Parse(json)["id"].ToString();
-                if (string.IsNullOrWhiteSpace(id))
-                    throw new Exception("MojangAPI返回了空uuid");
-                if (useCache)
-                    Cache.Add(playerName, Parse(id));
-                return Parse(id);
-            }
-            return null;
+            var HttpResponse = await hc.GetAsync(url + playerName);
+            string json = await HttpResponse.Content.ReadAsStringAsync();
+
+            if (string.IsNullOrWhiteSpace(json))
+                throw new FormatException("MojangAPI未响应任何有效数据");
+
+            string id = JObject.Parse(json)["id"].ToString();
+
+            if (string.IsNullOrWhiteSpace(id))
+                throw new FormatException("MojangAPI返回了空uuid");
+
+            if (useCache)
+                Cache.Add(playerName, Parse(id));
+            return Parse(id);
+
         }
 
         /// <summary>
@@ -74,11 +82,13 @@ namespace MinecraftProtocol.DataType
 
             //https://gist.github.com/games647/2b6a00a8fc21fd3b88375f03c9e2e603
             //https://en.wikipedia.org/wiki/Universally_unique_identifier#Versions_3_and_5_(namespace_name-based)
-            MD5 md5 = new MD5CryptoServiceProvider();
-            byte[] MD5 = md5.ComputeHash(Encoding.UTF8.GetBytes("OfflinePlayer:" + playerName));
-            MD5[6] = (byte)((MD5[6] & 0x0f) | 0x30); //set the version to 3 -> Name based md5 hash
-            MD5[8] = (byte)((MD5[8] & 0x3f) | 0x80); //IETF variant
-            return new UUID(MD5);
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] MD5 = md5.ComputeHash(Encoding.UTF8.GetBytes("OfflinePlayer:" + playerName));
+                MD5[6] = (byte)((MD5[6] & 0x0f) | 0x30); //set the version to 3 -> Name based md5 hash
+                MD5[8] = (byte)((MD5[8] & 0x3f) | 0x80); //IETF variant
+                return new UUID(MD5);
+            }
         }
 
         public static UUID NewUUID()
@@ -96,9 +106,27 @@ namespace MinecraftProtocol.DataType
 
         public static UUID Parse(string input)
         {
-            string[] hexs = input.Split('-');
-            if (hexs.Length != 5 || hexs[0].Length != 8 || hexs[1].Length != 4 || hexs[2].Length != 4 || hexs[3].Length != 4 || hexs[4].Length != 12)
-                throw new FormatException("UUID的格式必须是xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+            string[] hexs;
+            if (input.Length == 36)
+            {
+                hexs = input.Split('-');
+                if (hexs.Length != 5 || hexs[0].Length != 8 || hexs[1].Length != 4 || hexs[2].Length != 4 || hexs[3].Length != 4 || hexs[4].Length != 12)
+                    throw new FormatException("UUID的格式必须是xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+            }
+            else if (input.Length == 32)
+            {
+                hexs = new string[5];
+                hexs[0] = input.Substring(0, 8);
+                hexs[1] = input.Substring(8, 4);
+                hexs[2] = input.Substring(12, 4);
+                hexs[3] = input.Substring(16, 4);
+                hexs[4] = input.Substring(20, 12);
+            }
+            else
+            {
+                throw new FormatException("无法解析uuid的格式");
+            }
+            
 
             return new UUID(
                 (Convert.ToInt64(hexs[0], 16) << 32) | (Convert.ToInt64(hexs[1], 16) << 16) | Convert.ToInt64(hexs[2], 16),
@@ -107,15 +135,13 @@ namespace MinecraftProtocol.DataType
         public static bool TryParse(string input, out UUID result)
         {
             result = default;
-            string[] hexs = input.Split('-');
-            if (hexs.Length != 5 || hexs[0].Length != 8 || hexs[1].Length != 4 || hexs[2].Length != 4 || hexs[3].Length != 4 || hexs[4].Length != 12)
+
+            if (string.IsNullOrWhiteSpace(input) || input.Length is not 36 or 32)
                 return false;
 
             try
             {
-                result = new UUID(
-                (Convert.ToInt64(hexs[0], 16) << 32) | (Convert.ToInt64(hexs[1], 16) << 16) | Convert.ToInt64(hexs[2], 16),
-                (Convert.ToInt64(hexs[3], 16) << 48) | (Convert.ToInt64(hexs[4], 16)));
+                result = Parse(input);
                 return true;
             }
             catch (ArgumentOutOfRangeException) { return false; }
