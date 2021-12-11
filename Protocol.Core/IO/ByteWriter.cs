@@ -291,19 +291,12 @@ namespace MinecraftProtocol.IO
         {
             bool disposed = _disposed;
             _disposed = true;
-            if (!disposed&& _data!=null)
+            if (!disposed && _data is not null)
             {
-                try
-                {
-                    _dataPool.Return(_data);
-                    _data = null;
-                }
-                catch (ArgumentException)
-                {
-                    //归还不是从池内租出来的会引发异常（不过我比较怀疑他是根据数组大小来判断的，如果不是2的倍数就报错）
-                }
+                _dataPool.Return(_data);
+                _data = null;
+                GC.SuppressFinalize(this);
             }
-            GC.SuppressFinalize(this);
         }
 
 

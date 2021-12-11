@@ -6,14 +6,14 @@ namespace MinecraftProtocol.Packets
 {
     public class ReadOnlyCompatiblePacket : ReadOnlyPacket, ICompatiblePacket
     {
-        public int ProtocolVersion => _packet.ProtocolVersion;
-        public int CompressionThreshold => _packet.CompressionThreshold;
+        public int ProtocolVersion => _cpacket.ProtocolVersion;
+        public int CompressionThreshold => _cpacket.CompressionThreshold;
 
-        private CompatiblePacket _packet;
+        private CompatiblePacket _cpacket;
 
         public ReadOnlyCompatiblePacket(CompatiblePacket packet) : base(packet)
         {
-            _packet = packet;
+            _cpacket = packet;
         }
 
         public virtual byte[] Pack()

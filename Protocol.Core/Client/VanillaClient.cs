@@ -143,7 +143,7 @@ namespace MinecraftProtocol.Client
                 else if (_autoKeepAlive && e.Packet == PacketType.Play.Server.KeepAlive)
                     SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsCompatibleReadOnly()));
                 else
-                    ReceiveQueue.TryAdd((e.ReceivedTime, e.RoundTripTime, e.Packet));
+                    ReceiveQueue.TryAdd(new PacketReceivedEventArgs(e.Packet, e.ReceivedTime));
             };
             PacketListen.UnhandledException += (sender, e) =>
             {
@@ -159,7 +159,7 @@ namespace MinecraftProtocol.Client
                 else
                     e.Handled = false;
             };
-            ReceiveQueue = new BlockingCollection<(DateTime, TimeSpan, CompatiblePacket)>();
+            ReceiveQueue = new ();
 
             //连接TCP
             if (!TCP.Connected)
@@ -357,7 +357,7 @@ namespace MinecraftProtocol.Client
             }
         }
         protected virtual bool UpdateConnectStatus() => _connected = NetworkUtils.CheckConnect(TCP);
-        protected BlockingCollection<(DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet)> ReceiveQueue;
+        protected BlockingCollection<PacketReceivedEventArgs> ReceiveQueue;
         protected CancellationTokenSource ReceivePacketCancellationToken;
         public override void StartListen(CancellationTokenSource cancellationToken = default)
         {
@@ -372,24 +372,24 @@ namespace MinecraftProtocol.Client
                 lock (DisconnectLock)
                 {
                     PacketListen.ProtocolVersion = ProtocolVersion;
-                    PacketListen.StartAsync(ReceivePacketCancellationToken.Token);
+                    PacketListen.Start(ReceivePacketCancellationToken.Token);
                 }
 
                 try
                 {
                     while (Joined || (ReceivePacketCancellationToken != null && !ReceivePacketCancellationToken.IsCancellationRequested))
                     {
-                        if (ReceiveQueue.TryTake(out (DateTime ReceivedTime, TimeSpan RoundTripTime, CompatiblePacket Packet) data, Timeout.Infinite, ReceivePacketCancellationToken.Token)&&data!=default)
+                        if (ReceiveQueue.TryTake(out var eventArgs, Timeout.Infinite, ReceivePacketCancellationToken.Token) && eventArgs != null)
                         {
                             foreach (PacketReceivedEventHandler Method in _packetReceived.GetInvocationList())
                             {
-                                //ReadOnlyPacket内部有个offset，所以必须保证大家拿到的不指向同一个引用。
-                                PacketReceivedEventArgs EventArgs = new PacketReceivedEventArgs(data.Packet.AsCompatibleReadOnly(), data.RoundTripTime, data.ReceivedTime);
-                                Method.Invoke(this, EventArgs);
-                                if (EventArgs.IsCancelled)
+                                //直接Reset有点危险，这样就不线程安全了，但我也不想new一大坨对象来保存线程安全...
+                                eventArgs.Packet.Reset();
+                                Method.Invoke(this, eventArgs);
+                                if (eventArgs.IsCancelled)
                                     break;
                             }
-                            data.Packet.Dispose();
+                            eventArgs.Packet._packet.Dispose();
                         }
                     }
                 }
