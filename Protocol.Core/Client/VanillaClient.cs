@@ -46,29 +46,27 @@ namespace MinecraftProtocol.Client
 
         public bool AutoKeepAlive    { get => ThrowIfDisposed(_autoKeepAlive);        set => _autoKeepAlive = ThrowIfDisposed(value); }
 
-        public delegate void VanillaLoginEventHandler(MinecraftClient sender, VanillaLoginEventArgs args);
-        
-        public override event PacketReceivedEventHandler PacketReceived   { add => _packetReceived     += ThrowIfDisposed(value); remove => _packetReceived -= ThrowIfDisposed(value); }
-        public override event SendPacketEventHandler PacketSend           { add => _packetSend         += ThrowIfDisposed(value); remove => _packetSend     -= ThrowIfDisposed(value); }
+        public override event CommonEventHandler<MinecraftClient, PacketReceivedEventArgs> PacketReceived   { add => _packetReceived     += ThrowIfDisposed(value); remove => _packetReceived -= ThrowIfDisposed(value); }
+        public override event CommonEventHandler<MinecraftClient, SendPacketEventArgs> PacketSend           { add => _packetSend         += ThrowIfDisposed(value); remove => _packetSend     -= ThrowIfDisposed(value); }
 
-        public override event LoginEventHandler LoginSuccess              { add => _loginSuccess       += ThrowIfDisposed(value); remove => _loginSuccess       -= ThrowIfDisposed(value); }
-        public event VanillaLoginEventHandler VanillaLoginStatusChanged   { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
+        public override event CommonEventHandler<MinecraftClient, LoginEventArgs> LoginSuccess              { add => _loginSuccess       += ThrowIfDisposed(value); remove => _loginSuccess       -= ThrowIfDisposed(value); }
+        public event CommonEventHandler<VanillaClient, VanillaLoginEventArgs> VanillaLoginStatusChanged   { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
 
         //这两个事件有什么区别?
         //Kicked是收到了断开连接的包，Disconnected是Disconnect方法被调用
-        public virtual event DisconnectEventHandler Kicked                { add => _kicked             += ThrowIfDisposed(value); remove => _kicked             -= ThrowIfDisposed(value); }
-        public override event DisconnectEventHandler Disconnected         { add => _disconnected       += ThrowIfDisposed(value); remove => _disconnected       -= ThrowIfDisposed(value); }
+        public virtual event CommonEventHandler<MinecraftClient, DisconnectEventArgs> Kicked                { add => _kicked             += ThrowIfDisposed(value); remove => _kicked             -= ThrowIfDisposed(value); }
+        public override event CommonEventHandler<MinecraftClient, DisconnectEventArgs> Disconnected         { add => _disconnected       += ThrowIfDisposed(value); remove => _disconnected       -= ThrowIfDisposed(value); }
 
-        protected PacketReceivedEventHandler _packetReceived;
-        protected SendPacketEventHandler _packetSend;
+        protected CommonEventHandler<MinecraftClient, PacketReceivedEventArgs> _packetReceived;
+        protected CommonEventHandler<MinecraftClient, SendPacketEventArgs> _packetSend;
         
-        protected LoginEventHandler _loginSuccess;
-        protected DisconnectEventHandler _kicked;
-        protected DisconnectEventHandler _disconnected;
+        protected CommonEventHandler<MinecraftClient, LoginEventArgs> _loginSuccess;
+        protected CommonEventHandler<MinecraftClient, DisconnectEventArgs> _kicked;
+        protected CommonEventHandler<MinecraftClient, DisconnectEventArgs> _disconnected;
         protected SessionToken _loginToken;
         protected Player _player;
 
-        private VanillaLoginEventHandler _loginStatusChanged;
+        private CommonEventHandler<VanillaClient, VanillaLoginEventArgs> _loginStatusChanged;
 
         private VanillaLoginStatus _vanillaLoginState;
         public virtual VanillaLoginStatus VanillaLoginState
@@ -334,17 +332,10 @@ namespace MinecraftProtocol.Client
         public override void SendPacket(IPacket packet)
         {
             ThrowIfNotConnected();
-            var packetSend = _packetSend;
-            if (packetSend != null)
-            {
-                foreach (SendPacketEventHandler eventMethod in packetSend.GetInvocationList())
-                {
-                    SendPacketEventArgs args = new SendPacketEventArgs(packet);
-                    eventMethod.Invoke(this, args);
-                    if (args.IsCancelled)
-                        return;
-                }
-            }
+
+            if (EventUtils.InvokeCancelEvent(_packetSend, this, new SendPacketEventArgs(packet)))
+                return;
+
             byte[] data = PacketListen.Crypto.Enable? PacketListen.Crypto.Encrypt(packet.Pack(CompressionThreshold)): packet.Pack(CompressionThreshold);
             //因为会异步发送Packet，不知道在不锁的情况下会不会出现乱掉的情况
             lock (SendPacketLock)
@@ -375,27 +366,25 @@ namespace MinecraftProtocol.Client
                     PacketListen.Start(ReceivePacketCancellationToken.Token);
                 }
 
+                PacketReceivedEventArgs eventArgs = null;
                 try
                 {
                     while (Joined || (ReceivePacketCancellationToken != null && !ReceivePacketCancellationToken.IsCancellationRequested))
                     {
-                        if (ReceiveQueue.TryTake(out var eventArgs, Timeout.Infinite, ReceivePacketCancellationToken.Token) && eventArgs != null)
+                        if (ReceiveQueue.TryTake(out eventArgs, Timeout.Infinite, ReceivePacketCancellationToken.Token) && eventArgs != null)
                         {
-                            foreach (PacketReceivedEventHandler Method in _packetReceived.GetInvocationList())
-                            {
-                                //直接Reset有点危险，这样就不线程安全了，但我也不想new一大坨对象来保存线程安全...
-                                eventArgs.Packet.Reset();
-                                Method.Invoke(this, eventArgs);
-                                if (eventArgs.IsCancelled)
-                                    break;
-                            }
+                            EventUtils.InvokeCancelEvent(_packetReceived, this, eventArgs, (sender, e) => e.Packet.Reset());
                             eventArgs.Packet._packet.Dispose();
                         }
                     }
                 }
                 catch (OperationCanceledException) { }
                 catch (ObjectDisposedException) { }
-                finally { ReceivePacketCancellationToken?.Cancel(); }
+                finally 
+                {
+                    ReceivePacketCancellationToken?.Cancel();
+                    eventArgs?.Packet._packet.Dispose(); 
+                }
             });
             PacketQueueHandleThread.Name = nameof(PacketQueueHandleThread);
             PacketQueueHandleThread.IsBackground = true;

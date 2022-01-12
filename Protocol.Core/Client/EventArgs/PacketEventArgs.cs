@@ -1,10 +1,11 @@
-﻿using System;
+﻿using MinecraftProtocol.Utils;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace MinecraftProtocol.Client
 {
-    public class PacketEventArgs : MinecraftClientEventArgs
+    public class PacketEventArgs : MinecraftClientEventArgs, ICancelEvent
     {
         public virtual bool IsCancelled => _isCancelled;
         private bool _isCancelled;

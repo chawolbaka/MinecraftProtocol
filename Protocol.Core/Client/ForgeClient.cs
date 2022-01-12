@@ -8,6 +8,7 @@ using MinecraftProtocol.Packets;
 using MinecraftProtocol.Packets.Server;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Client.Channels;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.Client
 {
@@ -17,9 +18,8 @@ namespace MinecraftProtocol.Client
     /// </summary>
     public partial class ForgeClient : VanillaClient
     {
-        public event ForgeLoginEventHandler ForgeLoginStatusChanged { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
-        public delegate void ForgeLoginEventHandler(MinecraftClient sender, ForgeLoginEventArgs args);
-        private ForgeLoginEventHandler _loginStatusChanged;
+        public event CommonEventHandler<ForgeClient, ForgeLoginEventArgs> ForgeLoginStatusChanged { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
+        private CommonEventHandler<ForgeClient, ForgeLoginEventArgs> _loginStatusChanged;
 
         public virtual byte FMLProtocolVersion { get; set; }
 
@@ -199,6 +199,5 @@ namespace MinecraftProtocol.Client
             Channel.Reset();
         }
 
-        public override string ToString() => base.ToString().Replace("\0FML\0", "");
     }
 }

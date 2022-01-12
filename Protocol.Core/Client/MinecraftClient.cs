@@ -24,31 +24,26 @@ namespace MinecraftProtocol.Client
         public virtual ushort ServerPort { get; protected set; }
         public virtual int CompressionThreshold { get; set; } = -1;
         public virtual int ProtocolVersion { get; set; } = -1;
-
-
+        
         /// <summary>
         /// 接收到包事件
         /// </summary>
-        public abstract event PacketReceivedEventHandler PacketReceived;
-        public delegate void PacketReceivedEventHandler(MinecraftClient sender, PacketReceivedEventArgs args);
+        public abstract event CommonEventHandler<MinecraftClient, PacketReceivedEventArgs> PacketReceived;
 
         /// <summary>
         /// 发送包事件
         /// </summary>
-        public abstract event SendPacketEventHandler PacketSend;
-        public delegate void SendPacketEventHandler(MinecraftClient sender, SendPacketEventArgs args);
+        public abstract event CommonEventHandler<MinecraftClient, SendPacketEventArgs> PacketSend;
 
         /// <summary>
         /// 登陆成功事件
         /// </summary>
-        public abstract event LoginEventHandler LoginSuccess;
-        public delegate void LoginEventHandler(MinecraftClient sender, LoginEventArgs args);
+        public abstract event CommonEventHandler<MinecraftClient, LoginEventArgs> LoginSuccess;
 
         /// <summary>
         /// TCP断开连接事件
         /// </summary>
-        public abstract event DisconnectEventHandler Disconnected;
-        public delegate void DisconnectEventHandler(MinecraftClient sender, DisconnectEventArgs args);
+        public abstract event CommonEventHandler<MinecraftClient, DisconnectEventArgs> Disconnected;
 
         /// <summary>
         /// TCP连接状态
@@ -62,7 +57,7 @@ namespace MinecraftProtocol.Client
         public abstract bool Connect();
 
         /// <summary>
-        /// 连接TCP
+        /// 异步连接TCP
         /// </summary>
         /// <returns>连接是否成功</returns>
         public virtual Task<bool> ConnectAsync() => Task.Run(Connect);
@@ -122,6 +117,19 @@ namespace MinecraftProtocol.Client
         /// <summary>
         /// 获取服务器地址
         /// </summary>
-        public override string ToString() => $"{ServerHost ?? (ServerIP != null ? ServerIP.ToString() : "Unknown")}{(ServerPort != DefaultServerPort ? $":{ServerPort}" : "")}";
+        public override string ToString()
+        {
+            ReadOnlySpan<char> host = (ServerHost ?? (ServerIP != null ? ServerIP.ToString() : "Unknown")).AsSpan();
+            int offset = host.IndexOf('\0');
+            if (offset > 0)
+                host = host.Slice(0, offset);
+
+            if (ServerPort != DefaultServerPort)
+                return $"{host}:{ServerPort}";
+            else
+                return host.ToString();
+
+        }
+
     }
 }
