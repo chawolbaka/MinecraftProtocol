@@ -10,7 +10,7 @@ namespace MinecraftProtocol.Packets.Client
         private const int Id = 0x01;
 
         [PacketProperty]
-        private long _code;
+        internal long _code;
 
         public PingPacket(long code):this(code,-1) { }
 

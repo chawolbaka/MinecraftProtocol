@@ -9,13 +9,13 @@ namespace MinecraftProtocol.Packets.Server
     public partial class EncryptionRequestPacket : DefinedPacket
     {
         [PacketProperty]
-        public string _serverID;
+        internal string _serverID;
 
         [PacketProperty]
-        public byte[] _publicKey;
+        internal byte[] _publicKey;
         
         [PacketProperty]
-        public byte[] _verifyToken;
+        internal byte[] _verifyToken;
 
         protected override void CheckProperty()
         {

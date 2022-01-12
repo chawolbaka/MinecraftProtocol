@@ -18,17 +18,20 @@ namespace MinecraftProtocol.Packets.Client
         }
 
         [PacketProperty]
-        private string _serverAddress;
+        internal string _serverAddress;
+        
         [PacketProperty]
-        private ushort _serverPort;
+        internal ushort _serverPort;
+
         [PacketProperty]
-        private State _nextState;
+        internal State _nextState;
 
         protected override void CheckProperty()
         {
             if (string.IsNullOrEmpty(_serverAddress))
                 throw new ArgumentNullException(nameof(ServerAddress));
         }
+
 
         protected override void Write()
         {

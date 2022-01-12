@@ -6,7 +6,7 @@ namespace MinecraftProtocol.Packets.Server
     public partial class SetCompressionPacket : DefinedPacket
     {
         [PacketProperty]
-        public int _threshold;
+        internal int _threshold;
 
         protected override void Write()
         {

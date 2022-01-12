@@ -10,9 +10,9 @@ namespace MinecraftProtocol.Packets.Server
     public partial class DisconnectPacket : DefinedPacket
     {
         [PacketProperty]
-        public string _json;
+        internal string _json;
 
-        public ChatMessage Reason => !string.IsNullOrWhiteSpace(_json) ? ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
+        internal ChatMessage Reason => !string.IsNullOrWhiteSpace(_json) ? ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
 
         public DisconnectPacket(ChatMessage message, int protocolVersion) : this(message.Serialize(), protocolVersion)
         {

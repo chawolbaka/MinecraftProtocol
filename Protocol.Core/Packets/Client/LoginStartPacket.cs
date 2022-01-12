@@ -10,7 +10,7 @@ namespace MinecraftProtocol.Packets.Client
     public partial class LoginStartPacket : DefinedPacket
     {
         [PacketProperty]
-        private string _playerName;
+        internal string _playerName;
 
         protected override void CheckProperty()
         {

@@ -15,17 +15,22 @@ namespace MinecraftProtocol.Packets.Client
         //14w02a(5): Removed Client Settings' 'Difficulty'
 
         [PacketProperty]
-        private string _locale;
+        internal string _locale;
+        
         [PacketProperty]
-        private sbyte _viewDistance;
+        internal sbyte _viewDistance;
+        
         [PacketProperty]
-        private ClientChatMode _chatMode;
+        internal ClientChatMode _chatMode;
+        
         [PacketProperty]
-        private bool _chatColors;
+        internal bool _chatColors;
+        
         [PacketProperty]
-        private DisplayedSkinParts _displayedSkinParts;
+        internal DisplayedSkinParts _displayedSkinParts;
+
         [PacketProperty]
-        private MainHand? _mainHandDefine;
+        internal MainHand? _mainHandDefine;
 
         public ClientSettingsPacket(IClientSettings clientSettings, int protocolVersion) : this(
             locale: clientSettings.Locale,

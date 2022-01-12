@@ -12,7 +12,7 @@ namespace MinecraftProtocol.Packets.Server
     public partial class ServerChatMessagePacket : DefinedPacket
     {
         public ChatMessage Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
-        private ChatMessage _message;
+        internal ChatMessage _message;
 
         [PacketProperty]
         public string _json;

@@ -8,7 +8,7 @@ namespace MinecraftProtocol.Packets.Server
     public partial class PingResponsePacket : DefinedPacket
     {
         [PacketProperty]
-        public string _content;
+        internal string _content;
 
         public PingResponsePacket(ReadOnlyPacket packet) : this(packet,-1) { }
         public PingResponsePacket(string content) : this(content, -1) { }

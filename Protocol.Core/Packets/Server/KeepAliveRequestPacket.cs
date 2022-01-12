@@ -10,7 +10,7 @@ namespace MinecraftProtocol.Packets.Server
     public partial class KeepAliveRequestPacket : DefinedPacket
     {
         [PacketProperty]
-        private long _code;
+        internal long _code;
 
         protected override void Write()
         {

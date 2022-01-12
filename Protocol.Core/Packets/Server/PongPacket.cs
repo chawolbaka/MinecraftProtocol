@@ -10,7 +10,7 @@ namespace MinecraftProtocol.Packets.Server
         private const int Id = 0x01;
 
         [PacketProperty]
-        private long _code;
+        internal long _code;
 
         public PongPacket(ReadOnlyPacket packet) : this(packet, -1) { }
         public PongPacket(long code) : this(code, -1) { }

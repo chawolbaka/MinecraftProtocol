@@ -7,10 +7,10 @@ namespace MinecraftProtocol.Packets.Server
     public partial class LoginSuccessPacket : DefinedPacket
     {
         [PacketProperty]
-        public string _playerName;
+        internal string _playerName;
 
         [PacketProperty]
-        public UUID _playerUUID;
+        internal UUID _playerUUID;
 
         protected override void CheckProperty()
         {

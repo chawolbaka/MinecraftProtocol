@@ -15,7 +15,8 @@ namespace MinecraftProtocol.Packets.Client
         public const int OldMaxMessageLength = 100;
 
         [PacketProperty]
-        private string _message;
+        internal string _message;
+
 
         protected override void CheckProperty()
         {

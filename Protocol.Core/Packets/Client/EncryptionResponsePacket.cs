@@ -7,10 +7,10 @@ namespace MinecraftProtocol.Packets.Client
     public partial class EncryptionResponsePacket : DefinedPacket
     {
         [PacketProperty]
-        private byte[] _sharedSecret;
+        internal byte[] _sharedSecret;
         
         [PacketProperty]
-        private byte[] _verifyToken;
+        internal byte[] _verifyToken;
         
         protected override void CheckProperty()
         {

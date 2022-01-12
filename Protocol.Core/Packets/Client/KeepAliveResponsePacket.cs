@@ -15,7 +15,7 @@ namespace MinecraftProtocol.Packets.Client
          * Changed the type of Keep Alive ID from Int to VarInt (Clientbound)
          */
         [PacketProperty]
-        private long _code;
+        internal long _code;
 
         protected override void Write()
         {
