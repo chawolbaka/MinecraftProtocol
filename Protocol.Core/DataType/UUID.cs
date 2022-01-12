@@ -45,7 +45,7 @@ namespace MinecraftProtocol.DataType
         /// <param name="useCache">是否缓存获取从MojangAPI获取的uuid</param>
         /// <param name="url">api地址</param>
         /// <exception cref="ArgumentNullException"/>
-		/// <exception cref="FormatException"/>
+        /// <exception cref="FormatException"/>
         public static async Task<UUID> GetFromMojangAsync(string playerName, bool useCache = true, string url = "https://api.mojang.com/users/profiles/minecraft/")
         {
             if (string.IsNullOrWhiteSpace(playerName))

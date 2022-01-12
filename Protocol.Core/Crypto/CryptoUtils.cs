@@ -76,6 +76,13 @@ namespace MinecraftProtocol.Crypto
                 sb.Append(hex[i].ToString("x2"));
             return sb.ToString();
         }
+        public static byte[] GetHexBytes(string hex)
+        {
+            byte[] result = new byte[hex.Length / 2];
+            for (int i = 0; i < result.Length; i++)
+                result[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+            return result;
+        }
         private static byte[] GetSha1Digest(byte[][] hash)
         {
             //叠叠乐?把所有byte叠一起然后算出hash

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace MinecraftProtocol.DataType.Forge
 {
-    public struct ModInfo : IEquatable<ModInfo>
+    public class ModInfo : IEquatable<ModInfo>
     {
         [JsonProperty(PropertyName = "modid")]
         public readonly string Name;

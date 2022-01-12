@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 
@@ -37,11 +38,13 @@ namespace MinecraftProtocol.Utils
             }
             return buffer;
         }
-
+        private static Func<Socket, bool> GetField_Socket_isConnected = ExpressionTreeUtils.CreateGetFieldMethodFormInstance<Socket, bool>("_isConnected");
         public static bool CheckConnect(Socket tcp)
         {
             try
             {
+                if (!GetField_Socket_isConnected.Invoke(tcp))
+                    return false;
                 if (tcp.Available > 0)
                     return true;
 
@@ -51,10 +54,33 @@ namespace MinecraftProtocol.Utils
                     .Where(x => x.LocalEndPoint.Equals(tcp.LocalEndPoint) && x.RemoteEndPoint.Equals(tcp.RemoteEndPoint));
                 return connections != null && connections.Any() && connections.First().State == TcpState.Established;
             }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
             catch (SocketException)
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 从域名或IP地址获取到IPAddress
+        /// </summary>
+        public static async Task<IPAddress> GetAddressAsync(string host)
+        {
+            IPAddress address = null;
+            if (!string.IsNullOrWhiteSpace(host) && !IPAddress.TryParse(host, out address))
+            {
+                IPAddress[] IPList = await Dns.GetHostAddressesAsync(host);
+                if (IPList.Length > 0)
+                    address = IPList[0];
+            }
+            return address;
         }
 
         /// <summary>

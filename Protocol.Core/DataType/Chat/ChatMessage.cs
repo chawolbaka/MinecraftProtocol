@@ -3,8 +3,6 @@ using System.Text;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections;
-using System.IO;
 
 namespace MinecraftProtocol.DataType.Chat
 {
@@ -20,7 +18,7 @@ namespace MinecraftProtocol.DataType.Chat
         [JsonIgnore]
         public bool HasFormatCode => Bold || Italic || Underline || Strikethrough || Obfuscated;
         [JsonIgnore]
-        public bool IsSimpleText => !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && With == null && HoverEvent == null && ClickEvent == null && Insertion == null;
+        public bool IsSimpleText => !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && TranslateArguments == null && HoverEvent == null && ClickEvent == null && Insertion == null;
 
         /// <summary>粗体</summary>
         [JsonProperty("bold", DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -53,7 +51,7 @@ namespace MinecraftProtocol.DataType.Chat
         public string Translate;
 
         [JsonProperty("with", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public List<object> With;
+        public List<object> TranslateArguments;
 
         [JsonProperty("clickEvent", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public EventComponent<string> ClickEvent;
@@ -214,6 +212,15 @@ namespace MinecraftProtocol.DataType.Chat
             return this;
         }
 
+        public ChatMessage AddExtra(IEnumerable<ChatMessage> messages)
+        {
+            if (this.Extra == null)
+                this.Extra = new List<ChatMessage>();
+
+            this.Extra.AddRange(messages);
+
+            return this;
+        }
 
         public ChatMessage AddExtra(params ChatMessage[] messages)
         {
@@ -260,23 +267,23 @@ namespace MinecraftProtocol.DataType.Chat
                 }
                 if (Property.Name == "with")
                 {
-                    ChatComponent.With = new List<object>();
+                    ChatComponent.TranslateArguments = new List<object>();
                     foreach (var WithItem in Property.Value)
                     {
                         if (WithItem.Type == JTokenType.String)
-                            ChatComponent.With.Add(WithItem.Value<string>());
+                            ChatComponent.TranslateArguments.Add(WithItem.Value<string>());
                         else if (WithItem.Type == JTokenType.Object && WithItem is JObject jo && jo.Count > 0)
                         {
                             if (jo.Count == 1 && jo.First is JProperty jp && jp.Name == "translate")
-                                ChatComponent.With.Add(new SimpleTranslateComponent(jp.Value.ToString()));
+                                ChatComponent.TranslateArguments.Add(new SimpleTranslateComponent(jp.Value.ToString()));
                             else
-                                ChatComponent.With.Add(Deserialize(jo));
+                                ChatComponent.TranslateArguments.Add(Deserialize(jo));
                         }
                         else
                         {
                             ChatMessage WithComponent = Deserialize(WithItem.ToString());
                             if(WithComponent!=null)
-                                ChatComponent.With.Add(WithComponent);
+                                ChatComponent.TranslateArguments.Add(WithComponent);
                         }
                     }
                 }
@@ -290,8 +297,8 @@ namespace MinecraftProtocol.DataType.Chat
                         else if (EventProperty.Name == "value")
                             ChatComponent.ClickEvent.Value = EventProperty.Value.ToString();
 #if DEBUG
-                        else
-                            throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
+                        //else
+                        //    throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
 #endif
                     }
                 }
@@ -305,8 +312,8 @@ namespace MinecraftProtocol.DataType.Chat
                         else if (EventProperty.Name == "value")
                             ChatComponent.HoverEvent.Value = Deserialize(EventProperty.Value.ToString());
 #if DEBUG
-                        else
-                            throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
+                        //else
+                        //    throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
 #endif
                     }
                 }
@@ -344,7 +351,7 @@ namespace MinecraftProtocol.DataType.Chat
             if (this.Obfuscated)        sb.Append("§k");
             if (!string.IsNullOrEmpty(Color))       sb.Append(GetColorCode(Color));
             if (!string.IsNullOrEmpty(Text))        sb.Append(Text);
-            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, With, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this: lastFormat);
+            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, TranslateArguments, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this: lastFormat);
             if (Extra != null && Extra.Count > 0)
             {
                 /*
@@ -361,12 +368,12 @@ namespace MinecraftProtocol.DataType.Chat
                  *   
                  * 比如"§n§eYellow§nRed"它应该是这样子的：
                  *   Yellow(下划线黄色)Red(下划线)
-                 *   
+                 * 
                  * 对于默认样式的补充: 对于下级组件，在没有指定样式的情况下默认样式就是上一层的样式，所以不能直接加个§r来恢复默认样式，而是需要在递归的时候传递上一层的样式。
                  * lastColor  = 最后一个默认的颜色
                  * lastFormat = 最后一个默认的样式
                  * 这两个应该是最后出现过颜色/样式的一层，也就是说如果下层全是空那就会使用顶层的颜色和样式，如果顶层的颜色也是是空就使用§r，至于样式我暂时不知道该怎么处理。
-                 * 
+                 *
                  */
 
                 for (int i = 0; i < Extra.Count; i++)
@@ -393,7 +400,7 @@ namespace MinecraftProtocol.DataType.Chat
             }
             return sb.ToString();
         }
-        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> with, StringBuilder sb, string lastColor, ChatMessage lastFormat)
+        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> translateArgs, StringBuilder sb, string lastColor, ChatMessage lastFormat)
         {
             /*
              * 这东西的结构大概是这样的:
@@ -410,7 +417,7 @@ namespace MinecraftProtocol.DataType.Chat
             string text = lang.ContainsKey(translate) ? lang[translate] : translate;
             
             //纯翻译,没有%s的那种
-            if (with == null || with.Count == 0) { sb.Append(text); return; }
+            if (translateArgs == null || translateArgs.Count == 0) { sb.Append(text); return; }
             
             bool RestoreColor = false, RestoreFormat = false;
             int WithCount = 0;
@@ -429,7 +436,7 @@ namespace MinecraftProtocol.DataType.Chat
                 {
                     RestoreColor = false;
                     //如果最后一层有设置过颜色就使用最后一层的颜色，如果没有就恢复到默认色
-                    if (!string.IsNullOrEmpty(lastColor)) 
+                    if (!string.IsNullOrEmpty(lastColor))
                         sb.Append(GetColorCode(lastColor));
                     else
                         AppendFormatCode(sb.Append("§r"), lastFormat);//直接加§r可能可能会导致样式的丢失，但这样子写我也不确定会不会恢复到正确的样式
@@ -440,7 +447,7 @@ namespace MinecraftProtocol.DataType.Chat
                     //这个%d是在forge的语言文件里面看见的,原版好像没有?
                     if (text[i + 1] == 's'|| text[i + 1] == 'd')
                     {
-                        AppendWith(with[WithCount++]);
+                        AppendWith(translateArgs[WithCount++]);
                         i++;
                     }
                     else if (text[i + 1] == '%')
@@ -453,7 +460,7 @@ namespace MinecraftProtocol.DataType.Chat
                         //处理类型的: 给予%4$s时长为%5$s秒的%1$s（ID %2$s）*%3$s效果
                         //由于最高我只找到%5所以我不清楚这是16进制还是10进制,我暂时当成10进制处理了
                         //(还是最小只能9的10进制,超过9就解析不到了)
-                        AppendWith(with[number - 1]);
+                        AppendWith(translateArgs[number - 1]);
                         i += 3;
                     }
                     else
@@ -461,9 +468,9 @@ namespace MinecraftProtocol.DataType.Chat
                         sb.Append(text[i]);
                     }
                 }
-                else if (text[i] == '{' && i + 2 < text.Length && int.TryParse(text[i + 1].ToString(), out int index) && index < with.Count && text[i + 2] == '}')
+                else if (text[i] == '{' && i + 2 < text.Length && int.TryParse(text[i + 1].ToString(), out int index) && index < translateArgs.Count && text[i + 2] == '}')
                 {
-                    AppendWith(with[index]);
+                    AppendWith(translateArgs[index]);
                     i += 2;
                 }
                 else
