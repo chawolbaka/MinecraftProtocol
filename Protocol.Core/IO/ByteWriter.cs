@@ -46,7 +46,9 @@ namespace MinecraftProtocol.IO
                 _version++;
                 byte[] temp = _dataPool.Rent(value);
                 Array.Copy(_data, temp, _size);
-                _dataPool.Return(_data);
+                if (_returnToPool)
+                    _dataPool.Return(_data);
+                _returnToPool = true;
                 _data = temp;
             }
         }
@@ -54,15 +56,22 @@ namespace MinecraftProtocol.IO
 
         protected static ArrayPool<byte> _dataPool = ArrayPool<byte>.Create();
         protected const int DEFUALT_CAPACITY = 16;
-        
+        protected bool _returnToPool;
+
         internal protected byte[] _data;
         internal protected int _size = 0;
         protected int _version;
-        
+
         public ByteWriter() : this(DEFUALT_CAPACITY) { }
         public ByteWriter(int capacity)
         {
             _data = _dataPool.Rent(capacity);
+            _returnToPool = true;
+        }
+        public ByteWriter(ref byte[] data)
+        {
+            _data = data;
+            _returnToPool = false;
         }
 
 
@@ -291,7 +300,7 @@ namespace MinecraftProtocol.IO
         {
             bool disposed = _disposed;
             _disposed = true;
-            if (!disposed && _data is not null)
+            if (!disposed && _returnToPool && _data is not null)
             {
                 _dataPool.Return(_data);
                 _data = null;

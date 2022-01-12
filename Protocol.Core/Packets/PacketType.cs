@@ -9,24 +9,24 @@ namespace MinecraftProtocol.Packets
     public class PacketType
     {
         public string Name { get; }
-        public Func<int, int> GetID { get; }
+        public Func<int, int> GetId { get; }
         
-        public PacketType(string name, Func<int, int> getID)
+        public PacketType(string name, Func<int, int> getId)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
-            GetID = getID ?? throw new ArgumentNullException(nameof(getID));
+            GetId = getId ?? throw new ArgumentNullException(nameof(getId));
         }
 
 
-        public static bool operator ==(PacketType left, CompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetID(right.ProtocolVersion);
+        public static bool operator ==(PacketType left, CompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetId(right.ProtocolVersion);
         public static bool operator !=(PacketType left, CompatiblePacket right) => !(left == right);
-        public static bool operator ==(CompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetID(left.ProtocolVersion);
+        public static bool operator ==(CompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetId(left.ProtocolVersion);
         public static bool operator !=(CompatiblePacket left, PacketType right) => !(left == right);
 
 
-        public static bool operator ==(PacketType left, ReadOnlyCompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetID(right.ProtocolVersion);
+        public static bool operator ==(PacketType left, ReadOnlyCompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetId(right.ProtocolVersion);
         public static bool operator !=(PacketType left, ReadOnlyCompatiblePacket right) => !(left == right);
-        public static bool operator ==(ReadOnlyCompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetID(left.ProtocolVersion);
+        public static bool operator ==(ReadOnlyCompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetId(left.ProtocolVersion);
         public static bool operator !=(ReadOnlyCompatiblePacket left, PacketType right) => !(left == right);
 
 

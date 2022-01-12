@@ -15,26 +15,40 @@ namespace MinecraftProtocol.Packets
         public virtual bool IsReadOnly => false;
 
         public Packet() : this(-1) { }
-        public Packet(int packetID) : this(packetID, DEFUALT_CAPACITY) { }
-        public Packet(int packetID, int capacity)
+        public Packet(int packetId) : this(packetId, DEFUALT_CAPACITY) { }
+        public Packet(int packetId, ref byte[] packetData) : base(ref packetData)
         {
-            ID = packetID;
+            ID = packetId;
+        }
+        public Packet(int packetId, int capacity) : base(capacity)
+        {
+            ID = packetId;
             _data = _dataPool.Rent(capacity);
         }
-        public Packet(int packetID, ReadOnlySpan<byte> packetData)
+
+        //packetData如果传入null会变成空的Span所以不需要null检测
+        //（顺便如果不写base那么还是会调用基类的空构造函数结果就是从池里取出一个默认长度的，但这边很有可能创建不一样的所以那个16的不处理就回不去池内了处理了也浪费性能）
+        public Packet(int packetId, ReadOnlySpan<byte> packetData) : base(packetData.Length) 
         {
-            ID = packetID;
+            ID = packetId;
             if (packetData.Length > 0)
             {
                 _size = packetData.Length;
-                _data = _dataPool.Rent(packetData.Length);
-                packetData.CopyTo(_data.AsSpan().Slice(0,_size));
+                packetData.CopyTo(_data.AsSpan().Slice(0, _size));
             }
+        }
+        internal Packet(ICompatiblePacket compatiblePacket)
+        {
+            ID = compatiblePacket.ID;
+            if (compatiblePacket is null)
+                throw new ArgumentNullException(nameof(compatiblePacket));
+            if (compatiblePacket is CompatiblePacket cp)
+                _data = cp._data;
+            else if (compatiblePacket is ReadOnlyCompatiblePacket rcp)
+                _data = rcp._cpacket._data;
             else
-            {
-                _size = 0;
-                _data = _dataPool.Rent(DEFUALT_CAPACITY);
-            }
+                _data = compatiblePacket.ToArray();
+
         }
         public Packet(IPacket packet) : this(packet.ID, packet.ToArray()) { }
 
@@ -133,6 +147,12 @@ namespace MinecraftProtocol.Packets
         /// 浅拷贝一个受保护的只读Packet
         /// </summary>
         public virtual ReadOnlyPacket AsReadOnly() => ThrowIfDisposed(new ReadOnlyPacket(this));
+
+        /// <summary>
+        /// 从一个CompatiblePacket中取出信息后并使用当前packet的data和id创建一个CompatiblePacket
+        /// </summary>
+        public virtual CompatiblePacket AsCompatible(ICompatiblePacket compatible) => new CompatiblePacket(this, compatible.ProtocolVersion, compatible.CompressionThreshold);
+        public virtual CompatiblePacket AsCompatible(int protocolVersion, int compressionThreshold) => new CompatiblePacket(this, protocolVersion, compressionThreshold);
         public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
 
         public virtual Packet Clone() => ThrowIfDisposed(new Packet(ID, AsSpan()));
@@ -156,11 +176,9 @@ namespace MinecraftProtocol.Packets
         public virtual bool Equals(Packet packet)
         {
             ThrowIfDisposed();
-            if (packet is null) return false;
-            if (ID != packet.ID) return false;
-            if (Count != packet.Count) return false;
-            if (ReferenceEquals(this, packet)) return true;
-            for (int i = 0; i < packet.Count; i++)
+            if (packet is null || ID!=packet.ID||_size!=packet._size) return false;
+            if (ReferenceEquals(this, packet) || ReferenceEquals(this._data, packet._data)) return true;
+            for (int i = 0; i < packet._size; i++)
             {
                 if (this[i] != packet[i])
                     return false;

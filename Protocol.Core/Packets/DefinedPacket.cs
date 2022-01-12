@@ -11,21 +11,27 @@ namespace MinecraftProtocol.Packets
         public const int UnsupportPacketId = -25;
         public virtual int ProtocolVersion { get; protected set; }
 
-        protected virtual ByteReader Reader { get; }
+        protected virtual ByteReader Reader => reader ??= new ByteReader(_data);
+        private ByteReader reader;
 
-        protected DefinedPacket(int id, int protocolVersion) : this(id, null, protocolVersion) {}
+        protected DefinedPacket(int id, int protocolVersion) : this(id, null, protocolVersion) { }
         protected DefinedPacket(int id, byte[] data, int protocolVersion) : base(id, data)
         {
             ProtocolVersion = protocolVersion;
         }
 
-        protected DefinedPacket(ReadOnlyPacket packet,int protcolVersion)
+        protected DefinedPacket(int id, ref byte[] data, int protcolVersion) : base(id, ref data)
+        {
+            ProtocolVersion = protcolVersion;
+        }
+
+        protected DefinedPacket(ReadOnlyPacket packet, int protcolVersion)
         {
             //id由自动生成的代码设置
             _size = packet.Count;
             _data = _dataPool.Rent(packet.Count);
             packet.AsSpan().CopyTo(_data);
-            Reader = packet;
+            reader = packet;
             ProtocolVersion = protcolVersion;
         }
 
@@ -33,6 +39,11 @@ namespace MinecraftProtocol.Packets
         {
             if (ProtocolVersion < 0)
                 throw new ArgumentOutOfRangeException(nameof(ProtocolVersion), $"无法使用负数的{nameof(ProtocolVersion)}创建Packet");
+        }
+        protected virtual void SetProperty(string propertyName, object newValue)
+        {
+            _size = 0;
+            Write();
         }
         protected abstract void Write();
         protected abstract void Read();

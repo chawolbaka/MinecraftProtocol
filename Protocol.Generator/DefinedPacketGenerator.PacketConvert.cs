@@ -27,18 +27,13 @@ namespace MinecraftProtocol.IO.Extensions
                 string ClassName = ResultType.EndsWith("Packet") ? ResultType.Substring(0, ResultType.Length - 6) : ResultType;
                 string ReadFormalParameters = pair.Value.ReadPropertyList.Count > 0 ? string.Join(", ", pair.Value.ReadPropertyList) : "";
                 string ReadArguments = pair.Value.ReadPropertyNameList.Count > 0 ? string.Join(", ", pair.Value.ReadPropertyNameList) : "";
-               
-                if (pair.Value.ReadPropertyList.Count > 0)
-                {
-                    source.Append($"        public static {ResultType} As{ClassName}(this {CompatiblePacket} packet, {ReadFormalParameters}) => As{ClassName}(packet.AsCompatibleReadOnly(), {ReadArguments});\n");
-                    source.Append($"        public static {ResultType} As{ClassName}(this {ReadOnlyCompatiblePacket} packet, {ReadFormalParameters})");
-                }
-                else
-                {
-                    source.Append($"        public static {ResultType} As{ClassName}(this {CompatiblePacket} packet) => As{ClassName}(packet.AsCompatibleReadOnly());\n");
-                    source.Append($"        public static {ResultType} As{ClassName}(this {ReadOnlyCompatiblePacket} packet)");
-                }
 
+                source.AppendLine($@"        /// <summary>将当前包转换至{ClassName}</summary>");
+                if (pair.Value.ReadPropertyList.Count > 0)
+                    source.Append($"        public static {ResultType} To{ClassName}(this {ReadOnlyCompatiblePacket} packet, {ReadFormalParameters})");
+                else
+                    source.Append($"        public static {ResultType} To{ClassName}(this {ReadOnlyCompatiblePacket} packet)");
+                
                 source.AppendLine($@"
         {{
             if (packet.ID != {ResultType}.GetPacketId(packet.ProtocolVersion))
@@ -54,6 +49,28 @@ namespace MinecraftProtocol.IO.Extensions
             }}
         }}
 ");
+                source.AppendLine($@"        /// <summary> 将当前包转换至{ClassName}（不产生复制）</summary>");
+                if (pair.Value.ReadPropertyList.Count > 0)
+                    source.Append($"        public static {ResultType} As{ClassName}(this {CompatiblePacket} packet, {ReadFormalParameters})\n");
+                else
+                    source.Append($"        public static {ResultType} As{ClassName}(this {CompatiblePacket} packet)\n");
+               
+                source.AppendLine($@"
+        {{
+            if (packet.ID != {ResultType}.GetPacketId(packet.ProtocolVersion))
+                throw new InvalidPacketException(packet);
+
+            try
+            {{
+                return new {ResultType}(ref packet{(pair.Value.ReadPropertyList.Count > 0 ? $", {ReadArguments}" : "")});
+            }}
+            catch (Exception e)
+            {{
+                throw new InvalidPacketException(e.Message, packet, e);
+            }}
+        }}
+");
+
             }
             return source.Append("\n    }\n}").ToString();
         }

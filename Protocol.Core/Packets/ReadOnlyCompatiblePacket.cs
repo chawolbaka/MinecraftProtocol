@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Packets
         public int ProtocolVersion => _cpacket.ProtocolVersion;
         public int CompressionThreshold => _cpacket.CompressionThreshold;
 
-        private CompatiblePacket _cpacket;
+        internal CompatiblePacket _cpacket;
 
         public ReadOnlyCompatiblePacket(CompatiblePacket packet) : base(packet)
         {

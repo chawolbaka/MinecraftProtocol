@@ -15,7 +15,19 @@ namespace MinecraftProtocol.Packets
         public int CompressionThreshold  => ThrowIfDisposed(_compressionThreshold);
         public int ProtocolVersion => ThrowIfDisposed(_protocolVersion);
 
-        public CompatiblePacket(int packetID, ReadOnlySpan<byte> packetData, int protocolVersion, int compressionThreshold) : base(packetID, packetData)
+        internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.ID, ref packet._data)
+        {
+            _protocolVersion = protocolVersion;
+            _compressionThreshold = compressionThreshold;
+        }
+
+        public CompatiblePacket(int packetId, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref packetData)
+        {
+            _protocolVersion = protocolVersion;
+            _compressionThreshold = compressionThreshold;
+        }
+
+        public CompatiblePacket(int packetId, ReadOnlySpan<byte> packetData, int protocolVersion, int compressionThreshold) : base(packetId, packetData)
         {
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;
@@ -28,8 +40,8 @@ namespace MinecraftProtocol.Packets
 
         public override ReadOnlyPacket AsReadOnly() => AsCompatibleReadOnly();
         public virtual ReadOnlyCompatiblePacket AsCompatibleReadOnly() => new ReadOnlyCompatiblePacket(this);
+        public virtual Packet AsPacket() => new Packet(this);
         public static implicit operator ReadOnlyPacket(CompatiblePacket packet) => packet.AsCompatibleReadOnly();
-
         public static implicit operator ReadOnlyCompatiblePacket(CompatiblePacket packet) => packet.AsCompatibleReadOnly();
 
 

@@ -15,6 +15,7 @@ namespace Protocol.Generator
         private static readonly string CompatiblePacket = "CompatiblePacket";
         private static readonly string ReadOnlyPacket = "ReadOnlyPacket";
 
+        //SourceGenerator是通过解析源码来获取信息的，所以这边不赋值也一样能正常使用
         private const string AttributeTextShort = @"
 using System;
 namespace MinecraftProtocol.Packets
@@ -28,58 +29,12 @@ namespace MinecraftProtocol.Packets
         public bool IsWriteProperty { get; set; }
         public bool IsOverrideProperty { get; set; }
 
-        //SourceGenerator是通过解析源码来获取信息的，所以这边不赋值也一样能正常使用
         public PacketPropertyAttribute() { }
         public PacketPropertyAttribute(string name) { }
         public PacketPropertyAttribute(string name, int priority) { }
         public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty) { }
         public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty) { }
         public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty, bool isOverrideProperty) { }
-    }
-}
-";
-        private const string AttributeText = @"
-using System;
-namespace MinecraftProtocol.Packets
-{
-    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-    internal class PacketPropertyAttribute : Attribute
-    {
-        public string PropertyName { get; set; }
-        public int ConstructorPriority { get; set; }
-        public bool IsReadProperty { get; set; }
-        public bool IsWriteProperty { get; set; }
-        public bool IsOverrideProperty { get; set; }
-        public PacketPropertyAttribute() { ConstructorPriority = -1; }
-
-        public PacketPropertyAttribute(string name)
-        {
-            PropertyName = name;
-            ConstructorPriority = -1;
-            IsWriteProperty = true;
-            IsReadProperty = false;
-            IsOverrideProperty = false;
-        }
-
-        public PacketPropertyAttribute(string name, int priority) : this(name)
-        {
-            ConstructorPriority = priority;
-        }
-
-        public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty) : this(propertyName, constructorPriority)
-        {
-            IsReadProperty = isReadProperty;
-        }
-
-        public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty) : this(propertyName, constructorPriority, isReadProperty)
-        {
-            IsWriteProperty = isWriteProperty;
-        }
-
-        public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty, bool isOverrideProperty) : this(propertyName, constructorPriority, isReadProperty, isWriteProperty)
-        {
-            IsOverrideProperty = isOverrideProperty;
-        }
     }
 }
 ";
@@ -132,9 +87,17 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 var AttributeProperty = pair.Value;
                 if (fieldSymbol.Name.Length == 0)
                     continue;
-                source.AppendLine($@"        public {(AttributeProperty.IsOverrideProperty? "override" : "virtual")} {fieldSymbol.Type} {AttributeProperty.PropertyName} => ThrowIfDisposed({fieldSymbol.Name});");
+                source.AppendLine($@"        public {(AttributeProperty.IsOverrideProperty? "override" : "virtual")} {fieldSymbol.Type} {AttributeProperty.PropertyName} 
+        {{
+            get => ThrowIfDisposed({fieldSymbol.Name}); 
+            set 
+            {{
+                ThrowIfDisposed();
+                {fieldSymbol.Name} = value;                
+                SetProperty(""{fieldSymbol.Name}"",value);
+            }}
+        }}");
             }
-
 
             string ReadFormalParameters = info.ReadPropertyList.Count > 0 ? string.Join(", ", info.ReadPropertyList) : "";
             string ReadArguments = info.ReadPropertyNameList.Count > 0 ? string.Join(", ", info.ReadPropertyNameList) : "";
@@ -147,12 +110,21 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                     .Append(info.ReadInit)
                     .AppendLine("            Read();")
                     .AppendLine("        }");
-                
+
+                cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.ID, ref packet._data, packet.ProtocolVersion)")
+                    .AppendLine("        {")
+                    .AppendLine($@"            ID = GetPacketId(packet.ProtocolVersion);")
+                    .Append(info.ReadInit)
+                    .AppendLine("            Read();")
+                    .AppendLine("        }"); ;
+
             }
             else
             {
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet) : this(packet, packet.ProtocolVersion) {{ }}");
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ ID = GetPacketId(protocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.ID, ref packet._data, packet.ProtocolVersion) {{ ID = GetPacketId(packet.ProtocolVersion); Read(); }}");
+
             }
 
 
