@@ -45,7 +45,7 @@ namespace MinecraftProtocol.Packets.Client
 
         protected override void Write()
         {
-            TryAllocateCapacity(VarInt.GetLength(_channel.Length) + Encoding.UTF8.GetByteCount(_channel) + _messageData.Length);
+            TryGrow(VarInt.GetLength(_channel.Length) + Encoding.UTF8.GetByteCount(_channel) + _messageData.Length);
             WriteString(_channel);
             if (ProtocolVersion <= ProtocolVersions.V14w31a)
             {

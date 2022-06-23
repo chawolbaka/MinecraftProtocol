@@ -1,6 +1,7 @@
 ﻿using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
+using MinecraftProtocol.IO.Pools;
 using System;
 using System.Buffers;
 using System.Collections;
@@ -38,13 +39,16 @@ namespace MinecraftProtocol.IO
             set
             {
                 ThrowIfDisposed();
-                if (value < _size)
+                int newSize = value;
+                if (newSize < _size)
                     throw new ArgumentOutOfRangeException(nameof(Capacity), "Capacity was less than the current size.");
-                if (value == _size)
+                if (newSize == _size)
                     return;
+                if (newSize > Array.MaxLength)
+                    newSize = Array.MaxLength;
 
                 _version++;
-                byte[] temp = _dataPool.Rent(value);
+                byte[] temp = _dataPool.Rent(newSize);
                 Array.Copy(_data, temp, _size);
                 if (_returnToPool)
                     _dataPool.Return(_data);
@@ -54,7 +58,8 @@ namespace MinecraftProtocol.IO
         }
         public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(0, _size); }
 
-        protected static ArrayPool<byte> _dataPool = ArrayPool<byte>.Create();
+        //mc大部分都是小包所以使用这种形状的线程池可能更适合？
+        protected static ArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(2048, 1024, 512, 256, 128, 64, 64, 64, 64, 64, 64, 64, 32, 32, 32, 16, 16, 16);
         protected const int DEFUALT_CAPACITY = 16;
         protected bool _returnToPool;
 
@@ -65,7 +70,7 @@ namespace MinecraftProtocol.IO
         public ByteWriter() : this(DEFUALT_CAPACITY) { }
         public ByteWriter(int capacity)
         {
-            _data = _dataPool.Rent(capacity);
+            _data = _dataPool.Rent(capacity > 0 ? capacity : DEFUALT_CAPACITY);
             _returnToPool = true;
         }
         public ByteWriter(ref byte[] data)
@@ -88,21 +93,21 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteByte(sbyte value)
         {
             _version++;
-            TryAllocateCapacity(sizeof(sbyte));
+            TryGrow(sizeof(sbyte));
             _data[_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteUnsignedByte(byte value)
         {
             _version++;
-            TryAllocateCapacity(sizeof(byte));
+            TryGrow(sizeof(byte));
             _data[_size++] = value;
             return this;
         }
         public virtual ByteWriter WriteString(string value)
         {
             byte[] str = Encoding.UTF8.GetBytes(value);
-            TryAllocateCapacity(VarInt.GetLength(str.Length) + str.Length);
+            TryGrow(VarInt.GetLength(str.Length) + str.Length);
             WriteVarInt(str.Length);
             WriteBytes(str);
             return this;
@@ -110,7 +115,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteShort(short value)
         {
             _version++;
-            TryAllocateCapacity(2);
+            TryGrow(2);
             _data[_size++] = (byte)(value >> 8);
             _data[_size++] = (byte)value;
             return this;
@@ -118,7 +123,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteUnsignedShort(ushort value)
         {
             _version++;
-            TryAllocateCapacity(2);
+            TryGrow(2);
             _data[_size++] = (byte)(value >> 8);
             _data[_size++] = (byte)value;
             return this;
@@ -126,7 +131,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteInt(int value)
         {
             _version++;
-            TryAllocateCapacity(4);
+            TryGrow(4);
             _data[_size++] = (byte)(value >> 24);
             _data[_size++] = (byte)(value >> 16);
             _data[_size++] = (byte)(value >> 8);
@@ -136,7 +141,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteLong(long value)
         {
             _version++;
-            TryAllocateCapacity(8);
+            TryGrow(8);
             _data[_size++] = (byte)(value >> 54);
             _data[_size++] = (byte)(value >> 48);
             _data[_size++] = (byte)(value >> 40);
@@ -150,7 +155,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteFloat(float value)
         {
             _version++;
-            TryAllocateCapacity(sizeof(float));
+            TryGrow(sizeof(float));
             BitConverter.GetBytes(value).CopyTo(_data, _size);
             _data.AsSpan().Slice(_size, sizeof(float)).Reverse();
             _size += sizeof(float);
@@ -159,7 +164,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteDouble(double value)
         {
             _version++;
-            TryAllocateCapacity(sizeof(double));
+            TryGrow(sizeof(double));
             BitConverter.GetBytes(value).CopyTo(_data, _size);
             _data.AsSpan().Slice(_size, sizeof(double)).Reverse();
             _size += sizeof(double);
@@ -182,7 +187,7 @@ namespace MinecraftProtocol.IO
         }
         public virtual ByteWriter WriteUUID(UUID value)
         {
-            TryAllocateCapacity(sizeof(long) * 2);
+            TryGrow(sizeof(long) * 2);
             WriteLong(value.Most);
             WriteLong(value.Least);
             return this;
@@ -193,7 +198,7 @@ namespace MinecraftProtocol.IO
             int length = 0;
             foreach (var conllection in collections)
                 length += conllection.Count;
-            TryAllocateCapacity(length);
+            TryGrow(length);
 
             foreach (var collection in collections)
             {
@@ -205,7 +210,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteBytes(params byte[] value)
         {
             _version++;
-            TryAllocateCapacity(value.Length);
+            TryGrow(value.Length);
             Array.Copy(value, 0, _data, _size, value.Length);
             _size += value.Length;
             return this;
@@ -214,7 +219,7 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteBytes(ReadOnlySpan<byte> value)
         {
             _version++;
-            TryAllocateCapacity(value.Length);
+            TryGrow(value.Length);
             value.CopyTo(_data.AsSpan(_size));
             _size += value.Length;
             return this;
@@ -256,14 +261,14 @@ namespace MinecraftProtocol.IO
             }
         }
 
-        private bool ExtraAllocate = IntPtr.Size > 4;
-        protected virtual void TryAllocateCapacity(int writeLength)
+        protected virtual void TryGrow(int writeLength)
         {
             ThrowIfDisposed();
             if (writeLength + _size > Capacity)
-                Capacity += ExtraAllocate && writeLength < 128 ? writeLength * 2 : writeLength;
+            {
+                Capacity += writeLength * 2;
+            }
         }
-
 
         IEnumerator<byte> IEnumerable<byte>.GetEnumerator()
         {
