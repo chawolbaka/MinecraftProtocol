@@ -42,11 +42,14 @@ namespace MinecraftProtocol.Compression
         /// <returns>Decompressed data as a byte array</returns>
         public static byte[] Decompress(byte[] to_decompress, int offset, int size_uncompressed)
         {
-            using (ZlibStream stream = new ZlibStream(new MemoryStream(to_decompress, false), CompressionMode.Decompress))
+            using (MemoryStream ms = new MemoryStream(to_decompress, false))
             {
-                byte[] packetData_decompressed = new byte[size_uncompressed];
-                stream.Read(packetData_decompressed, offset, size_uncompressed);
-                return packetData_decompressed;
+                using (ZlibStream stream = new ZlibStream(ms, CompressionMode.Decompress))
+                {
+                    byte[] packetData_decompressed = new byte[size_uncompressed];
+                    stream.Read(packetData_decompressed, offset, size_uncompressed);
+                    return packetData_decompressed;
+                }
             }
         }
 

@@ -21,7 +21,8 @@ namespace MinecraftProtocol.Packets
             _packet = packet;
         }
 
-        public virtual byte[] Pack(int compress = -1) => _packet.Pack(compress);
+        public virtual byte[] Pack() => _packet.Pack();
+        public virtual byte[] Pack(int compressionThreshold) => _packet.Pack(compressionThreshold);
         object ICloneable.Clone() => new ReadOnlyPacket(_packet) { offset = base.offset };
 
         public override bool Equals(object obj)

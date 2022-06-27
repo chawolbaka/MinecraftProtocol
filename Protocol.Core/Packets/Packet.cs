@@ -2,17 +2,20 @@
 using System.Threading.Tasks;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.Compression;
-
+using System.Text;
 
 namespace MinecraftProtocol.Packets
 {
     public class Packet : ByteWriter, IPacket, IEquatable<Packet>
     {
+
         public virtual bool IsEmpty => ID < 0 || _data is null;
 
-        public virtual int ID { get; set; }
-
         public virtual bool IsReadOnly => false;
+
+        public virtual int ID { get => _id; set { _id = value; _version++; } }
+
+        private int _id;
 
         public Packet() : this(-1) { }
         public Packet(int packetId) : this(packetId, DEFUALT_CAPACITY) { }
@@ -37,6 +40,7 @@ namespace MinecraftProtocol.Packets
                 packetData.CopyTo(_data.AsSpan().Slice(0, _size));
             }
         }
+
         internal Packet(ICompatiblePacket compatiblePacket)
         {
             ID = compatiblePacket.ID;
@@ -55,12 +59,12 @@ namespace MinecraftProtocol.Packets
         /// <summary>
         /// 生成发送给服务端的包
         /// </summary>
-        /// <param name="compress">数据包压缩的阚值</param>
+        /// <param name="compressionThreshold">数据包压缩的阚值</param>
         /// <exception cref="ArgumentOutOfRangeException"/>
         /// <exception cref="IndexOutOfRangeException"/>       
         /// <exception cref="ObjectDisposedException"/>
         /// <exception cref="PacketException"/>
-        public virtual byte[] Pack(int compress = -1)
+        public virtual byte[] Pack(int compressionThreshold)
         {
             if (IsEmpty)
                 throw new PacketException("Packet is empty");
@@ -69,7 +73,7 @@ namespace MinecraftProtocol.Packets
             byte[] PackedData;
             int uncompressLength = VarInt.GetLength(ID) + Count;
             int offset;
-            if (compress > 0 && _size >= compress)
+            if (compressionThreshold > 0 && _size >= compressionThreshold)
             {
                 /*
                  * 压缩的数据包:
@@ -97,7 +101,7 @@ namespace MinecraftProtocol.Packets
             }
             else
             {
-                if (compress > 0)
+                if (compressionThreshold > 0)
                 {
                     //写入数据包长度和解压后的长度(0=未压缩)
                     PackedData = new byte[VarInt.GetLength(uncompressLength + 1) + uncompressLength + 1];
@@ -117,9 +121,16 @@ namespace MinecraftProtocol.Packets
                 return PackedData;
             }
         }
-        public static Packet Depack(ReadOnlySpan<byte> data,int compress = -1)
+        public virtual byte[] Pack()
         {
-            if (compress > 0)
+            return Pack(-1);
+        }
+
+
+        public static Packet Depack(ReadOnlySpan<byte> data) => Depack(data);
+        public static Packet Depack(ReadOnlySpan<byte> data, int compressionThreshold)
+        {
+            if (compressionThreshold > 0)
             {
                 int size = VarInt.Read(data, out int SizeOffset);
                 data = data.Slice(SizeOffset);
@@ -129,9 +140,10 @@ namespace MinecraftProtocol.Packets
             return new Packet(VarInt.Read(data, out int IdOffset), data.Slice(IdOffset));
         }
 
-        public static async Task<Packet> DepackAsync(ReadOnlyMemory<byte> data, int compress = -1)
+        public static Task<Packet> DepackAsync(ReadOnlyMemory<byte> data) => DepackAsync(data, -1);
+        public static async Task<Packet> DepackAsync(ReadOnlyMemory<byte> data, int compressionThreshold)
         {
-            if (compress > 0)
+            if (compressionThreshold > 0)
             {
                 int size = VarInt.Read(data.Span, out int SizeOffset);
                 data = data.Slice(SizeOffset);
@@ -161,7 +173,15 @@ namespace MinecraftProtocol.Packets
         public override string ToString()
         {
             ThrowIfDisposed();
-            return $"ID: {ID}, Count: {Count}";
+            StringBuilder stringBuilder = new StringBuilder(Count*3);
+            byte[] temp = _data; 
+            stringBuilder.Append($"{_id:X2}: ");
+            for (int i = 0; i < _size; i++)
+            {
+                stringBuilder.Append($"{temp[i]:X2} ");
+            }
+            stringBuilder.Append($"({_size})");
+            return stringBuilder.ToString();
         }
 
         public override bool Equals(object obj)
@@ -176,7 +196,7 @@ namespace MinecraftProtocol.Packets
         public virtual bool Equals(Packet packet)
         {
             ThrowIfDisposed();
-            if (packet is null || ID!=packet.ID||_size!=packet._size) return false;
+            if (packet is null || ID != packet.ID || _size != packet._size) return false;
             if (ReferenceEquals(this, packet) || ReferenceEquals(this._data, packet._data)) return true;
             for (int i = 0; i < packet._size; i++)
             {
@@ -191,9 +211,12 @@ namespace MinecraftProtocol.Packets
             HashCode code = new HashCode();
             code.Add(ID);
             if (_size > 0)
+            {
                 for (int i = 0; i < _size; i++)
+                {
                     code.Add(_data[i]);
-
+                }
+            }
             return code.ToHashCode();
         }
 

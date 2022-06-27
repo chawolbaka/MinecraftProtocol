@@ -26,8 +26,13 @@ namespace MinecraftProtocol.Packets
         /// <summary>
         /// 创建完整的数据包
         /// </summary>
-        /// <param name="compress">压缩阚值</param>
-        byte[] Pack(int compress);
+        /// <param name="compressionThreshold">压缩阚值</param>
+        byte[] Pack(int compressionThreshold);
+
+        /// <summary>
+        /// 创建完整的数据包
+        /// </summary>
+        byte[] Pack();
 
         /// <summary>
         /// 获取数据包的Data

@@ -6,6 +6,5 @@ namespace MinecraftProtocol.Packets
     {
         int CompressionThreshold { get; }
         int ProtocolVersion { get; }
-        byte[] Pack();
     }
 }
