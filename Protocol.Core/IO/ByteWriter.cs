@@ -35,7 +35,7 @@ namespace MinecraftProtocol.IO
 
         public virtual int Capacity
         {
-            get => ThrowIfDisposed(_data.Length);
+            get => ThrowIfDisposed(_data is not null ? _data.Length : 0);
             set
             {
                 ThrowIfDisposed();
@@ -49,9 +49,12 @@ namespace MinecraftProtocol.IO
 
                 _version++;
                 byte[] temp = _dataPool.Rent(newSize);
-                Array.Copy(_data, temp, _size);
-                if (_returnToPool)
-                    _dataPool.Return(_data);
+                if (_data != null)
+                {
+                    Array.Copy(_data, temp, _size);
+                    if (_returnToPool)
+                        _dataPool.Return(_data);
+                }
                 _returnToPool = true;
                 _data = temp;
             }
@@ -78,7 +81,6 @@ namespace MinecraftProtocol.IO
             _data = data;
             _returnToPool = false;
         }
-
 
 
         public virtual ByteWriter WriteBoolean(bool boolean)
@@ -251,6 +253,20 @@ namespace MinecraftProtocol.IO
             return this;
         }
 
+        /// <summary>
+        /// 用于对象池的清空需求
+        /// </summary>
+        internal virtual void ClearToNullable()
+        {
+            if (_size > 0)
+            {
+                _dataPool.Return(_data);
+                _version = 0;
+                _size = 0;
+                _data = null;
+            }
+        }
+
         public virtual void Clear()
         {
             if (_size > 0)
@@ -266,7 +282,7 @@ namespace MinecraftProtocol.IO
             ThrowIfDisposed();
             if (writeLength + _size > Capacity)
             {
-                Capacity += writeLength * 2;
+                Capacity += (int)(writeLength * 1.5);
             }
         }
 
@@ -303,20 +319,23 @@ namespace MinecraftProtocol.IO
         private bool _disposed = false;
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        private void Dispose(bool disposing)
+        {
             bool disposed = _disposed;
             _disposed = true;
             if (!disposed && _returnToPool && _data is not null)
             {
                 _dataPool.Return(_data);
                 _data = null;
-                GC.SuppressFinalize(this);
             }
         }
 
-
         ~ByteWriter()
         {
-            Dispose();
+            Dispose(false);
         }
 
         protected virtual void ThrowIfDisposed()
