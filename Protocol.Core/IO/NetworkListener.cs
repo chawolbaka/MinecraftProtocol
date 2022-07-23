@@ -3,6 +3,7 @@ using MinecraftProtocol.Utils;
 using System;
 using System.Buffers;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,11 +23,12 @@ namespace MinecraftProtocol.IO
 
         protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
 
-        protected static ArrayPool<byte> _dataPool;
+        protected static UnsafeSawtoothArrayPool<byte> _dataPool;
         protected CancellationTokenSource _internalToken;
         protected Socket _socket;
         protected int _receiveBufferSize;
         protected int _bufferOffset;
+        protected GCHandle _bufferGCHandle;
         protected byte[] _buffer;
         protected bool _usePool;
 
@@ -41,12 +43,13 @@ namespace MinecraftProtocol.IO
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-            if(!disablePool && _dataPool == null)
-                _dataPool = new SawtoothArrayPool<byte>(2048, 1024, 512, 256, 128, 64, 64, 64, 64, 64, 64, 64, 32, 32, 32, 16, 16, 16);
+            if (!disablePool && _dataPool == null)
+                _dataPool = new UnsafeSawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
 
             _usePool = !disablePool;
             _socket = socket;
-            _buffer = AllocateByteArray(receiveBufferSize);
+            _bufferGCHandle = AllocateByteArray(receiveBufferSize);
+            _buffer = (byte[])_bufferGCHandle.Target;
             _receiveBufferSize = receiveBufferSize;
         }
 
@@ -65,7 +68,7 @@ namespace MinecraftProtocol.IO
 
 
             StartListen?.Invoke(this, new ListenEventArgs(false));
-            SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs(); /*_usePool ? SAEAPool.Rent() : new SocketAsyncEventArgs();*/
+            SocketAsyncEventArgs eventArgs = _usePool ? SAEAPool.Rent() : new SocketAsyncEventArgs();
             if (_usePool)
                 _internalToken.Token.Register(() => SAEAPool.Return(eventArgs));
 
@@ -125,7 +128,9 @@ namespace MinecraftProtocol.IO
 
             if (_receiveBufferSize != _buffer.Length)
             {
-                _buffer = AllocateByteArray(_receiveBufferSize);
+                _dataPool.Return(_bufferGCHandle);
+                _bufferGCHandle = AllocateByteArray(_receiveBufferSize);
+                _buffer = (byte[])_bufferGCHandle.Target;
                 e.SetBuffer(_buffer);
             }
 
@@ -150,9 +155,9 @@ namespace MinecraftProtocol.IO
             }
         }
 
-        protected byte[] AllocateByteArray(int size)
+        protected GCHandle AllocateByteArray(int size)
         {
-            return _usePool ? _dataPool.Rent(size) : new byte[size];
+            return _usePool ? _dataPool.Rent(size) : GCHandle.Alloc(new byte[size]);
         }
 
         ~NetworkListener()
@@ -171,7 +176,9 @@ namespace MinecraftProtocol.IO
             bool disposed = _disposed;
             _disposed = true;
             if (_usePool && _buffer is not null)
-                _dataPool?.Return(_buffer);
+                _dataPool?.Return(_bufferGCHandle);
+            else if (_bufferGCHandle != default)
+                _bufferGCHandle.Free();
 
             if (!disposed && disposing)
             {

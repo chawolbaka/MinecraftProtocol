@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MinecraftProtocol.IO
@@ -48,24 +49,27 @@ namespace MinecraftProtocol.IO
                     newSize = Array.MaxLength;
 
                 _version++;
-                byte[] temp = _dataPool.Rent(newSize);
+                GCHandle newDataGCHandle = _dataPool.Rent(newSize);
+                byte[] newData = (byte[])newDataGCHandle.Target;
                 if (_data != null)
                 {
-                    Array.Copy(_data, temp, _size);
+                    Array.Copy(_data, newData, _size);
                     if (_returnToPool)
-                        _dataPool.Return(_data);
+                        _dataPool.Return(_dataGCHandle);
                 }
                 _returnToPool = true;
-                _data = temp;
+                _dataGCHandle = newDataGCHandle;
+                _data = newData;
             }
         }
         public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(0, _size); }
 
         //mc大部分都是小包所以使用这种形状的线程池可能更适合？
-        protected static ArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(2048, 1024, 512, 256, 128, 64, 64, 64, 64, 64, 64, 64, 32, 32, 32, 16, 16, 16);
+        protected static UnsafeSawtoothArrayPool<byte> _dataPool = new UnsafeSawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
         protected const int DEFUALT_CAPACITY = 16;
         protected bool _returnToPool;
 
+        internal protected GCHandle _dataGCHandle;
         internal protected byte[] _data;
         internal protected int _size = 0;
         protected int _version;
@@ -73,8 +77,7 @@ namespace MinecraftProtocol.IO
         public ByteWriter() : this(DEFUALT_CAPACITY) { }
         public ByteWriter(int capacity)
         {
-            _data = _dataPool.Rent(capacity > 0 ? capacity : DEFUALT_CAPACITY);
-            _returnToPool = true;
+            RerentData(capacity > 0 ? capacity : DEFUALT_CAPACITY);
         }
         public ByteWriter(ref byte[] data)
         {
@@ -260,7 +263,8 @@ namespace MinecraftProtocol.IO
         {
             if (_size > 0)
             {
-                _dataPool.Return(_data);
+                if (_dataGCHandle != default)
+                    _dataPool.Return(_dataGCHandle);
                 _version = 0;
                 _size = 0;
                 _data = null;
@@ -271,9 +275,8 @@ namespace MinecraftProtocol.IO
         {
             if (_size > 0)
             {
-                _dataPool.Return(_data);
                 _size = 0;
-                _data = _dataPool.Rent(DEFUALT_CAPACITY);
+                RerentData(DEFUALT_CAPACITY);
             }
         }
 
@@ -284,6 +287,16 @@ namespace MinecraftProtocol.IO
             {
                 Capacity += (int)(writeLength * 1.5);
             }
+        }
+
+        protected virtual void RerentData(int size)
+        {
+            GCHandle old = _dataGCHandle;
+            _dataGCHandle = _dataPool.Rent(size);
+            _data = (byte[])_dataGCHandle.Target;
+            _returnToPool = true;
+            if (old != default)
+                _dataPool.Return(old);
         }
 
         IEnumerator<byte> IEnumerable<byte>.GetEnumerator()
@@ -328,7 +341,7 @@ namespace MinecraftProtocol.IO
             _disposed = true;
             if (!disposed && _returnToPool && _data is not null)
             {
-                _dataPool.Return(_data);
+                _dataPool.Return(_dataGCHandle);
                 _data = null;
             }
         }

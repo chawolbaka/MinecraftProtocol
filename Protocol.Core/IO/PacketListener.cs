@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Threading;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.Crypto;
@@ -42,6 +43,7 @@ namespace MinecraftProtocol.IO
         private byte _packetLengthOffset;
         private int _packetDataOffset;
 
+        private GCHandle _packetDataGCHandle;
         private byte[] _packetData;
         private ReadState _state;
         private enum ReadState
@@ -95,12 +97,13 @@ namespace MinecraftProtocol.IO
                         _packetLength |= (b & 0b0111_1111) << _packetLengthOffset++ * 7;
                         if ((b & 0b1000_0000) == 0) //varint结束符
                         {
-                            
-                            _packetData = AllocateByteArray(_packetLengthOffset + _packetLength);
+                            _packetDataGCHandle = AllocateByteArray(_packetLengthOffset + _packetLength);
+                            _packetData = (byte[])_packetDataGCHandle.Target;
                             if (bytesTransferred - _packetLengthOffset > 0)
                                 Array.Copy(_buffer, _bufferOffset - _packetLengthOffset, _packetData, 0, _packetLengthOffset);
                             else
                                 VarInt.WriteTo(_packetLength, _packetData);
+
 
                             //Packet长度读取完成，开始读取数据部分
                             _state = ReadState.PacketData;
@@ -115,8 +118,9 @@ namespace MinecraftProtocol.IO
                 if (!_disposed && _packetDataOffset == 0 && bytesTransferred - _bufferOffset >= _packetLength)
                 {
                     //缓存区的数据足够读取一个完整的包
-                    Array.Copy(_buffer, _bufferOffset , _packetData, _packetLengthOffset, _packetLength);
-                    InvokeReceived(_packetData, 0, ref _packetLengthOffset, ref _packetLength);
+                    Array.Copy(_buffer, _bufferOffset, _packetData, _packetLengthOffset, _packetLength);
+                    InvokeReceived(_packetDataGCHandle, new Memory<byte>(_packetData, 0, _packetLengthOffset + _packetLength), ref _packetLengthOffset, ref _packetLength);
+
                     _bufferOffset += _packetLength;
                 }
                 else
@@ -127,7 +131,7 @@ namespace MinecraftProtocol.IO
                     if (!_disposed && _packetLength - _packetDataOffset < bytesTransferred - _bufferOffset)
                     {
                         Array.Copy(_buffer, _bufferOffset, _packetData, _packetDataOffset, _packetLength - _packetDataOffset);
-                        InvokeReceived(_packetData, 0, ref _packetLengthOffset, ref _packetLength);
+                        InvokeReceived(_packetDataGCHandle, new Memory<byte>(_packetData, 0, _packetLengthOffset + _packetLength), ref _packetLengthOffset, ref _packetLength);
                         _bufferOffset += _packetLength - _packetDataOffset;
                         _packetDataOffset = 0;
                     }
@@ -145,12 +149,14 @@ namespace MinecraftProtocol.IO
         /// <summary>
         /// 通过读取完成的数据包触发<see cref="PacketReceived"/>事件
         /// </summary>
-        protected virtual void InvokeReceived(byte[] data, ushort startIndex, ref byte headLength, ref int bodyLength)
+        protected virtual void InvokeReceived(GCHandle dataGCHandle, Memory<byte> data, ref byte headLength, ref int bodyLength)
         {
-            if (data.Length >= startIndex + headLength + bodyLength && bodyLength >= (_compressionThreshold > 0 ? 3 : 1)) //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
-                PacketReceived?.Invoke(this, (_usePool ? PREAPool.Rent() : new PacketReceivedEventArgs()).Setup(data, ref startIndex, ref headLength, ref bodyLength, ref _protocolVersion, _compressionThreshold, _usePool));
+            //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
+            if (data.Length >= headLength + bodyLength && bodyLength >= (_compressionThreshold > 0 ? 3 : 1))
+                PacketReceived?.Invoke(this, (_usePool ? PREAPool.Rent() : new PacketReceivedEventArgs())
+                    .Setup(dataGCHandle, ref data, ref headLength, ref bodyLength, ref _protocolVersion, _compressionThreshold, _usePool));
             else if (_usePool)
-                _dataPool.Return(data);
+                _dataPool.Return(dataGCHandle);
             _state = ReadState.PacketLength;
 
             _packetLengthOffset = 0;
@@ -168,9 +174,9 @@ namespace MinecraftProtocol.IO
             try
             {
                 if (_usePool && _packetData is not null)
-                    _dataPool.Return(_packetData);
+                    _dataPool.Return(_packetDataGCHandle);
                 if (_usePool && _buffer is not null)
-                    _dataPool.Return(_buffer);
+                    _dataPool.Return(_bufferGCHandle);
             }
             catch (ArgumentException) { }
             if (!disposed && disposing)
@@ -198,26 +204,26 @@ namespace MinecraftProtocol.IO
             /// <summary>
             /// 完整的数据包（不可直接进行Packet.Depack）
             /// </summary>
-            public Memory<byte> RawData => new Memory<byte>(_data, _startIndex, _headLength + _bodyLength);
+            public Memory<byte> RawData;
 
             private bool _disposed = false;
-            private byte[] _data;
-            private ushort _startIndex;
-            private byte _headLength;
-            private int _bodyLength;
+
+            private GCHandle _dataGCHandle;           
+            
             private bool _usePool;
 
-            internal PacketReceivedEventArgs Setup(byte[] data, ref ushort startIndex, ref byte headLength, ref int bodyLength, ref int protocolVersion, int compressionThreshold, bool usePool)
-            {
-                //上面那堆ref是为了减少值类型的内存复制，赋值给全局变量时会复制所以最终并不是相同地址的
-                ReceivedTime = DateTime.Now; _data = data; _startIndex = startIndex; _headLength = headLength; _bodyLength = bodyLength; _usePool = usePool;
+            internal PacketReceivedEventArgs Setup(GCHandle dataGCHandle, ref Memory<byte> data, ref byte headLength, ref int bodyLength, ref int protocolVersion, int compressionThreshold, bool usePool)
+            {   
+                //上面那堆ref是为了减少值类型的内存复制，因为性能不好开始病态起来了
+                ReceivedTime = DateTime.Now; _dataGCHandle = dataGCHandle; _usePool = usePool;
+                RawData = data;
 
                 _disposed = false;
                 if (usePool)
                 {
                     Packet = _CPPool.Rent();
                     //以下代码复制自CompatiblePacket.Depack
-                    Span<byte> buffer = data.AsSpan().Slice(startIndex + headLength, bodyLength);
+                    Span<byte> buffer = data.Span.Slice(headLength, bodyLength);
                     if (compressionThreshold > 0)
                     {
                         int size = VarInt.Read(buffer, out int SizeOffset);
@@ -255,12 +261,15 @@ namespace MinecraftProtocol.IO
 
                 try
                 {
-                    if (_usePool && _data != null)
+                    if (_usePool)
                     {
                         _CPPool.Return(Packet);
-                        _dataPool.Return(_data);
-                        _data = null;
+                        _dataPool.Return(_dataGCHandle);
                         PREAPool.Return(this);
+                    }
+                    else
+                    {
+                        _dataGCHandle.Free();
                     }
                 }
                 catch (ArgumentException)

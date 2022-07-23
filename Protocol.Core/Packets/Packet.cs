@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.Compression;
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace MinecraftProtocol.Packets
 {
@@ -26,7 +27,7 @@ namespace MinecraftProtocol.Packets
         public Packet(int packetId, int capacity) : base(capacity)
         {
             ID = packetId;
-            _data = _dataPool.Rent(capacity);
+            RerentData(capacity);
         }
 
         //packetData如果传入null会变成空的Span所以不需要null检测
@@ -85,10 +86,12 @@ namespace MinecraftProtocol.Packets
                  */
 
                 //拼接PacketID(VarInt)和PacketData(ByteArray)并塞入ZlibUtils.Compress去压缩
-                byte[] uncompressed = _dataPool.Rent(uncompressLength);
+                GCHandle uncompressedGCHandle = _dataPool.Rent(uncompressLength);
+                byte[] uncompressed = (byte[])uncompressedGCHandle.Target;
+
                 Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(ID, uncompressed),_size);
                 byte[] compressed = ZlibUtils.Compress(uncompressed, 0, uncompressLength);
-                _dataPool.Return(uncompressed);
+                _dataPool.Return(uncompressedGCHandle);
 
                 PackedData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressLength) + compressed.Length) + VarInt.GetLength(uncompressLength) + compressed.Length];
                 //写入第一个VarInt(解压长度+压缩后的长度）
@@ -219,6 +222,8 @@ namespace MinecraftProtocol.Packets
             }
             return code.ToHashCode();
         }
+
+       
 
         public void CopyTo(byte[] array, int arrayIndex)
         {

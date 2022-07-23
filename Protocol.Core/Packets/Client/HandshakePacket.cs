@@ -42,8 +42,8 @@ namespace MinecraftProtocol.Packets.Client
             {
                 //取出不需要重写的部分
                 Span<byte> temp = _data.AsSpan(offset);
-                //从池里捞出一个数组用于临时储存（不这样子如果新_serverAddress长度变多会覆盖掉，所以必须复制到一个临时数组）
-                byte[] sawp = _dataPool.Rent(temp.Length);
+                //创建临时数组（不这样子如果新_serverAddress长度变多会覆盖掉，所以必须复制到一个临时数组）
+                byte[] sawp = new byte[temp.Length];
                 temp.CopyTo(sawp.AsSpan());
                 //跳过不需要重写的部分
                 _size = start;
@@ -51,7 +51,6 @@ namespace MinecraftProtocol.Packets.Client
                 WriteString(newValue.ToString());
                 //把之前的数据复制回去并向池归还临时数组
                 WriteBytes(sawp);
-                _dataPool.Return(sawp);
             }
             else
             {

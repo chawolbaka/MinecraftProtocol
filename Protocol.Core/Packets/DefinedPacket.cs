@@ -29,7 +29,7 @@ namespace MinecraftProtocol.Packets
         {
             //id由自动生成的代码设置
             _size = packet.Count;
-            _data = _dataPool.Rent(packet.Count);
+            RerentData(packet.Count);
             packet.AsSpan().CopyTo(_data);
             reader = packet;
             ProtocolVersion = protcolVersion;
