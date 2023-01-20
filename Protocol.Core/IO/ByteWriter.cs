@@ -65,7 +65,7 @@ namespace MinecraftProtocol.IO
         public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(0, _size); }
 
         //mc大部分都是小包所以使用这种形状的线程池可能更适合？
-        protected static UnsafeSawtoothArrayPool<byte> _dataPool = new UnsafeSawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
+        internal static UnsafeSawtoothArrayPool<byte> _dataPool = new UnsafeSawtoothArrayPool<byte>(true,4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
         protected const int DEFUALT_CAPACITY = 16;
         protected bool _returnToPool;
 
@@ -329,12 +329,15 @@ namespace MinecraftProtocol.IO
             }
         }
 
-        private bool _disposed = false;
+        internal bool _disposed = false;
+        
+
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
         private void Dispose(bool disposing)
         {
             bool disposed = _disposed;

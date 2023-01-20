@@ -23,7 +23,7 @@ namespace MinecraftProtocol.IO
 
         protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
 
-        protected static UnsafeSawtoothArrayPool<byte> _dataPool;
+        internal static UnsafeSawtoothArrayPool<byte>.Bucket<byte> _dataPool;
         protected CancellationTokenSource _internalToken;
         protected Socket _socket;
         protected int _receiveBufferSize;
@@ -43,12 +43,12 @@ namespace MinecraftProtocol.IO
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-            if (!disablePool && _dataPool == null)
-                _dataPool = new UnsafeSawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
+            if (!disablePool && _dataPool == null) //考虑特意增大receiveBufferSize那部分的size
+                _dataPool = new UnsafeSawtoothArrayPool<byte>.Bucket<byte>(receiveBufferSize, 2048, Thread.CurrentThread.ManagedThreadId, true);
 
             _usePool = !disablePool;
             _socket = socket;
-            _bufferGCHandle = AllocateByteArray(receiveBufferSize);
+            _bufferGCHandle = AllocateByteArray();
             _buffer = (byte[])_bufferGCHandle.Target;
             _receiveBufferSize = receiveBufferSize;
         }
@@ -97,24 +97,25 @@ namespace MinecraftProtocol.IO
             }
             else
             {
-                try
-                {
-                    _bufferOffset = 0;
-                    ReceiveCompleted(sender, e);
-                }
-                catch (Exception ex)
-                {
-                    if (_disposed)
-                        return;
-                    if (UnhandledException == null)
-                        throw;
+
+                _bufferOffset = 0;
+                ReceiveCompleted(sender, e);
+                //try
+                //{
+                //}
+                //catch (Exception ex)
+                //{
+                //    if (_disposed)
+                //        return;
+                //    if (UnhandledException == null)
+                //        throw;
 
 
-                    UnhandledExceptionEventArgs args = new UnhandledExceptionEventArgs(ex);
-                    UnhandledException(this, args);
-                    if (!args.Handled)
-                        throw;
-                }
+                //    UnhandledExceptionEventArgs args = new UnhandledExceptionEventArgs(ex);
+                //    UnhandledException(this, args);
+                //    if (!args.Handled)
+                //        throw;
+                //}
             }
         }
 
@@ -126,13 +127,10 @@ namespace MinecraftProtocol.IO
             if (_disposed)
                 return;
 
-            if (_receiveBufferSize != _buffer.Length)
-            {
-                _dataPool.Return(_bufferGCHandle);
-                _bufferGCHandle = AllocateByteArray(_receiveBufferSize);
-                _buffer = (byte[])_bufferGCHandle.Target;
-                e.SetBuffer(_buffer);
-            }
+            _bufferGCHandle = AllocateByteArray();
+            _buffer = (byte[])_bufferGCHandle.Target;
+            e.SetBuffer(_buffer);
+
 
             if (!_socket.ReceiveAsync(e))
             {
@@ -155,9 +153,9 @@ namespace MinecraftProtocol.IO
             }
         }
 
-        protected GCHandle AllocateByteArray(int size)
+        private GCHandle AllocateByteArray()
         {
-            return _usePool ? _dataPool.Rent(size) : GCHandle.Alloc(new byte[size]);
+            return _usePool ? _dataPool.Rent() : GCHandle.Alloc(_receiveBufferSize);
         }
 
         ~NetworkListener()

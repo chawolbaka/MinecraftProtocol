@@ -22,14 +22,14 @@ namespace MinecraftProtocol.IO.Pools
 
         public virtual CompatiblePacket Rent()
         {
-            if (!_packets.TryTake(out CompatiblePacket item))
+            if (_packets.TryTake(out CompatiblePacket cp) && !cp._disposed)
             {
-                byte[] empty = null;
-                return new CompatiblePacket(-1, ref empty, -1, -1);
+                return cp;
             }
             else
             {
-                return item;
+                byte[] empty = null;
+                return new CompatiblePacket(-1, ref empty, -1, -1);
             }
         }
 

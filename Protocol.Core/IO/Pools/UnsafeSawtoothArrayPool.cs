@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -15,7 +16,7 @@ namespace MinecraftProtocol.IO.Pools
         private static GCHandleType DefaultType = GCHandleType.Normal;
         private readonly Bucket<T>[] _buckets;
 
-        public UnsafeSawtoothArrayPool(params int[] bucketSize)
+        public UnsafeSawtoothArrayPool(bool preAlloc, params int[] bucketSize)
         {
             if (bucketSize.Length <= 0)
             {
@@ -28,7 +29,7 @@ namespace MinecraftProtocol.IO.Pools
             var buckets = new Bucket<T>[maxBuckets + 1];
             for (int i = 0; i < buckets.Length; i++)
             {
-                buckets[i] = new Bucket<T>(GetMaxSizeForBucket(i), bucketSize[i], poolId);
+                buckets[i] = new Bucket<T>(GetMaxSizeForBucket(i), bucketSize[i], poolId,preAlloc);
             }
             _buckets = buckets;
         }
@@ -125,7 +126,7 @@ namespace MinecraftProtocol.IO.Pools
             return BitOperations.Log2((uint)bufferSize - 1 | 15) - 3;
         }
 
-        private sealed class Bucket<T>
+        internal sealed class Bucket<T> : SafeHandle
         {
             internal readonly int _bufferLength;
             private readonly GCHandle[] _buffers;
@@ -134,15 +135,45 @@ namespace MinecraftProtocol.IO.Pools
             private SpinLock _lock; // do not make this readonly; it's a mutable struct
             private int _index;
 
-            internal Bucket(int bufferLength, int numberOfBuffers, int poolId)
+            internal int Id => GetHashCode();
+
+            internal Bucket(int bufferLength, int numberOfBuffers, int poolId, bool preAlloc) : base(IntPtr.Zero, true)
             {
                 _lock = new SpinLock(Debugger.IsAttached); // only enable thread tracking if debugger is attached; it adds non-trivial overheads to Enter/Exit
                 _buffers = new GCHandle[numberOfBuffers];
                 _bufferLength = bufferLength;
                 _poolId = poolId;
+                if (preAlloc)
+                {
+                    for (int i = 0; i < numberOfBuffers; i++)
+                    {
+                        _buffers[i] = GCHandle.Alloc(new T[bufferLength], DefaultType);
+                    }
+                }
             }
 
-            internal int Id => GetHashCode();
+            public override bool IsInvalid => handle != IntPtr.Zero;
+
+            protected override bool ReleaseHandle()
+            {
+                bool lockTaken = false;
+                try
+                {
+                    _lock.Enter(ref lockTaken);
+                    if (IsInvalid)
+                    {
+                        handle = new IntPtr(-1);
+                        Parallel.ForEach(_buffers, (g) => g.Free());
+                        GC.Collect();
+                    }
+                }
+                finally
+                {
+                    if (lockTaken) _lock.Exit(false);
+                }
+     
+                return true;
+            }
 
             internal GCHandle Rent()
             {
@@ -206,7 +237,7 @@ namespace MinecraftProtocol.IO.Pools
                     _lock.Enter(ref lockTaken);
 
                     returned = _index != 0;
-                    if (returned)
+                    if (!IsInvalid && returned)
                     {
                         _buffers[--_index] = gcHandle;
                     }
@@ -214,6 +245,7 @@ namespace MinecraftProtocol.IO.Pools
                     {
                         gcHandle.Free();
                     }
+
                 }
                 finally
                 {
