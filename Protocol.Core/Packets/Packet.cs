@@ -86,12 +86,12 @@ namespace MinecraftProtocol.Packets
                  */
 
                 //拼接PacketID(VarInt)和PacketData(ByteArray)并塞入ZlibUtils.Compress去压缩
-                GCHandle uncompressedGCHandle = _dataPool.Rent(uncompressLength);
-                byte[] uncompressed = (byte[])uncompressedGCHandle.Target;
+              
+                byte[] uncompressed = _dataPool.Rent(uncompressLength);
 
                 Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(ID, uncompressed),_size);
                 byte[] compressed = ZlibUtils.Compress(uncompressed, 0, uncompressLength);
-                _dataPool.Return(uncompressedGCHandle);
+                _dataPool.Return(uncompressed);
 
                 PackedData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressLength) + compressed.Length) + VarInt.GetLength(uncompressLength) + compressed.Length];
                 //写入第一个VarInt(解压长度+压缩后的长度）

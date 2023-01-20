@@ -49,27 +49,24 @@ namespace MinecraftProtocol.IO
                     newSize = Array.MaxLength;
 
                 _version++;
-                GCHandle newDataGCHandle = _dataPool.Rent(newSize);
-                byte[] newData = (byte[])newDataGCHandle.Target;
+                byte[] newData = _dataPool.Rent(newSize);
                 if (_data != null)
                 {
                     Array.Copy(_data, newData, _size);
                     if (_returnToPool)
-                        _dataPool.Return(_dataGCHandle);
+                        _dataPool.Return(_data);
                 }
                 _returnToPool = true;
-                _dataGCHandle = newDataGCHandle;
                 _data = newData;
             }
         }
         public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(0, _size); }
 
-        //mc大部分都是小包所以使用这种形状的线程池可能更适合？
-        internal static UnsafeSawtoothArrayPool<byte> _dataPool = new UnsafeSawtoothArrayPool<byte>(true,4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
+        //mc大部分都是小包所以使用这种形状的数组池可能更适合？
+        internal static SawtoothArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
         protected const int DEFUALT_CAPACITY = 16;
         protected bool _returnToPool;
 
-        internal protected GCHandle _dataGCHandle;
         internal protected byte[] _data;
         internal protected int _size = 0;
         protected int _version;
@@ -263,8 +260,8 @@ namespace MinecraftProtocol.IO
         {
             if (_size > 0)
             {
-                if (_dataGCHandle != default)
-                    _dataPool.Return(_dataGCHandle);
+                if (_data != default)
+                    _dataPool.Return(_data);
                 _version = 0;
                 _size = 0;
                 _data = null;
@@ -291,9 +288,8 @@ namespace MinecraftProtocol.IO
 
         protected virtual void RerentData(int size)
         {
-            GCHandle old = _dataGCHandle;
-            _dataGCHandle = _dataPool.Rent(size);
-            _data = (byte[])_dataGCHandle.Target;
+            byte[] old = _data;
+            _data = _dataPool.Rent(size);
             _returnToPool = true;
             if (old != default)
                 _dataPool.Return(old);
@@ -344,8 +340,7 @@ namespace MinecraftProtocol.IO
             _disposed = true;
             if (!disposed && _returnToPool && _data is not null)
             {
-                _dataPool.Return(_dataGCHandle);
-                _data = null;
+                _dataPool.Return(_data);
             }
         }
 
