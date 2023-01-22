@@ -131,15 +131,33 @@ namespace MinecraftProtocol.IO
             return result;
         }
 
+
+        public virtual string[] ReadStringArray()
+        {
+            string[] list = new string[ReadVarInt()];
+            for (int i = 0; i < list.Length; i++)
+            {
+                list[i] = ReadString();
+            }
+            return list;
+        }
+
+
         public virtual byte[] ReadAll()
         {
             offset = _data.Length;
             return _data.Span.ToArray();
         }
 
+
         public virtual ReadOnlySpan<byte> AsSpan()
         {
             return _data.Span;
+        }
+
+        public virtual ReadOnlyMemory<byte> AsMemory()
+        {
+            return _data;
         }
 
         public virtual void Reset()

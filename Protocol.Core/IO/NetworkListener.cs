@@ -97,25 +97,8 @@ namespace MinecraftProtocol.IO
             }
             else
             {
-
                 _bufferOffset = 0;
                 ReceiveCompleted(sender, e);
-                //try
-                //{
-                //}
-                //catch (Exception ex)
-                //{
-                //    if (_disposed)
-                //        return;
-                //    if (UnhandledException == null)
-                //        throw;
-
-
-                //    UnhandledExceptionEventArgs args = new UnhandledExceptionEventArgs(ex);
-                //    UnhandledException(this, args);
-                //    if (!args.Handled)
-                //        throw;
-                //}
             }
         }
 
@@ -129,28 +112,35 @@ namespace MinecraftProtocol.IO
 
             _bufferGCHandle = AllocateByteArray();
             _buffer = (byte[])_bufferGCHandle.Target;
-            e.SetBuffer(_buffer);
-
-
-            if (!_socket.ReceiveAsync(e))
+            try
             {
-                //超过128层递归就强制异步结束掉递归
-                if (++_syncCount > 128)
+                e.SetBuffer(_buffer);
+
+                if (!_socket.ReceiveAsync(e))
                 {
-                    _syncCount = 0;
-                    Task task = new Task(() => OnReceiveCompleted(this, e));
-                    task.ConfigureAwait(false);
-                    task.Start();
+                    //超过128层递归就强制异步结束掉递归
+                    if (++_syncCount > 128)
+                    {
+                        _syncCount = 0;
+                        Task task = new Task(() => OnReceiveCompleted(this, e));
+                        task.ConfigureAwait(false);
+                        task.Start();
+                    }
+                    else
+                    {
+                        OnReceiveCompleted(this, e);
+                    }
                 }
                 else
                 {
-                    OnReceiveCompleted(this, e);
+                    _syncCount = 0;
                 }
             }
-            else
+            catch (Exception ex)
             {
-                _syncCount = 0;
+                UnhandledException?.Invoke(this, new UnhandledExceptionEventArgs(ex));
             }
+
         }
 
         private GCHandle AllocateByteArray()

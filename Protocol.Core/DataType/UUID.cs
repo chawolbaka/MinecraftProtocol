@@ -46,7 +46,7 @@ namespace MinecraftProtocol.DataType
         /// <param name="url">api地址</param>
         /// <exception cref="ArgumentNullException"/>
         /// <exception cref="FormatException"/>
-        public static async Task<UUID> GetFromMojangAsync(string playerName, bool useCache = true, string url = "https://api.mojang.com/users/profiles/minecraft/")
+        public static async ValueTask<UUID> GetFromMojangAsync(string playerName, bool useCache = true, string url = "https://api.mojang.com/users/profiles/minecraft/")
         {
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new ArgumentNullException(nameof(playerName));
@@ -65,7 +65,7 @@ namespace MinecraftProtocol.DataType
             if (string.IsNullOrWhiteSpace(id))
                 throw new FormatException("MojangAPI返回了空uuid");
 
-            if (useCache)
+            if (useCache) 
                 Cache.Add(playerName, Parse(id));
             return Parse(id);
 
@@ -102,7 +102,6 @@ namespace MinecraftProtocol.DataType
             bytes[8] = (byte)((bytes[8] & 0x3f) | 0x80); //IETF variant
             return new UUID(bytes);
         }
-
 
         public static UUID Parse(string input)
         {
