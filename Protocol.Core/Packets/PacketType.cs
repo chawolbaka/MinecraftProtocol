@@ -99,6 +99,8 @@ namespace MinecraftProtocol.Packets
             {
                 public static readonly PacketType KeepAlive = new PacketType(nameof(KeepAliveResponsePacket), (ver) => KeepAliveResponsePacket.GetPacketId(ver));
                 public static readonly PacketType ChatMessage = new PacketType(nameof(ClientChatMessagePacket), (ver) => ClientChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType PluginChannel = new PacketType(nameof(ClientPluginChannelPacket), (ver) => ClientPluginChannelPacket.GetPacketId(ver));
+                public static readonly PacketType ClientSettings = new PacketType(nameof(ClientSettingsPacket), (ver) => ClientSettingsPacket.GetPacketId(ver));
             }
         }
     }
