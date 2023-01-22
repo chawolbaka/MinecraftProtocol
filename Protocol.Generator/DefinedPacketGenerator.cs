@@ -111,7 +111,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                     .AppendLine("            Read();")
                     .AppendLine("        }");
 
-                cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.ID, ref packet._data, packet.ProtocolVersion)")
+                cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.ID, ref packet._size, ref packet._data, packet.ProtocolVersion)")
                     .AppendLine("        {")
                     .AppendLine($@"            ID = GetPacketId(packet.ProtocolVersion);")
                     .Append(info.ReadInit)
@@ -123,7 +123,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             {
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet) : this(packet, packet.ProtocolVersion) {{ }}");
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ ID = GetPacketId(protocolVersion); Read(); }}");
-                cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.ID, ref packet._data, packet.ProtocolVersion) {{ ID = GetPacketId(packet.ProtocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.ID, ref packet._size, ref packet._data, packet.ProtocolVersion) {{ ID = GetPacketId(packet.ProtocolVersion); Read(); }}");
 
             }
 

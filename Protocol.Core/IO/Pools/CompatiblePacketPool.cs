@@ -28,8 +28,9 @@ namespace MinecraftProtocol.IO.Pools
             }
             else
             {
+                int size = 0;
                 byte[] empty = null;
-                return new CompatiblePacket(-1, ref empty, -1, -1);
+                return new CompatiblePacket(-1, ref size, ref empty, -1, -1);
             }
         }
 

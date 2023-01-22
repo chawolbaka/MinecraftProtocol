@@ -20,7 +20,7 @@ namespace MinecraftProtocol.Packets
             ProtocolVersion = protocolVersion;
         }
 
-        protected DefinedPacket(int id, ref byte[] data, int protcolVersion) : base(id, ref data)
+        protected DefinedPacket(int id, ref int size, ref byte[] data, int protcolVersion) : base(id, ref size, ref data)
         {
             ProtocolVersion = protcolVersion;
         }

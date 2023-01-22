@@ -15,13 +15,13 @@ namespace MinecraftProtocol.Packets
         public int CompressionThreshold  { get => ThrowIfDisposed(_compressionThreshold); set => _compressionThreshold = ThrowIfDisposed(value); }
         public int ProtocolVersion       { get => ThrowIfDisposed(_protocolVersion); set => _protocolVersion = ThrowIfDisposed(value); }
 
-        internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.ID, ref packet._data)
+        internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.ID, ref packet._size, ref packet._data)
         {
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;
         }
 
-        public CompatiblePacket(int packetId, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref packetData)
+        public CompatiblePacket(int packetId, ref int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref size, ref packetData)
         {
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;

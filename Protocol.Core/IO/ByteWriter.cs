@@ -76,8 +76,15 @@ namespace MinecraftProtocol.IO
         {
             RerentData(capacity > 0 ? capacity : DEFUALT_CAPACITY);
         }
-        public ByteWriter(ref byte[] data)
+
+        /// <summary>
+        /// 初始化一个ByteWriter
+        /// </summary>
+        /// <param name="size">data的有效范围</param>
+        /// <param name="data">该参数会直接赋值给ByteWriter内部的data，不产生复制。</param>
+        public ByteWriter(ref int size, ref byte[] data)
         {
+            _size = size;
             _data = data;
             _returnToPool = false;
         }
