@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace MinecraftProtocol.IO
 {
-    public abstract class NetworkListener : INetworkListener
+    public abstract partial class NetworkListener : INetworkListener
     {
         public int ReceiveBufferSize
         {
@@ -187,39 +187,6 @@ namespace MinecraftProtocol.IO
             if (_disposed)
                 throw new ObjectDisposedException(GetType().FullName);
             action?.Invoke();
-        }
-
-
-        public class ListenEventArgs : EventArgs
-        {
-            public DateTime Time { get; }
-            public bool IsStop { get; }
-
-            public ListenEventArgs(bool isStop)
-            {
-                Time = DateTime.Now;
-                IsStop = isStop;
-            }
-        }
-        public class UnhandledExceptionEventArgs : EventArgs
-        {
-            public Exception Exception { get; }
-
-            /// <summary>
-            /// 异常发生的时间
-            /// </summary>
-            public DateTime Time { get; }
-
-            /// <summary>
-            /// 阻止异常被抛出
-            /// </summary>
-            public bool Handled { get; set; }
-
-            public UnhandledExceptionEventArgs(Exception exception)
-            {
-                Time = DateTime.Now;
-                Exception = exception;
-            }
         }
     }
 }

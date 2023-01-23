@@ -5,9 +5,9 @@ namespace MinecraftProtocol.IO
 {
     public interface INetworkListener : IDisposable
     {
-        event EventHandler<NetworkListener.ListenEventArgs> StartListen;
-        event EventHandler<NetworkListener.ListenEventArgs> StopListen;
-        event EventHandler<NetworkListener.UnhandledExceptionEventArgs> UnhandledException;
+        event EventHandler<ListenEventArgs> StartListen;
+        event EventHandler<ListenEventArgs> StopListen;
+        event EventHandler<UnhandledExceptionEventArgs> UnhandledException;
 
         int ReceiveBufferSize { get; set; }
      

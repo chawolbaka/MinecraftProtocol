@@ -6,7 +6,7 @@ namespace MinecraftProtocol.IO
 {
     public interface IPacketListener : INetworkListener
     {
-        event EventHandler<PacketListener.PacketReceivedEventArgs> PacketReceived;
+        event EventHandler<PacketReceivedEventArgs> PacketReceived;
 
         int CompressionThreshold { get; set; }
         CryptoHandler Crypto { get; }
