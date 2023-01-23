@@ -7,7 +7,7 @@ namespace MinecraftProtocol.IO
     {
         event EventHandler<ListenEventArgs> StartListen;
         event EventHandler<ListenEventArgs> StopListen;
-        event EventHandler<UnhandledExceptionEventArgs> UnhandledException;
+        event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
 
         int ReceiveBufferSize { get; set; }
      

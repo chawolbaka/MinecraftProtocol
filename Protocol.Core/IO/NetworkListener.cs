@@ -19,7 +19,7 @@ namespace MinecraftProtocol.IO
 
         public virtual event EventHandler<ListenEventArgs> StartListen;
         public virtual event EventHandler<ListenEventArgs> StopListen;
-        public virtual event EventHandler<UnhandledExceptionEventArgs> UnhandledException;
+        public virtual event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
 
         protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
 
@@ -87,12 +87,12 @@ namespace MinecraftProtocol.IO
             //检查连接状态
             if (e.SocketError != SocketError.Success)
             {
-                UnhandledException?.Invoke(this, new UnhandledExceptionEventArgs(new SocketException((int)e.SocketError)));
+                UnhandledException?.Invoke(this, new UnhandledIOExceptionEventArgs(new SocketException((int)e.SocketError)));
                 _internalToken.Cancel();
             }
             else if (e.BytesTransferred <= 0 && _socket != null && !NetworkUtils.CheckConnect(_socket))
             {
-                UnhandledException?.Invoke(this, new UnhandledExceptionEventArgs(new SocketException((int)SocketError.ConnectionReset)));
+                UnhandledException?.Invoke(this, new UnhandledIOExceptionEventArgs(new SocketException((int)SocketError.ConnectionReset)));
                 _internalToken.Cancel();
             }
             else
@@ -138,7 +138,7 @@ namespace MinecraftProtocol.IO
             }
             catch (Exception ex)
             {
-                UnhandledException?.Invoke(this, new UnhandledExceptionEventArgs(ex));
+                UnhandledException?.Invoke(this, new UnhandledIOExceptionEventArgs(ex));
             }
 
         }

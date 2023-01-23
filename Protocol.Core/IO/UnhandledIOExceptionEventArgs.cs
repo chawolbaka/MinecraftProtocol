@@ -2,7 +2,7 @@
 
 namespace MinecraftProtocol.IO
 {
-    public class UnhandledExceptionEventArgs : EventArgs
+    public class UnhandledIOExceptionEventArgs : EventArgs
     {
         public Exception Exception { get; }
 
@@ -16,7 +16,7 @@ namespace MinecraftProtocol.IO
         /// </summary>
         public bool Handled { get; set; }
 
-        public UnhandledExceptionEventArgs(Exception exception)
+        public UnhandledIOExceptionEventArgs(Exception exception)
         {
             Time = DateTime.Now;
             Exception = exception;
