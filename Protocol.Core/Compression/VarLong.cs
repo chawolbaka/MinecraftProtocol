@@ -82,20 +82,29 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarLong too big");
         }
-        public static byte[] GetBytes(long value)
+        public static Span<byte> GetSpan(long value)
         {
-            List<byte> bytes = new List<byte>(9);
+            int offset = 0;
+            byte[] bytes = new byte[9];
             ulong Value = (ulong)value;
             do
             {
+                if (offset > 9)
+                    throw new OverflowException("VarLong too big");
+
                 byte temp = (byte)(Value&MaskValue);
                 Value >>= 7;
                 if (Value != 0) temp |= MaskByteSigned;
-                bytes.Add(temp);
-
+                bytes[offset++] = temp;
             } while (Value!=0);
-            return bytes.ToArray();
+            return bytes.AsSpan().Slice(0, offset);
         }
+        public static byte[] GetBytes(long value)
+        {
+            return GetSpan(value).ToArray();
+        }
+
+
         public static int WriteTo(long value, byte[] dest)
         {
             ulong Value = (ulong)value;

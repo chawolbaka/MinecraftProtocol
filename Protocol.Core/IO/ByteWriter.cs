@@ -182,17 +182,17 @@ namespace MinecraftProtocol.IO
         }
         public virtual ByteWriter WriteVarShort(int value)
         {
-            WriteBytes(VarShort.GetBytes(value));
+            WriteBytes(VarShort.GetSpan(value));
             return this;
         }
         public virtual ByteWriter WriteVarInt(int value)
         {
-            WriteBytes(VarInt.GetBytes(value));
+            WriteBytes(VarInt.GetSpan(value));
             return this;
         }
         public virtual ByteWriter WriteVarLong(long value)
         {
-            WriteBytes(VarLong.GetBytes(value));
+            WriteBytes(VarLong.GetSpan(value));
             return this;
         }
         public virtual ByteWriter WriteUUID(UUID value)
@@ -296,10 +296,11 @@ namespace MinecraftProtocol.IO
 
         protected virtual void RerentData(int size)
         {
+            bool returnToPool = _returnToPool;
             byte[] old = _data;
             _data = _dataPool.Rent(size);
             _returnToPool = true;
-            if (old != default)
+            if (returnToPool)
                 _dataPool.Return(old);
         }
 

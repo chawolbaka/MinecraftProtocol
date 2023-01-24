@@ -88,18 +88,29 @@ namespace MinecraftProtocol.Compression
             return ((high & 0xFF) << 15) | low;
         }
 
-        public static byte[] GetBytes(int value)
+        
+
+        public static Span<byte> GetSpan(int value)
         {
-            List<byte> buffer = new List<byte>();
+            byte[] buffer = new byte[3];
+            
             int low = value & 0x7FFF;
             int high = (value & 0x7F8000) >> 15;
             if (high != 0)
                 low |= 0x8000;
-            buffer.Add((byte)(low >> 8));
-            buffer.Add((byte)(low));
+            buffer[0] = (byte)(low >> 8);
+            buffer[1] = (byte)(low);
             if (high != 0)
-                buffer.Add((byte)high);
-            return buffer.ToArray();
+            {
+                buffer[2] = (byte)high;
+                return buffer;
+            }
+            return buffer.AsSpan().Slice(0,2);
+        }
+
+        public static byte[] GetBytes(int value)
+        {
+            return GetSpan(value).ToArray();
         }
 
 

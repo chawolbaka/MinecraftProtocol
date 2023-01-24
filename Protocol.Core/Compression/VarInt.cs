@@ -89,7 +89,8 @@ namespace MinecraftProtocol.Compression
             throw new OverflowException("VarInt too big");
         }
 
-        public static byte[] GetBytes(int value)
+
+        public static Span<byte> GetSpan(int value)
         {
             byte[] bytes = new byte[5];
             byte offset = 0;
@@ -99,7 +100,12 @@ namespace MinecraftProtocol.Compression
                 value = (int)(((uint)value) >> 7);
             }
             bytes[offset++] = (byte)value;
-            return offset == 5 ? bytes : bytes.AsSpan().Slice(0, offset).ToArray();
+            return offset == 5 ? bytes : bytes.AsSpan().Slice(0, offset);
+        }
+
+        public static byte[] GetBytes(int value)
+        {
+            return GetSpan(value).ToArray();
         }
         
 
