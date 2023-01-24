@@ -49,7 +49,8 @@ namespace MinecraftProtocol.IO.Extensions
             }}
         }}
 ");
-                source.AppendLine($@"        /// <summary> 将当前包转换至{ClassName}（不产生复制）</summary>");
+                source.AppendLine($@"        /// <summary> 将当前包转换至<see cref=""{ClassName}""/> </summary>");
+                source.AppendLine($@"        /// <summary> 警告：该方法仅适用于更高性能的去读取数据包而不是写入，如果对转换后的包进行过写入操作，那么就请不要再使用原始包（原因是数据部分会使用相同的引用，但Count是独立的）</summary>");
                 if (pair.Value.ReadPropertyList.Count > 0)
                     source.Append($"        public static {ResultType} As{ClassName}(this {CompatiblePacket} packet, {ReadFormalParameters})\n");
                 else

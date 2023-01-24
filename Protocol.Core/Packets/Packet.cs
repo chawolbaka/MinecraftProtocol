@@ -164,7 +164,7 @@ namespace MinecraftProtocol.Packets
         public virtual ReadOnlyPacket AsReadOnly() => ThrowIfDisposed(new ReadOnlyPacket(this));
 
         /// <summary>
-        /// 从一个CompatiblePacket中取出信息后并使用当前packet的data和id创建一个CompatiblePacket
+        /// 从一个ICompatiblePacket中取出信息后并使用当前packet的data和id创建一个CompatiblePacket
         /// </summary>
         public virtual CompatiblePacket AsCompatible(ICompatiblePacket compatible) => new CompatiblePacket(this, compatible.ProtocolVersion, compatible.CompressionThreshold);
         public virtual CompatiblePacket AsCompatible(int protocolVersion, int compressionThreshold) => new CompatiblePacket(this, protocolVersion, compressionThreshold);
