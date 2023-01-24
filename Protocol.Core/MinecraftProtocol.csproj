@@ -25,7 +25,7 @@
 
     <!--版权配置-->
     <Authors>Chawol</Authors>
-    <Copyright>Copyright (c) 2022 Chawol</Copyright>
+    <Copyright>Copyright (c) 2023 Chawol</Copyright>
 
     <!--xml注释文档生成-->
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
