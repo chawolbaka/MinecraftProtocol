@@ -78,12 +78,21 @@ namespace MinecraftProtocol.IO
             RerentData(capacity > 0 ? capacity : DEFUALT_CAPACITY);
         }
 
+        //这边的ref是因为我比较病态，想减少几次值类型的复制，但仅限内部使用，外部容易引起误会
+        internal ByteWriter(ref int size, ref byte[] data)
+        {
+            _size = size;
+            _data = data;
+            _returnToPool = false;
+        }
+
+
         /// <summary>
         /// 初始化一个ByteWriter
         /// </summary>
         /// <param name="size">data的有效范围</param>
         /// <param name="data">该参数会直接赋值给ByteWriter内部的data，不产生复制。</param>
-        public ByteWriter(ref int size, ref byte[] data)
+        public ByteWriter(int size, ref byte[] data)
         {
             _size = size;
             _data = data;
