@@ -53,13 +53,10 @@ namespace MinecraftProtocol.IO
             }
             else
             {
-                for (; blockOffset < headLength; blockOffset++)
+                for (int i = 0; i < headLength + 1; i++)
                 {
-                    if (blockOffset > dataBlock[blockIndex].Length)
-                    {
-                        blockIndex++;
-                        blockOffset = 0;
-                    }
+                    CheckBounds();
+                    blockOffset++;
                 }
             }
 
@@ -110,6 +107,8 @@ namespace MinecraftProtocol.IO
             Packet.ID = VarInt.Read(ReadByte, out IdOffset);
             Packet.Capacity = bodyLength - IdOffset;
 
+
+            CheckBounds();
             for (int i = blockIndex; i < dataBlockLength - blockIndex; i++)
             {
                 Packet.WriteBytes(_dataBlock[i].Span.Slice(blockOffset));
@@ -119,13 +118,17 @@ namespace MinecraftProtocol.IO
 
             return this;
 
-            byte ReadByte()
+            void CheckBounds()
             {
-                if (blockOffset > _dataBlock[blockIndex].Length)
+                if (blockOffset >= _dataBlock[blockIndex].Length)
                 {
                     blockIndex++;
                     blockOffset = 0;
                 }
+            }
+            byte ReadByte()
+            {
+                CheckBounds();
                 return _dataBlock[blockIndex].Span[blockOffset++];
             }
         }
