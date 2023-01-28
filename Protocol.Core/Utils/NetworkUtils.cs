@@ -28,7 +28,9 @@ namespace MinecraftProtocol.Utils
                         throw new SocketException((int)SocketError.ConnectionReset);
                     }
                     else
+                    {
                         count /= 2;
+                    }
                 }
                 else
                 {
@@ -38,6 +40,33 @@ namespace MinecraftProtocol.Utils
             }
             return buffer;
         }
+
+        public static async Task SendDataAsync(Socket socket, byte[] data)
+        {
+            int send = 0, count = 0;
+
+            while (send < data.Length)
+            {
+                if(count>26)
+                {
+                    if (!CheckConnect(socket))
+                    {
+                        socket.Disconnect(false);
+                        throw new SocketException((int)SocketError.ConnectionReset);
+                    }
+                    else
+                    {
+                        count /= 2;
+                    }
+
+                }
+
+                send += await socket.SendAsync(data, SocketFlags.None);
+                count++;
+            }
+        } 
+
+
         private static Func<Socket, bool> GetField_Socket_isConnected = ExpressionTreeUtils.CreateGetFieldMethodFormInstance<Socket, bool>("_isConnected");
         public static bool CheckConnect(Socket tcp)
         {
