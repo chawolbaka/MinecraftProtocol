@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using MinecraftProtocol.Compression;
+using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
 
 namespace MinecraftProtocol.IO
@@ -29,6 +30,8 @@ namespace MinecraftProtocol.IO
         private GCHandle[] _dataGCHandle;
         private ushort _dataGCHandleBlockLength;
 
+        private static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
+
         //那堆ref是为了减少值类型的内存复制，因为性能不好开始病态起来了
         internal PacketReceivedEventArgs Setup(GCHandle[] dataGCHandleBlock, ref ushort dataGCHandleBlockLength, ref Memory<byte>[] dataBlock, ref ushort dataBlockLength, ref byte headLength, ref int bodyLength, ref int protocolVersion, int compressionThreshold, bool usePool)
         {
@@ -41,15 +44,41 @@ namespace MinecraftProtocol.IO
             _dataGCHandle = dataGCHandleBlock;
             _dataGCHandleBlockLength = dataGCHandleBlockLength;
 
-            int blockIndex = 0, blockOffset = headLength, IdOffset;
-            Packet = PacketListener._CPPool.Rent();
-            Packet.ProtocolVersion = protocolVersion;
-            Packet.CompressionThreshold = compressionThreshold;
+            int blockIndex = 0, blockOffset = 0, IdOffset;
+
+
+            if (dataBlock[0].Length > headLength)
+            {
+                blockOffset = headLength;
+            }
+            else
+            {
+                for (; blockOffset < headLength; blockOffset++)
+                {
+                    if (blockOffset > dataBlock[blockIndex].Length)
+                    {
+                        blockIndex++;
+                        blockOffset = 0;
+                    }
+                }
+            }
+
+
+            if (usePool)
+            {
+                Packet = _CPPool.Rent();
+                Packet.ProtocolVersion = protocolVersion;
+                Packet.CompressionThreshold = compressionThreshold;
+            }
+            else
+            {
+                Packet = new CompatiblePacket(-1, protocolVersion, compressionThreshold);
+            }
 
             //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
             if (compressionThreshold > 0)
             {
-                int size = VarInt.Read(ReadByte, out int SizeOffset);
+                int size = VarInt.Read(ReadByte);
                 if (size != 0)
                 {
                     //组合data块
@@ -80,9 +109,10 @@ namespace MinecraftProtocol.IO
 
             Packet.ID = VarInt.Read(ReadByte, out IdOffset);
             Packet.Capacity = bodyLength - IdOffset;
+
             for (int i = blockIndex; i < dataBlockLength - blockIndex; i++)
             {
-                Packet.WriteBytes(_dataBlock[blockIndex].Span.Slice(blockOffset));
+                Packet.WriteBytes(_dataBlock[i].Span.Slice(blockOffset));
                 if (blockOffset != 0)
                     blockOffset = 0;
             }
@@ -120,7 +150,7 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    PacketListener._CPPool.Return(Packet);
+                    _CPPool.Return(Packet);
                     for (int i = 0; i < _dataGCHandleBlockLength; i++)
                     {
                         PacketListener._dataPool.Return(_dataGCHandle[i]);

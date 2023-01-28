@@ -34,7 +34,7 @@ namespace MinecraftProtocol.IO
 
         public event EventHandler<PacketReceivedEventArgs> PacketReceived;
 
-        internal static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
+        
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
         internal static ArrayPool<GCHandle> _gcHandleBlockPool = new SawtoothArrayPool<GCHandle>(1024 * 8, 512);
@@ -50,8 +50,6 @@ namespace MinecraftProtocol.IO
         private byte _packetLengthOffset;
         private int _packetDataOffset;
 
-        private GCHandle _packetDataGCHandle;
-        private byte[] _packetData;
         private ReadState _state;
         private enum ReadState
         {
@@ -232,7 +230,6 @@ namespace MinecraftProtocol.IO
             _state = ReadState.PacketLength;
 
             _packetLengthOffset = 0;
-            _packetData = null;
             if (_usePool)
                 ResetBlock();
         }
@@ -247,15 +244,12 @@ namespace MinecraftProtocol.IO
 
             try
             {
-                if (_usePool && _packetData is not null)
-                    _dataPool.Return(_packetDataGCHandle);
                 if (_usePool && _buffer is not null)
                     _dataPool.Return(_bufferGCHandle);
             }
             catch (ArgumentException) { }
             if (!disposed && disposing)
             {
-                _packetData = null;
                 _buffer = null;
                 _socket = null;
                 _crypto = null;

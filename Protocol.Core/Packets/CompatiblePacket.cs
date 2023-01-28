@@ -39,6 +39,19 @@ namespace MinecraftProtocol.Packets
             _compressionThreshold = compressionThreshold;
         }
 
+
+        public CompatiblePacket(int packetId, int protocolVersion, int compressionThreshold) : base(packetId)
+        {
+            _protocolVersion = protocolVersion;
+            _compressionThreshold = compressionThreshold;
+        }
+
+        public CompatiblePacket(int packetId, int capacity, int protocolVersion, int compressionThreshold) : base(packetId, capacity)
+        {
+            _protocolVersion = protocolVersion;
+            _compressionThreshold = compressionThreshold;
+        }
+
         public override byte[] Pack()
         {
             return base.Pack(CompressionThreshold);
