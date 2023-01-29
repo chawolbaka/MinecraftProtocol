@@ -1,13 +1,13 @@
 ﻿using System;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace MinecraftProtocol.DataType.Forge
 {
     public class ModInfo : IEquatable<ModInfo>
     {
-        [JsonProperty(PropertyName = "modid")]
+        [JsonPropertyName("modid")]
         public readonly string Name;
-        [JsonProperty(PropertyName = "version")]
+        [JsonPropertyName("version")]
         public readonly string Version;
 
         

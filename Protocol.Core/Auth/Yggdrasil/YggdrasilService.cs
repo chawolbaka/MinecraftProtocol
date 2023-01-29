@@ -2,8 +2,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Text;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json.Nodes;
 
 namespace MinecraftProtocol.Auth.Yggdrasil
 {
@@ -28,12 +27,12 @@ namespace MinecraftProtocol.Auth.Yggdrasil
         public static string GetAuthServerStatus()
         {
             HttpClient hc = new HttpClient();
-            return JObject.Parse(hc.GetStringAsync(API_AUTH_SERVER_STATUS).Result)["Status"].ToString();
+            return JsonNode.Parse(hc.GetStringAsync(API_AUTH_SERVER_STATUS).Result)["Status"].GetValue<string>();
         }
         public static string GetSessionServerStatus()
         {
             HttpClient hc = new HttpClient();
-            return JObject.Parse(hc.GetStringAsync(API_SESSION_SERVER_STATUS).Result)["Status"].ToString();
+            return JsonNode.Parse(hc.GetStringAsync(API_SESSION_SERVER_STATUS).Result)["Status"].GetValue<string>();
         }
 
         /// <summary>使用邮箱和密码进行身份验证，如果成功会分配一个新的令牌。</summary>
@@ -51,18 +50,21 @@ namespace MinecraftProtocol.Auth.Yggdrasil
             if (string.IsNullOrWhiteSpace(password))
                 throw new ArgumentNullException(nameof(password));
 
-            JObject json = new JObject(
-                new JProperty("agent",
-                new JObject(
-                    new JProperty("name", "Minecraft"),
-                    new JProperty("version", 1))),
-                new JProperty("username", email),
-                new JProperty("password", password));
+            JsonObject json = new JsonObject
+            {
+                ["agent"] = new JsonObject
+                {
+                    ["name"] = "Minecraft",
+                    ["version"] = 1
+                },
+                ["username"] = email,
+                ["password"] = password
+            };
 
             if (!string.IsNullOrEmpty(clientToken))
-                json.Add(new JProperty("clientToken", clientToken));
+                json.Add("clientToken", clientToken);
 
-            var PostResponse = PostJson(API_AUTHENTICATE, json.ToString(Formatting.Indented));
+            var PostResponse = PostJson(API_AUTHENTICATE, json.ToJsonString());
             return GetTokenFormPostResponse(PostResponse.Content, PostResponse.Code);
         }
         /// <summary>吊销原令牌，并颁发一个新的令牌。</summary>
@@ -77,15 +79,15 @@ namespace MinecraftProtocol.Auth.Yggdrasil
             else if (string.IsNullOrWhiteSpace(token.AccessToken))
                 throw new ArgumentNullException(nameof(token.AccessToken));
 
-            JObject json = new JObject(new JProperty("accessToken", token.AccessToken));
+            JsonObject json = new JsonObject { ["accessToken"] = token.AccessToken };
+
             if (!string.IsNullOrEmpty(token.ClientToken))
-                json.Add(new JProperty("clientToken", token.ClientToken));
+                json.Add("clientToken", token.ClientToken);
 
             if (selectedProfile)
-                json.Add(new JProperty("selectedProfile", new JObject(
-                            new JProperty("id", token.PlayerUUID),
-                            new JProperty("name", token.PlayerName))));
-            var PostResponse = PostJson(API_REFRESH,json.ToString(Formatting.Indented));
+                json.Add("selectedProfile", new JsonObject { ["id"] = token.PlayerUUID, ["name"] = token.PlayerName });
+
+            var PostResponse = PostJson(API_REFRESH, json.ToJsonString());
             return GetTokenFormPostResponse(PostResponse.Content, PostResponse.Code);
         }
         /// <summary>查询令牌是否处于可用状态</summary>
@@ -97,10 +99,13 @@ namespace MinecraftProtocol.Auth.Yggdrasil
             else if (string.IsNullOrWhiteSpace(token.AccessToken))
                 throw new ArgumentNullException(nameof(token.AccessToken));
 
-            JObject json = new JObject(new JProperty("accessToken", token.AccessToken));
+
+            JsonObject json = new JsonObject { ["accessToken"] = token.AccessToken };
+
             if (!string.IsNullOrEmpty(token.ClientToken))
-                json.Add(new JProperty("clientToken", token.ClientToken));
-            var PostResponse = PostJson(API_VALIDATE, json.ToString(Formatting.Indented));
+                json.Add("clientToken", token.ClientToken);
+
+            var PostResponse = PostJson(API_VALIDATE, json.ToJsonString());
             return PostResponse.Code == HttpStatusCode.NoContent;
         }
         /// <summary>吊销令牌</summary>
@@ -112,11 +117,13 @@ namespace MinecraftProtocol.Auth.Yggdrasil
             else if (string.IsNullOrWhiteSpace(token.AccessToken))
                 throw new ArgumentNullException(nameof(token.AccessToken));
 
-            JObject json = new JObject(new JProperty("accessToken", token.AccessToken));
-            if (!string.IsNullOrEmpty(token.ClientToken))
-                json.Add(new JProperty("clientToken", token.ClientToken));
 
-            var PostResponse = PostJson(API_INVALIDATE, json.ToString(Formatting.Indented));
+            JsonObject json = new JsonObject { ["accessToken"] = token.AccessToken };
+
+            if (!string.IsNullOrEmpty(token.ClientToken))
+                json.Add("clientToken", token.ClientToken);
+
+            var PostResponse = PostJson(API_INVALIDATE, json.ToJsonString());
             return PostResponse.Code == HttpStatusCode.NoContent;
         }
         /// <summary>吊销用户的所有令牌</summary>
@@ -130,12 +137,14 @@ namespace MinecraftProtocol.Auth.Yggdrasil
                 throw new ArgumentNullException(nameof(email));
             if (string.IsNullOrWhiteSpace(password))
                 throw new ArgumentNullException(nameof(password));
+            
+            JsonObject json = new JsonObject
+            {
+                ["username"] = email,
+                ["password"] = password
+            };
 
-            JObject json = new JObject(
-                new JProperty("username", email),
-                new JProperty("password", password));
-
-            var PostResponse = PostJson(API_SIGNOUT, json.ToString(Formatting.Indented));
+            var PostResponse = PostJson(API_SIGNOUT, json.ToJsonString());
             message = PostResponse.Content;
             return PostResponse.Code == HttpStatusCode.NoContent;
         }
@@ -156,11 +165,14 @@ namespace MinecraftProtocol.Auth.Yggdrasil
             if (string.IsNullOrWhiteSpace(serverHash))
                 throw new ArgumentNullException(nameof(serverHash));
 
-            JObject json = new JObject(
-                        new JProperty("accessToken", accessToken),
-                        new JProperty("selectedProfile", playerUUID),
-                        new JProperty("serverId", serverHash));     
-            var PostResponse = PostJson(API_JOIN, json.ToString(Formatting.Indented));
+            JsonObject json = new JsonObject
+            {
+                ["accessToken"] = accessToken,
+                ["selectedProfile"] = playerUUID,
+                ["serverId"] = serverHash
+            };
+
+            var PostResponse = PostJson(API_JOIN, json.ToJsonString());
             if(PostResponse.Code==HttpStatusCode.Forbidden&&PostResponse.Content.Contains("Invalid token"))
                 throw new YggdrasilException("Invalid token.", YggdrasilError.InvalidToken, PostResponse.Code, PostResponse.Content);
             else if(PostResponse.Code == HttpStatusCode.ServiceUnavailable)
@@ -224,18 +236,19 @@ namespace MinecraftProtocol.Auth.Yggdrasil
         {
             if (code == HttpStatusCode.OK)
             {
-                JObject ResponseJson = JObject.Parse(json);
+                JsonNode ResponseJson = JsonNode.Parse(json);
 
                 if (ResponseJson["accessToken"] != null &&
                     ResponseJson["clientToken"] != null &&
+                    ResponseJson["selectedProfile"] != null &&
                     ResponseJson["selectedProfile"]["id"] != null &&
                     ResponseJson["selectedProfile"]["name"] != null)
                 {
                     SessionToken token = new SessionToken(
-                        accessToken: ResponseJson["accessToken"].ToString(),
-                        clientToken: ResponseJson["clientToken"].ToString(),
-                        playerUUID: ResponseJson["selectedProfile"]["id"].ToString(),
-                        playerName: ResponseJson["selectedProfile"]["name"].ToString());
+                        accessToken: ResponseJson["accessToken"].GetValue<string>(),
+                        clientToken: ResponseJson["clientToken"].GetValue<string>(),
+                        playerUUID: ResponseJson["selectedProfile"]["id"].GetValue<string>(),
+                        playerName: ResponseJson["selectedProfile"]["name"].GetValue<string>());
                     return token;
                 }
                 else

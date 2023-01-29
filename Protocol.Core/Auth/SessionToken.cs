@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace MinecraftProtocol.Auth
 {
@@ -25,8 +25,8 @@ namespace MinecraftProtocol.Auth
             this.PlayerUUID = playerUUID;
             this.ClientToken = clientToken;
         }
-        public override string ToString() => ToString(Formatting.Indented);
-        public string ToString(Formatting formatting) => JsonConvert.SerializeObject(this, formatting);
+        public override string ToString() => ToString(false);
+        public string ToString(bool writeIndented) => JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = writeIndented });
         public override bool Equals(object obj) => obj is SessionToken se ? se.Equals(this) : false;
         public static bool operator ==(SessionToken left, SessionToken right)
         {

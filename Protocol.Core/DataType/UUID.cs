@@ -2,9 +2,9 @@
 using System.Text;
 using System.Security.Cryptography;
 using System.Net.Http;
-using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Text.Json.Nodes;
 
 namespace MinecraftProtocol.DataType
 {
@@ -60,7 +60,7 @@ namespace MinecraftProtocol.DataType
             if (string.IsNullOrWhiteSpace(json))
                 throw new FormatException("MojangAPI未响应任何有效数据");
 
-            string id = JObject.Parse(json)["id"].ToString();
+            string id = JsonNode.Parse(json)["id"].GetValue<string>();
 
             if (string.IsNullOrWhiteSpace(id))
                 throw new FormatException("MojangAPI返回了空uuid");
