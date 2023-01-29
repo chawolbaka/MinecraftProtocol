@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace MinecraftProtocol.DataType.Chat
+namespace MinecraftProtocol.Chat
 {
     public struct ChatColor : IEquatable<ChatColor>
     {
@@ -16,42 +16,42 @@ namespace MinecraftProtocol.DataType.Chat
         {
             if (code > 0xf)
                 throw new ArgumentOutOfRangeException(nameof(code));
-            this.Code = code;
+            Code = code;
 
         }
 
         /// <summary>黑色</summary>
-        public static readonly ChatColor Black           = new ChatColor(0x0);
+        public static readonly ChatColor Black = new ChatColor(0x0);
         /// <summary>深蓝色</summary>
-        public static readonly ChatColor DarkBlue        = new ChatColor(0x1);
+        public static readonly ChatColor DarkBlue = new ChatColor(0x1);
         /// <summary>深绿色</summary>
-        public static readonly ChatColor DarkGreen       = new ChatColor(0x2);
+        public static readonly ChatColor DarkGreen = new ChatColor(0x2);
         /// <summary>湖蓝色</summary>
-        public static readonly ChatColor DarkAqua        = new ChatColor(0x3);
+        public static readonly ChatColor DarkAqua = new ChatColor(0x3);
         /// <summary>深红色</summary>
-        public static readonly ChatColor DarkRed         = new ChatColor(0x4);
+        public static readonly ChatColor DarkRed = new ChatColor(0x4);
         /// <summary>紫色</summary>
-        public static readonly ChatColor DarkPurple      = new ChatColor(0x5);
+        public static readonly ChatColor DarkPurple = new ChatColor(0x5);
         /// <summary>金色</summary>
-        public static readonly ChatColor Gold            = new ChatColor(0x6);
+        public static readonly ChatColor Gold = new ChatColor(0x6);
         /// <summary>灰色</summary>
-        public static readonly ChatColor Gray            = new ChatColor(0x7);
+        public static readonly ChatColor Gray = new ChatColor(0x7);
         /// <summary>深绿色</summary>
-        public static readonly ChatColor DarkGray        = new ChatColor(0x8);
+        public static readonly ChatColor DarkGray = new ChatColor(0x8);
         /// <summary>蓝色</summary>
-        public static readonly ChatColor Blue            = new ChatColor(0x9);
+        public static readonly ChatColor Blue = new ChatColor(0x9);
         /// <summary>绿色</summary>
-        public static readonly ChatColor Green           = new ChatColor(0xa);
+        public static readonly ChatColor Green = new ChatColor(0xa);
         /// <summary>天蓝色</summary>
-        public static readonly ChatColor Aqua            = new ChatColor(0xb);
+        public static readonly ChatColor Aqua = new ChatColor(0xb);
         /// <summary>红色</summary>
-        public static readonly ChatColor Red             = new ChatColor(0xc);
+        public static readonly ChatColor Red = new ChatColor(0xc);
         /// <summary>粉红色</summary>
-        public static readonly ChatColor LightPurple     = new ChatColor(0xd);
+        public static readonly ChatColor LightPurple = new ChatColor(0xd);
         /// <summary>黄色</summary>
-        public static readonly ChatColor Yellow          = new ChatColor(0xe);
+        public static readonly ChatColor Yellow = new ChatColor(0xe);
         /// <summary>白色</summary>
-        public static readonly ChatColor White           = new ChatColor(0Xf);
+        public static readonly ChatColor White = new ChatColor(0Xf);
 
 
         public override bool Equals(object obj) => obj is ChatColor color && Equals(color);

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace MinecraftProtocol.DataType.Chat
+namespace MinecraftProtocol.Chat
 {
     public interface ITranslation
     {

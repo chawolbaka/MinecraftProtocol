@@ -1,16 +1,11 @@
 ﻿using System;
-using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Concurrent;
-using MinecraftProtocol.Compression;
-using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
-using MinecraftProtocol.Crypto;
 
 namespace MinecraftProtocol.Client
 {

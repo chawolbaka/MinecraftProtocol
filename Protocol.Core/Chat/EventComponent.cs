@@ -1,14 +1,13 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+﻿using System.Text.Json.Serialization;
 
-namespace MinecraftProtocol.DataType.Chat
+namespace MinecraftProtocol.Chat
 {
     public class EventComponent<T>
     {
-        [JsonProperty("action")]
+        [JsonPropertyName("action")]
         public EventAction Action;
 
-        [JsonProperty("value")]
+        [JsonPropertyName("value")]
         public T Value;
 
         public EventComponent() { }
@@ -18,7 +17,7 @@ namespace MinecraftProtocol.DataType.Chat
             Value = value;
         }
     }
-    [JsonConverter(typeof(StringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum EventAction
     {
         /// <summary>

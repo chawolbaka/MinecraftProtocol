@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Text.RegularExpressions;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Packets.Client;
@@ -11,7 +8,8 @@ using MinecraftProtocol.Packets.Server;
 using System.Net.Sockets;
 using System.Diagnostics;
 using MinecraftProtocol.IO.Extensions;
-using MinecraftProtocol.DataType.Chat;
+using MinecraftProtocol.Chat;
+using System.Text.Json;
 
 namespace MinecraftProtocol.Utils
 {
@@ -203,14 +201,14 @@ namespace MinecraftProtocol.Utils
             if (string.IsNullOrWhiteSpace(json))
                 throw new ArgumentNullException(nameof(json));
 
-            PingReply PingInfo = JsonConvert.DeserializeObject<PingReply>(json);
+            PingReply PingInfo = JsonSerializer.Deserialize<PingReply>(json, jsonSerializerOptions);
             PingInfo.Json = json;
-
-            if (JObject.Parse(json).ContainsKey("description"))
-                PingInfo.Motd = ChatMessage.Deserialize(JObject.Parse(json)["description"].ToString()); 
             return PingInfo;
             
         }
+        private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions { Converters = { new ChatComponentConverter() } };
+
+
         private TimeSpan? GetTime(Socket socket)
         {
             if (socket == null)

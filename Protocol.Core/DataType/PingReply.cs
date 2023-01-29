@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Collections.Generic;
-using Newtonsoft.Json;
 using MinecraftProtocol.DataType.Forge;
-using MinecraftProtocol.DataType.Chat;
+using MinecraftProtocol.Chat;
 
 namespace MinecraftProtocol.DataType
 {
@@ -11,22 +11,19 @@ namespace MinecraftProtocol.DataType
     //这个类直接抄了https://gist.github.com/csh/2480d14fbbb33b4bbae3里面的(我来写代码啦(C/V).jpg)
     public class PingReply
     {
-        [JsonProperty(PropertyName = "version", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("version"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public VersionPayload Version { get; set; }
 
-        [JsonProperty(PropertyName = "players", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("players"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public PlayersPayload Player { get; set; }
 
-        [JsonProperty(PropertyName = "description", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        internal ChatMessage SerializeMotd => Motd; //这个因为类型不确定，没办法直接被反序列化，通过这样的操作可以仅允许他被序列化
+        [JsonPropertyName("description"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault), JsonConverter(typeof(ChatComponentConverter))]
+        public ChatComponent Motd { get; set; }
 
-        [JsonIgnore]
-        public ChatMessage Motd { get; set; }
-
-        [JsonProperty(PropertyName = "modinfo", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("modinfo"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public ForgePayLoad Forge { get; set; }
 
-        [JsonProperty(PropertyName = "favicon", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("favicon"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Icon { get; set; }
 
         [JsonIgnore]
@@ -37,33 +34,33 @@ namespace MinecraftProtocol.DataType
 
         public class ForgePayLoad
         {
-            [JsonProperty(PropertyName = "type")]
+            [JsonPropertyName("type")]
             public string Type { get; set; }
 
-            [JsonProperty(PropertyName = "modList")]
+            [JsonPropertyName("modList")]
             public List<ModInfo> ModList { get; set; }
 
         }
         public class VersionPayload
         {
-            [JsonProperty(PropertyName = "protocol")]
+            [JsonPropertyName("protocol")]
             public int Protocol { get; set; }
 
-            [JsonProperty(PropertyName = "name")]
+            [JsonPropertyName("name")]
             public string Name { get; set; }
         }
         public class PlayersPayload
         {
-            [JsonProperty(PropertyName = "max")]
+            [JsonPropertyName("max")]
             public int Max { get; set; }
 
-            [JsonProperty(PropertyName = "online")]
+            [JsonPropertyName("online")]
             public int Online { get; set; }
 
             /// <summary>
             /// 玩家列表的样品,最大数量是12(随机12个)
             /// </summary>
-            [JsonProperty(PropertyName = "sample")]
+            [JsonPropertyName("sample")]
             public List<PlayerSample> Samples { get; set; }
         }
 
@@ -79,10 +76,10 @@ namespace MinecraftProtocol.DataType
         }
         public class PlayerSample
         {
-            [JsonProperty(PropertyName = "name")]
+            [JsonPropertyName("name")]
             public string Name { get; set; }
 
-            [JsonProperty(PropertyName = "id")]
+            [JsonPropertyName("id")]
             public string Id { get; set; }
         }
 

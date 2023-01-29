@@ -1,20 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
-namespace MinecraftProtocol.DataType.Chat
+namespace MinecraftProtocol.Chat
 {
-    public class SimpleTranslateComponent : ITranslation ,IEquatable<SimpleTranslateComponent>
+    public class SimpleTranslateComponent : ITranslation, IEquatable<SimpleTranslateComponent>
     {
-        [JsonProperty("translate", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        [JsonPropertyName("translate"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
         public string Translate;
 
         public SimpleTranslateComponent(string translate)
         {
-            this.Translate = translate;
+            Translate = translate;
         }
 
-        public override string ToString() => this.Translate;
+        public override string ToString() => Translate;
         public string ToString(Dictionary<string, string> lang) => lang.ContainsKey(Translate) ? lang[Translate] : Translate;
 
         public static bool operator ==(SimpleTranslateComponent left, SimpleTranslateComponent right) => EqualityComparer<SimpleTranslateComponent>.Default.Equals(left, right);

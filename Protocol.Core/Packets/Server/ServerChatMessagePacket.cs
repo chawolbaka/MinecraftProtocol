@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.DataType;
+using MinecraftProtocol.Chat;
 
 namespace MinecraftProtocol.Packets.Server
 {
@@ -11,8 +11,8 @@ namespace MinecraftProtocol.Packets.Server
     /// </summary>
     public partial class ServerChatMessagePacket : DefinedPacket
     {
-        public ChatMessage Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
-        internal ChatMessage _message;
+        public ChatComponent Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatComponent.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
+        internal ChatComponent _message;
 
         [PacketProperty]
         public string _json;

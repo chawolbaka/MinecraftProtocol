@@ -1,6 +1,6 @@
 ﻿using System;
-using MinecraftProtocol.DataType.Chat;
 using MinecraftProtocol.Compatible;
+using MinecraftProtocol.Chat;
 
 namespace MinecraftProtocol.Packets.Server
 {
@@ -12,9 +12,9 @@ namespace MinecraftProtocol.Packets.Server
         [PacketProperty]
         internal string _json;
 
-        public virtual ChatMessage Reason => !string.IsNullOrWhiteSpace(_json) ? ChatMessage.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
+        public virtual ChatComponent Reason => !string.IsNullOrWhiteSpace(_json) ? ChatComponent.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
 
-        public DisconnectLoginPacket(ChatMessage message, int protocolVersion) : this(message.Serialize(), protocolVersion)
+        public DisconnectLoginPacket(ChatComponent message, int protocolVersion) : this(message.Serialize(), protocolVersion)
         {
             if (message is null)
                 throw new ArgumentNullException(nameof(message));

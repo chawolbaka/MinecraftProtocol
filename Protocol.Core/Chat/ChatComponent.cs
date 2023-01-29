@@ -1,115 +1,102 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
-namespace MinecraftProtocol.DataType.Chat
+namespace MinecraftProtocol.Chat
 {
     /*
      * (つ∀ ⊂ )感谢这个让我看懂了大概的结构(以前试着写过一次,看着wiki.vg上面的看的一脸懵逼完全脑补不出来Chat的结构)
-     * https://github.com/Naamloos/Obsidian/tree/c74ecbc33a4c9aaa714d1021eb7d930b45e78d40/Obsidian/Chat
-     */
-    public class ChatMessage : ITranslation
+    * https://github.com/Naamloos/Obsidian/tree/c74ecbc33a4c9aaa714d1021eb7d930b45e78d40/Obsidian/Chat
+    */
+    [JsonConverter(typeof(ChatComponentConverter))]
+    public class ChatComponent: ITranslation
     {
-
-        [JsonIgnore]
         public bool HasColorCode => !string.IsNullOrEmpty(Color);
-        [JsonIgnore]
+        
         public bool HasFormatCode => Bold || Italic || Underline || Strikethrough || Obfuscated;
-        [JsonIgnore]
-        public bool IsSimpleText => !HasColorCode&&!HasFormatCode && Extra == null && Translate == null && TranslateArguments == null && HoverEvent == null && ClickEvent == null && Insertion == null;
+     
+        public bool IsSimpleText => !HasColorCode && !HasFormatCode && Extra == null && Translate == null && TranslateArguments == null && HoverEvent == null && ClickEvent == null && Insertion == null;
+
 
         /// <summary>粗体</summary>
-        [JsonProperty("bold", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool Bold;
 
         /// <summary>斜体</summary>
-        [JsonProperty("italic", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool Italic;
 
         /// <summary>下划线</summary>
-        [JsonProperty("underlined", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool Underline;
 
         /// <summary>删除线</summary>
-        [JsonProperty("strikethrough", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool Strikethrough;
 
         /// <summary>随机</summary>
-        [JsonProperty("obfuscated", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool Obfuscated;
 
-        /// <summary>颜色</summary>
-        [JsonProperty("color", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public string Color;
-
-        [JsonProperty("insertion", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public string Insertion;
-
-        [JsonProperty("translate", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public string Translate;
-
-        [JsonProperty("with", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public List<object> TranslateArguments;
-
-        [JsonProperty("clickEvent", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public EventComponent<string> ClickEvent;
-
-        [JsonProperty("hoverEvent", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public EventComponent<ChatMessage> HoverEvent;
-
-        [JsonProperty("text", DefaultValueHandling = DefaultValueHandling.Ignore)]
+        /// <summary>文本</summary>
         public string Text;
 
-        [JsonProperty("extra", DefaultValueHandling = DefaultValueHandling.Ignore)]
-        public List<ChatMessage> Extra;
+        /// <summary>颜色</summary>
+        public string Color;
 
+        public string Insertion;
 
-        public ChatMessage() { }
-        public ChatMessage(string text) { this.Text = text; }
-        public ChatMessage(string text, ChatColor color) : this(text) { this.Color = color.ToString(); }
-        public ChatMessage(string text, ChatColor color, ChatFormat format) : this(text, format) { this.Color = color.ToString(); }
-        public ChatMessage(string text, ChatFormat format) : this(text)
+        public string Translate;
+
+        public List<object> TranslateArguments;
+
+        public EventComponent<ChatComponent> ClickEvent;
+
+        public EventComponent<ChatComponent> HoverEvent;
+
+        public List<ChatComponent> Extra;
+
+        public ChatComponent() { }
+        public ChatComponent(string text) { Text = text; }
+        public ChatComponent(string text, ChatColor color) : this(text) { Color = color.ToString(); }
+        public ChatComponent(string text, ChatColor color, ChatFormat format) : this(text, format) { Color = color.ToString(); }
+        public ChatComponent(string text, ChatFormat format) : this(text)
         {
             if (text.Length <= 0)
                 throw new ArgumentOutOfRangeException(nameof(text), "使用样式代码的情况下必须要有文字.");
 
             if (format.HasFlag(ChatFormat.Bold))
-                this.Bold = true;
+                Bold = true;
             if (format.HasFlag(ChatFormat.Italic))
-                this.Italic = true;
+                Italic = true;
             if (format.HasFlag(ChatFormat.Underline))
-                this.Underline = true;
+                Underline = true;
             if (format.HasFlag(ChatFormat.Strikethrough))
-                this.Strikethrough = true;
+                Strikethrough = true;
             if (format.HasFlag(ChatFormat.Obfuscated))
-                this.Obfuscated = true;
+                Obfuscated = true;
 
         }
-        public ChatMessage(ReadOnlySpan<char> text) : this(text.ToString()) { }
-        public ChatMessage(ReadOnlySpan<char> text, ChatColor color) : this(text.ToString(), color) { }
-        public ChatMessage(ReadOnlySpan<char> text, ChatColor color, ChatFormat format) : this(text.ToString(), color, format) { }
-        public ChatMessage(ReadOnlySpan<char> text, ChatFormat format) : this(text.ToString(), format) { }
+        public ChatComponent(ReadOnlySpan<char> text) : this(text.ToString()) { }
+        public ChatComponent(ReadOnlySpan<char> text, ChatColor color) : this(text.ToString(), color) { }
+        public ChatComponent(ReadOnlySpan<char> text, ChatColor color, ChatFormat format) : this(text.ToString(), color, format) { }
+        public ChatComponent(ReadOnlySpan<char> text, ChatFormat format) : this(text.ToString(), format) { }
 
 
         /// <summary>
-        /// 把含有样式代码的聊天信息转换为<c>ChatMessage</c>
+        /// 把含有样式代码的聊天信息转换为<see cref="ChatComponent"/>
         /// </summary>
         /// <param name="message">含有样式代码的聊天信息(不包含应该也能用)</param>
         /// <param name="sectionSign">分节符号</param>
         /// <param name="compressExtra">清除那些看不见的空格</param>
-        public static ChatMessage Parse(string message, char sectionSign = '§', bool compressExtra = true)
+        public static ChatComponent Parse(string message, char sectionSign = '§', bool compressExtra = true)
         {
             if (string.IsNullOrEmpty(message))
                 throw new ArgumentNullException(nameof(message));
 
 
             if (message[0] != sectionSign && message.Length < 3)
-                return new ChatMessage(message);
+                return new ChatComponent(message);
 
-            ChatMessage result = new ChatMessage("");//防止空json,好像MC至少需要有个Text组件
-            ChatMessage ChatComponet = new ChatMessage();
+            ChatComponent result = new ChatComponent("");//防止空json,好像MC至少需要有个Text组件
+            ChatComponent ChatComponet = new ChatComponent();
             StringBuilder sb = new StringBuilder();
             bool LastIsFormatCode = false;//用于样式代码的叠加，变量名乱写的。
 
@@ -132,12 +119,12 @@ namespace MinecraftProtocol.DataType.Chat
                          * Extra[0] = &nxxxx
                          * Extra[1] = &exxxx
                          */
-                        if ((!string.IsNullOrWhiteSpace(sb.ToString()) && !(ChatComponet.HasColorCode || ChatComponet.HasFormatCode)) ||
+                        if (!string.IsNullOrWhiteSpace(sb.ToString()) && !(ChatComponet.HasColorCode || ChatComponet.HasFormatCode) ||
                             !LastIsFormatCode && sb.Length > 0)
                         {
                             ChatComponet.Text = sb.ToString();
                             result.AddExtra(ChatComponet); sb.Clear();
-                            ChatComponet = new ChatMessage();
+                            ChatComponet = new ChatComponent();
                             LastIsFormatCode = true;
                         }
                         ChatComponet.SetFormat(message[++i]);
@@ -153,7 +140,7 @@ namespace MinecraftProtocol.DataType.Chat
                     LastIsFormatCode = false;
                 }
             }
-            if ((sb.Length > 0 && ChatComponet.HasFormatCode) || !string.IsNullOrWhiteSpace(sb.ToString()))
+            if (sb.Length > 0 && ChatComponet.HasFormatCode || !string.IsNullOrWhiteSpace(sb.ToString()))
             {
                 ChatComponet.Text = sb.ToString();
                 result.AddExtra(ChatComponet);
@@ -164,20 +151,6 @@ namespace MinecraftProtocol.DataType.Chat
         }
 
         /// <summary>
-        /// 重置样式和颜色(不会处理Extra和With里面的)
-        /// </summary>
-        public void ResetFormat()
-        {
-            this.Bold = false;
-            this.Italic = false;
-            this.Underline = false;
-            this.Strikethrough = false;
-            this.Obfuscated = false;
-            this.Color = null;
-        }
-
-
-        /// <summary>
         /// 清理Extra里面看不见的空格(尾部的那种)
         /// </summary>
         public void CompressExtra()
@@ -186,172 +159,88 @@ namespace MinecraftProtocol.DataType.Chat
                 return;
 
             //清理纯空格又没指定样式的组件
-            for (int i = this.Extra.Count - 1; i >= 0; i--)
+            for (int i = Extra.Count - 1; i >= 0; i--)
             {
-                if (!this.Extra[i].HasFormatCode && string.IsNullOrWhiteSpace(this.Extra[i].Text))
-                    this.Extra.RemoveAt(i);
+                if (!Extra[i].HasFormatCode && string.IsNullOrWhiteSpace(Extra[i].Text))
+                    Extra.RemoveAt(i);
                 else
                     break;
             }
             //如果清空了就直接改成null
-            if (this.Extra.Count == 0)
-                this.Extra = null;
+            if (Extra.Count == 0)
+                Extra = null;
             //如果最后一个组件没指定样式就把那个组件的Text后面的空格都清了
-            else if (!this.Extra[this.Extra.Count - 1].HasFormatCode)
-                this.Extra[this.Extra.Count - 1].Text = this.Extra[this.Extra.Count - 1].Text.TrimEnd();
+            else if (!Extra[Extra.Count - 1].HasFormatCode)
+                Extra[Extra.Count - 1].Text = Extra[Extra.Count - 1].Text.TrimEnd();
         }
 
 
-        public ChatMessage AddExtra(ChatMessage message)
+        public ChatComponent AddExtra(ChatComponent message)
         {
-            if (this.Extra == null)
-                this.Extra = new List<ChatMessage>();
+            if (Extra == null)
+                Extra = new List<ChatComponent>();
 
-            this.Extra.Add(message);
+            Extra.Add(message);
 
             return this;
         }
 
-        public ChatMessage AddExtra(IEnumerable<ChatMessage> messages)
+        public ChatComponent AddExtra(IEnumerable<ChatComponent> messages)
         {
-            if (this.Extra == null)
-                this.Extra = new List<ChatMessage>();
+            if (Extra == null)
+                Extra = new List<ChatComponent>();
 
-            this.Extra.AddRange(messages);
+            Extra.AddRange(messages);
 
             return this;
         }
 
-        public ChatMessage AddExtra(params ChatMessage[] messages)
+        public ChatComponent AddExtra(params ChatComponent[] messages)
         {
-            if (this.Extra == null)
-                this.Extra = new List<ChatMessage>();
+            if (Extra == null)
+                Extra = new List<ChatComponent>();
 
-            this.Extra.AddRange(messages);
+            Extra.AddRange(messages);
 
             return this;
         }
 
-        public string Serialize(Formatting formatting = Formatting.None) => JsonConvert.SerializeObject(this, formatting);
-        public static ChatMessage Deserialize(string json)
+        private static JsonSerializerOptions jsonSerializerOptions = new() { Converters = { new ChatComponentConverter() } };
+        private static JsonSerializerOptions writeIndentedJsonSerializerOptions = new() { Converters = { new ChatComponentConverter() }, WriteIndented = true };
+        public string Serialize(bool writeIndented = false)
+        {
+            if (writeIndented)
+                return JsonSerializer.Serialize(this, writeIndentedJsonSerializerOptions);
+            else
+                return JsonSerializer.Serialize(this, jsonSerializerOptions);
+        }
+
+        public static ChatComponent Deserialize(string json)
         {
             if (string.IsNullOrWhiteSpace(json))
-                return new ChatMessage();
-            if(json[0] == '\"' && json[json.Length - 1] == '\"')
-                return new ChatMessage(json.AsSpan().Slice(1, json.Length - 1));
+                return new ChatComponent();
+            if (json[0] == '\"' && json[json.Length - 1] == '\"')
+                return new ChatComponent(json.AsSpan().Slice(1, json.Length - 1));
             if (json[0] != '{' && json[json.Length - 1] != '}')
-                return new ChatMessage(json);
+                return new ChatComponent(json);
             else
-                return Deserialize(JObject.Parse(json)) ?? new ChatMessage();
-        }
-
-        private static ChatMessage Deserialize(JObject json)
-        {
-            ChatMessage ChatComponent = new ChatMessage();
-            if (json!=null&&json.Count == 0)
-                return null;
-
-            foreach (JProperty Property in json.Children())
-            {
-                switch (Property.Name)
-                {
-                    case "bold":            ChatComponent.Bold =           (bool)Property.Value; continue;
-                    case "italic":          ChatComponent.Italic =         (bool)Property.Value; continue;
-                    case "underlined":      ChatComponent.Underline =      (bool)Property.Value; continue;
-                    case "strikethrough":   ChatComponent.Strikethrough =  (bool)Property.Value; continue;
-                    case "obfuscated":      ChatComponent.Obfuscated =     (bool)Property.Value; continue;
-                    case "text":            ChatComponent.Text =      Property.Value.ToString(); continue;
-                    case "color":           ChatComponent.Color =     Property.Value.ToString(); continue;
-                    case "insertion":       ChatComponent.Insertion = Property.Value.ToString(); continue;
-                    case "translate":       ChatComponent.Translate = Property.Value.ToString(); continue;
-                }
-                if (Property.Name == "with")
-                {
-                    ChatComponent.TranslateArguments = new List<object>();
-                    foreach (var WithItem in Property.Value)
-                    {
-                        if (WithItem.Type == JTokenType.String)
-                            ChatComponent.TranslateArguments.Add(WithItem.Value<string>());
-                        else if (WithItem.Type == JTokenType.Object && WithItem is JObject jo && jo.Count > 0)
-                        {
-                            if (jo.Count == 1 && jo.First is JProperty jp && jp.Name == "translate")
-                                ChatComponent.TranslateArguments.Add(new SimpleTranslateComponent(jp.Value.ToString()));
-                            else
-                                ChatComponent.TranslateArguments.Add(Deserialize(jo));
-                        }
-                        else
-                        {
-                            ChatMessage WithComponent = Deserialize(WithItem.ToString());
-                            if(WithComponent!=null)
-                                ChatComponent.TranslateArguments.Add(WithComponent);
-                        }
-                    }
-                }
-                else if (Property.Name == "clickEvent")
-                {
-                    foreach (JProperty EventProperty in Property.Value.Children())
-                    {
-                        ChatComponent.ClickEvent = new EventComponent<string>();
-                        if (EventProperty.Name == "action" && Enum.TryParse(EventProperty.Value.ToString(), out EventAction ea))
-                            ChatComponent.ClickEvent.Action = ea;
-                        else if (EventProperty.Name == "value")
-                            ChatComponent.ClickEvent.Value = EventProperty.Value.ToString();
-#if DEBUG
-                        //else
-                        //    throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
-#endif
-                    }
-                }
-                else if (Property.Name == "hoverEvent")
-                {
-                    foreach (JProperty EventProperty in Property.Value.Children())
-                    {
-                        ChatComponent.HoverEvent = new EventComponent<ChatMessage>();
-                        if (EventProperty.Name == "action" && Enum.TryParse(EventProperty.Value.ToString(), out EventAction ea))
-                            ChatComponent.HoverEvent.Action = ea;
-                        else if (EventProperty.Name == "value")
-                            ChatComponent.HoverEvent.Value = Deserialize(EventProperty.Value.ToString());
-#if DEBUG
-                        //else
-                        //    throw new InvalidCastException($"Unknown Property {EventProperty.Name} : {EventProperty.Value}");
-#endif
-                    }
-                }
-                else if (Property.Name == "extra")
-                {
-                    foreach (var ExtraItem in Property.Value)
-                    {
-                        ChatMessage ExtraComponent = ExtraItem.Type switch
-                        {
-                            JTokenType.String => new ChatMessage(ExtraItem.Value<string>()),
-                            JTokenType.Object => Deserialize((JObject)ExtraItem),
-                            _ => Deserialize(ExtraItem.ToString())
-                        };
-                        if (ExtraComponent != null) ChatComponent.AddExtra(ExtraComponent);
-                    }
-                }
-#if DEBUG
-                else
-                    throw new InvalidCastException($"Unknown Property {Property.Name} : {Property.Value}");
-#endif
-            }
-            return ChatComponent;
+                return JsonSerializer.Deserialize<ChatComponent>(json, jsonSerializerOptions);
         }
 
 
         public override string ToString() => ToString(DefaultTranslation);
         public string ToString(Dictionary<string, string> lang) => ToString(lang, Color, this);
-        private string ToString(Dictionary<string, string> lang, string lastColor, ChatMessage lastFormat)
+        private string ToString(Dictionary<string, string> lang, string lastColor, ChatComponent lastFormat)
         {
             StringBuilder sb = new StringBuilder();
-            if (this.Bold)              sb.Append("§l");
-            if (this.Italic)            sb.Append("§o");
-            if (this.Underline)         sb.Append("§n");
-            if (this.Strikethrough)     sb.Append("§m");
-            if (this.Obfuscated)        sb.Append("§k");
-            if (!string.IsNullOrEmpty(Color))       sb.Append(GetColorCode(Color));
-            if (!string.IsNullOrEmpty(Text))        sb.Append(Text);
-            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, TranslateArguments, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this: lastFormat);
+            if (Bold) sb.Append("§l");
+            if (Italic) sb.Append("§o");
+            if (Underline) sb.Append("§n");
+            if (Strikethrough) sb.Append("§m");
+            if (Obfuscated) sb.Append("§k");
+            if (!string.IsNullOrEmpty(Color)) sb.Append(GetColorCode(Color));
+            if (!string.IsNullOrEmpty(Text)) sb.Append(Text);
+            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, TranslateArguments, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this : lastFormat);
             if (Extra != null && Extra.Count > 0)
             {
                 /*
@@ -400,7 +289,7 @@ namespace MinecraftProtocol.DataType.Chat
             }
             return sb.ToString();
         }
-        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> translateArgs, StringBuilder sb, string lastColor, ChatMessage lastFormat)
+        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> translateArgs, StringBuilder sb, string lastColor, ChatComponent lastFormat)
         {
             /*
              * 这东西的结构大概是这样的:
@@ -415,13 +304,13 @@ namespace MinecraftProtocol.DataType.Chat
              * 
              */
             string text = lang.ContainsKey(translate) ? lang[translate] : translate;
-            
+
             //纯翻译,没有%s的那种
             if (translateArgs == null || translateArgs.Count == 0) { sb.Append(text); return; }
-            
+
             bool RestoreColor = false, RestoreFormat = false;
             int WithCount = 0;
-           
+
             for (int i = 0; i < text.Length; i++)
             {
                 if (RestoreFormat)
@@ -445,7 +334,7 @@ namespace MinecraftProtocol.DataType.Chat
                 if (text[i] == '%' && i + 1 != text.Length)
                 {
                     //这个%d是在forge的语言文件里面看见的,原版好像没有?
-                    if (text[i + 1] == 's'|| text[i + 1] == 'd')
+                    if (text[i + 1] == 's' || text[i + 1] == 'd')
                     {
                         AppendWith(translateArgs[WithCount++]);
                         i++;
@@ -480,7 +369,7 @@ namespace MinecraftProtocol.DataType.Chat
             }
             void AppendWith(object item)
             {
-                if (item is ChatMessage cm)
+                if (item is ChatComponent cm)
                 {
                     RestoreColor = cm.HasColorCode;
                     //第一天: 这么写有点针对性... 明天再想想怎么写的更通用?
@@ -493,14 +382,14 @@ namespace MinecraftProtocol.DataType.Chat
             }
         }
 
-        private static StringBuilder AppendFormatCode(StringBuilder stringBuilder, ChatMessage chatMessage)
+        private static StringBuilder AppendFormatCode(StringBuilder stringBuilder, ChatComponent chatMessage)
         {
-            if (chatMessage == null)        return stringBuilder;
-            if (chatMessage.Bold)           stringBuilder.Append("§l");
-            if (chatMessage.Italic)         stringBuilder.Append("§o");
-            if (chatMessage.Underline)      stringBuilder.Append("§n");
-            if (chatMessage.Strikethrough)  stringBuilder.Append("§m");
-            if (chatMessage.Obfuscated)     stringBuilder.Append("§k");
+            if (chatMessage == null) return stringBuilder;
+            if (chatMessage.Bold) stringBuilder.Append("§l");
+            if (chatMessage.Italic) stringBuilder.Append("§o");
+            if (chatMessage.Underline) stringBuilder.Append("§n");
+            if (chatMessage.Strikethrough) stringBuilder.Append("§m");
+            if (chatMessage.Obfuscated) stringBuilder.Append("§k");
             return stringBuilder;
         }
 
@@ -509,30 +398,43 @@ namespace MinecraftProtocol.DataType.Chat
         {
             switch (code)
             {
-                case 'l': this.Bold = true; break;
-                case 'o': this.Italic = true; break;
-                case 'n': this.Underline = true; break;
-                case 'm': this.Strikethrough = true; break;
-                case 'k': this.Obfuscated = true; break;
-                case '0': this.Color = "black"; break;
-                case '1': this.Color = "dark_blue"; break;
-                case '2': this.Color = "dark_green"; break;
-                case '3': this.Color = "dark_aqua"; break;
-                case '4': this.Color = "dark_red"; break;
-                case '5': this.Color = "dark_purple"; break;
-                case '6': this.Color = "gold"; break;
-                case '7': this.Color = "gray"; break;
-                case '8': this.Color = "dark_gray"; break;
-                case '9': this.Color = "blue"; break;
-                case 'a': this.Color = "green"; break;
-                case 'b': this.Color = "aqua"; break;
-                case 'c': this.Color = "red"; break;
-                case 'd': this.Color = "light_purple"; break;
-                case 'e': this.Color = "yellow"; break;
-                case 'f': this.Color = "white"; break;
+                case 'l': Bold = true; break;
+                case 'o': Italic = true; break;
+                case 'n': Underline = true; break;
+                case 'm': Strikethrough = true; break;
+                case 'k': Obfuscated = true; break;
+                case '0': Color = "black"; break;
+                case '1': Color = "dark_blue"; break;
+                case '2': Color = "dark_green"; break;
+                case '3': Color = "dark_aqua"; break;
+                case '4': Color = "dark_red"; break;
+                case '5': Color = "dark_purple"; break;
+                case '6': Color = "gold"; break;
+                case '7': Color = "gray"; break;
+                case '8': Color = "dark_gray"; break;
+                case '9': Color = "blue"; break;
+                case 'a': Color = "green"; break;
+                case 'b': Color = "aqua"; break;
+                case 'c': Color = "red"; break;
+                case 'd': Color = "light_purple"; break;
+                case 'e': Color = "yellow"; break;
+                case 'f': Color = "white"; break;
                 case 'r': ResetFormat(); return;
                 default: throw new InvalidCastException();
             }
+        }
+
+        /// <summary>
+        /// 重置样式和颜色(不会处理Extra和With里面的)
+        /// </summary>
+        public void ResetFormat()
+        {
+            Bold = false;
+            Italic = false;
+            Underline = false;
+            Strikethrough = false;
+            Obfuscated = false;
+            Color = null;
         }
 
         /// <summary>
@@ -609,24 +511,25 @@ namespace MinecraftProtocol.DataType.Chat
         {
             return colorName switch
             {
-                "black"          => "§0",
-                "dark_blue"      => "§1",
-                "dark_green"     => "§2",
-                "dark_aqua"      => "§3",
-                "dark_red"       => "§4",
-                "dark_purple"    => "§5",
-                "gold"           => "§6",
-                "gray"           => "§7",
-                "dark_gray"      => "§8",
-                "blue"           => "§9",
-                "green"          => "§a",
-                "aqua"           => "§b",
-                "red"            => "§c",
-                "light_purple"   => "§d",
-                "yellow"         => "§e",
-                "white"          => "§f",
-                _                => "",
+                "black" => "§0",
+                "dark_blue" => "§1",
+                "dark_green" => "§2",
+                "dark_aqua" => "§3",
+                "dark_red" => "§4",
+                "dark_purple" => "§5",
+                "gold" => "§6",
+                "gray" => "§7",
+                "dark_gray" => "§8",
+                "blue" => "§9",
+                "green" => "§a",
+                "aqua" => "§b",
+                "red" => "§c",
+                "light_purple" => "§d",
+                "yellow" => "§e",
+                "white" => "§f",
+                _ => "",
             };
         }
+
     }
 }

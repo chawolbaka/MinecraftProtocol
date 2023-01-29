@@ -15,11 +15,11 @@ using MinecraftProtocol.Packets.Client;
 using MinecraftProtocol.Packets.Server;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
-using MinecraftProtocol.Utils; 
+using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
-using MinecraftProtocol.DataType.Chat;
+using MinecraftProtocol.Chat;
 
 namespace MinecraftProtocol.Client
 {
@@ -134,7 +134,7 @@ namespace MinecraftProtocol.Client
             {
                 if (e.Packet == PacketType.Play.Server.Disconnect)
                 {
-                    ChatMessage reason = e.Packet.AsDisconnect()?.Reason;
+                    ChatComponent reason = e.Packet.AsDisconnect()?.Reason;
                     _kicked?.Invoke(this, new DisconnectEventArgs(reason, e.ReceivedTime));
                     DisconnectAsync(reason?.ToString());
                 }
