@@ -61,6 +61,8 @@ namespace MinecraftProtocol.Packets
         }
         public Packet(IPacket packet) : this(packet.ID, packet.ToArray()) { }
 
+        
+
         /// <summary>
         /// 生成发送给服务端的包
         /// </summary>
@@ -128,13 +130,11 @@ namespace MinecraftProtocol.Packets
                 return PackedData;
             }
         }
-        public virtual byte[] Pack()
-        {
-            return Pack(-1);
-        }
+        public virtual byte[] Pack() => Pack(-1);
 
 
-        public static Packet Depack(ReadOnlySpan<byte> data) => Depack(data);
+
+        public static Packet Depack(ReadOnlySpan<byte> data) => Depack(data, -1);
         public static Packet Depack(ReadOnlySpan<byte> data, int compressionThreshold)
         {
             if (compressionThreshold > 0)

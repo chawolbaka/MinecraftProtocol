@@ -69,9 +69,9 @@ namespace MinecraftProtocol.IO
 
         public override void Start(CancellationToken token = default)
         {
-            base.Start(token);
-            ResetBlock();
             _state = ReadState.PacketLength;
+            ResetBlock();
+            base.Start(token); //必须在后面，因为内部直接就会读取数据包
         }
 
 
@@ -86,7 +86,7 @@ namespace MinecraftProtocol.IO
 
         private void AddData(Memory<byte> data)
         {
-            if(_dataBlockIndex+1> _dataBlock.Length)
+            if (_dataBlockIndex + 1 > _dataBlock.Length)
             {
                 Memory<byte>[] newDataBlock = _usePool ? _dataBlockPool.Rent(_dataBlock.Length * 2) : new Memory<byte>[_dataBlock.Length * 2];
                 Memory<byte>[] oldDataBlock = _dataBlock;

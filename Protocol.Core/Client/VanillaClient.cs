@@ -141,7 +141,7 @@ namespace MinecraftProtocol.Client
                 else if (_autoKeepAlive && e.Packet == PacketType.Play.Server.KeepAlive)
                     SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsCompatibleReadOnly()));
                 else
-                    ReceiveQueue.TryAdd(new PacketReceivedEventArgs(e.Packet, e.ReceivedTime));
+                    ReceiveQueue.TryAdd(new PacketReceivedEventArgs(e));
             };
             PacketListen.UnhandledException += (sender, e) =>
             {
@@ -374,7 +374,7 @@ namespace MinecraftProtocol.Client
                         if (ReceiveQueue.TryTake(out eventArgs, Timeout.Infinite, ReceivePacketCancellationToken.Token) && eventArgs != null)
                         {
                             EventUtils.InvokeCancelEvent(_packetReceived, this, eventArgs, (sender, e) => e.Packet.Reset());
-                            eventArgs.Packet._packet.Dispose();
+                            eventArgs?.RawEventArgs?.Dispose();
                         }
                     }
                 }
@@ -383,7 +383,7 @@ namespace MinecraftProtocol.Client
                 finally 
                 {
                     ReceivePacketCancellationToken?.Cancel();
-                    eventArgs?.Packet._packet.Dispose(); 
+                    eventArgs?.RawEventArgs?.Dispose(); 
                 }
             });
             PacketQueueHandleThread.Name = nameof(PacketQueueHandleThread);

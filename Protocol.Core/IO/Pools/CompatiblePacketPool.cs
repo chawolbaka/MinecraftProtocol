@@ -29,7 +29,9 @@ namespace MinecraftProtocol.IO.Pools
             else
             {
                 byte[] empty = null;
-                return new CompatiblePacket(-1, 0, ref empty, -1, -1);
+                CompatiblePacket packet = new CompatiblePacket(-1, 0, ref empty, -1, -1);
+                packet._needDisable = false;
+                return packet;
             }
         }
 

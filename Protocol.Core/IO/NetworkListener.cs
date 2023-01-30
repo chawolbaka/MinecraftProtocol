@@ -48,8 +48,7 @@ namespace MinecraftProtocol.IO
 
             _usePool = !disablePool;
             _socket = socket;
-            _bufferGCHandle = AllocateByteArray();
-            _buffer = (byte[])_bufferGCHandle.Target;
+            _buffer = AllocateByteArray();
             _receiveBufferSize = receiveBufferSize;
         }
 
@@ -110,8 +109,8 @@ namespace MinecraftProtocol.IO
             if (_disposed)
                 return;
 
-            _bufferGCHandle = AllocateByteArray();
-            _buffer = (byte[])_bufferGCHandle.Target;
+             
+            _buffer = AllocateByteArray();
             try
             {
                 e.SetBuffer(_buffer);
@@ -143,9 +142,19 @@ namespace MinecraftProtocol.IO
 
         }
 
-        private GCHandle AllocateByteArray()
+        private byte[] AllocateByteArray()
         {
-            return _usePool ? _dataPool.Rent() : GCHandle.Alloc(_receiveBufferSize);
+            GCHandle handle = _usePool ? _dataPool.Rent() : GCHandle.Alloc(new byte[_receiveBufferSize]);
+            try
+            {
+                _bufferGCHandle = handle;
+                return (byte[])handle.Target;
+            }
+            catch (InvalidOperationException)
+            {
+                _bufferGCHandle = GCHandle.Alloc(new byte[_receiveBufferSize]);
+                return (byte[])_bufferGCHandle.Target;
+            }
         }
 
         ~NetworkListener()
@@ -165,7 +174,7 @@ namespace MinecraftProtocol.IO
             _disposed = true;
             if (_usePool && _buffer is not null)
                 _dataPool?.Return(_bufferGCHandle);
-            else if (_bufferGCHandle != default)
+            else if (_bufferGCHandle != default && _bufferGCHandle.IsAllocated)
                 _bufferGCHandle.Free();
 
             if (!disposed && disposing)

@@ -10,10 +10,18 @@ namespace MinecraftProtocol.Client
         /// </summary>
         public virtual ReadOnlyCompatiblePacket Packet { get; }
 
+        public virtual IO.PacketReceivedEventArgs RawEventArgs { get; }
+
         public PacketReceivedEventArgs(ReadOnlyCompatiblePacket packet) : this(packet, DateTime.Now) { }
         public PacketReceivedEventArgs(ReadOnlyCompatiblePacket packet, DateTime time) : base(time)
         {
             this.Packet = packet;
+        }
+
+        public PacketReceivedEventArgs(IO.PacketReceivedEventArgs prea):base(prea.ReceivedTime)
+        {
+            Packet = prea.Packet;
+            RawEventArgs = prea;
         }
     }
 }

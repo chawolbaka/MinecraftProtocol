@@ -68,6 +68,7 @@ namespace MinecraftProtocol.IO
         protected const int DEFUALT_CAPACITY = 16;
         protected bool _returnToPool;
 
+        internal bool _needDisable = true; //提供给对象池使用的选项
         internal protected byte[] _data;
         internal protected int _size = 0;
         protected int _version;
@@ -354,6 +355,8 @@ namespace MinecraftProtocol.IO
 
         private void Dispose(bool disposing)
         {
+            if (!_needDisable)
+                return;
             bool disposed = _disposed;
             _disposed = true;
             if (!disposed && _returnToPool && _data is not null)

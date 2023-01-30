@@ -38,6 +38,7 @@ namespace MinecraftProtocol.IO
             RawData = new Memory<Memory<byte>>(dataBlock, 0, dataBlockLength);
             ReceivedTime = DateTime.Now;
 
+            CompatiblePacket _packet;
             _usePool = usePool;
             _disposed = false;
             _dataBlock = dataBlock;
@@ -63,13 +64,13 @@ namespace MinecraftProtocol.IO
 
             if (usePool)
             {
-                Packet = _CPPool.Rent();
-                Packet.ProtocolVersion = protocolVersion;
-                Packet.CompressionThreshold = compressionThreshold;
+                _packet = _CPPool.Rent();
+                _packet.ProtocolVersion = protocolVersion;
+                _packet.CompressionThreshold = compressionThreshold;
             }
             else
             {
-                Packet = new CompatiblePacket(-1, protocolVersion, compressionThreshold);
+                _packet = new CompatiblePacket(-1, protocolVersion, compressionThreshold);
             }
 
             //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
@@ -97,25 +98,24 @@ namespace MinecraftProtocol.IO
                     }
 
                     Span<byte> decompressed = ZlibUtils.Decompress(buffer, 0, size);
-                    Packet.ID = VarInt.Read(decompressed, out IdOffset);
-                    Packet.Capacity = decompressed.Length - IdOffset;
-                    Packet.WriteBytes(decompressed.Slice(IdOffset));
+                    _packet.ID = VarInt.Read(decompressed, out IdOffset);
+                    _packet.Capacity = decompressed.Length - IdOffset;
+                    _packet.WriteBytes(decompressed.Slice(IdOffset));
+                    Packet = _packet; //提前赋值到全局变量是线程不安全的，因为有可能正在写入的时候就被回收了
                     return this;
                 }
             }
-
-            Packet.ID = VarInt.Read(ReadByte, out IdOffset);
-            Packet.Capacity = bodyLength - IdOffset;
-
+            _packet.ID = VarInt.Read(ReadByte, out IdOffset);
+            _packet.Capacity = bodyLength - IdOffset;
 
             CheckBounds();
             for (int i = blockIndex; i < dataBlockLength - blockIndex; i++)
             {
-                Packet.WriteBytes(_dataBlock[i].Span.Slice(blockOffset));
+                _packet.WriteBytes(_dataBlock[i].Span.Slice(blockOffset));
                 if (blockOffset != 0)
                     blockOffset = 0;
             }
-
+            Packet = _packet;
             return this;
 
             void CheckBounds()
@@ -156,7 +156,7 @@ namespace MinecraftProtocol.IO
                     _CPPool.Return(Packet);
                     for (int i = 0; i < _dataGCHandleBlockLength; i++)
                     {
-                        PacketListener._dataPool.Return(_dataGCHandle[i]);
+                        NetworkListener._dataPool.Return(_dataGCHandle[i]);
                     }
                     PacketListener._dataBlockPool.Return(_dataBlock);
                     PacketListener._gcHandleBlockPool.Return(_dataGCHandle);
