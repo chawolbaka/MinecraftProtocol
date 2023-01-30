@@ -9,6 +9,9 @@ namespace MinecraftProtocol.Chat
     {
         public override void Write(Utf8JsonWriter writer, ChatComponent chatComponent, JsonSerializerOptions options)
         {
+            if (chatComponent is null)
+                throw new ArgumentNullException(nameof(chatComponent));
+
             WriteChatComponentObject(writer, chatComponent);
         }
 
@@ -61,8 +64,16 @@ namespace MinecraftProtocol.Chat
                 writer.WritePropertyName("clickEvent");
                 writer.WriteStartObject();
                 writer.WriteString("action", chatComponent.HoverEvent.Action.ToString());
-                writer.WritePropertyName("value");
-                WriteChatComponentObject(writer, chatComponent.HoverEvent.Value);
+                if(chatComponent.HoverEvent.Value != null)
+                {
+                    writer.WritePropertyName("value");
+                    WriteChatComponentObject(writer, chatComponent.HoverEvent.Value);
+                }
+                if (chatComponent.HoverEvent.Contents != null)
+                {
+                    writer.WritePropertyName("contents");
+                    WriteChatComponentObject(writer, chatComponent.HoverEvent.Value);
+                }
                 writer.WriteEndObject();
             }
 
@@ -205,6 +216,12 @@ namespace MinecraftProtocol.Chat
                     if (reader.TokenType is JsonTokenType.StartObject && propertyName == "value")
                     {
                         eventComponent.Value = ReadChatComponentObject(ref reader, new ChatComponent());
+                        propertyName = null;
+                    }
+                    if (reader.TokenType is JsonTokenType.StartObject && propertyName == "contents")
+                    {
+                        eventComponent.Contents = ReadChatComponentObject(ref reader, new ChatComponent());
+                        propertyName = null;
                     }
                     else if (reader.TokenType is JsonTokenType.String)
                     {
@@ -213,6 +230,7 @@ namespace MinecraftProtocol.Chat
                             case "action": eventComponent.Action = Enum.Parse<EventAction>(reader.GetString()); break;
                             case "value": eventComponent.Value = new ChatComponent() { Text = reader.GetString() }; break;
                         }
+                        propertyName = null;
                     }
                 }
             }

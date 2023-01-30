@@ -10,6 +10,9 @@ namespace MinecraftProtocol.Chat
         [JsonPropertyName("value")]
         public T Value;
 
+        [JsonPropertyName("contents")]
+        public T Contents;
+
         public EventComponent() { }
         public EventComponent(EventAction action, T value)
         {
