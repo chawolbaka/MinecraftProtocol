@@ -267,8 +267,8 @@ namespace MinecraftProtocol.Client
         {
             SetPlayer(lsp);
             VanillaLoginState = VanillaLoginStatus.Success;
-            _loginSuccess?.Invoke(this, new VanillaLoginEventArgs(VanillaLoginStatus.Success));
             _joined = true;
+            _loginSuccess?.Invoke(this, new VanillaLoginEventArgs(VanillaLoginStatus.Success));
         }
 
         protected virtual void OnDisconnectLoginReceived(DisconnectPacket dp)
