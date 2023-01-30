@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace MinecraftProtocol.Chat
 {
@@ -8,13 +9,13 @@ namespace MinecraftProtocol.Chat
         public EventAction Action;
 
         [JsonPropertyName("value")]
-        public T Value;
+        public List<T> Value;
 
         [JsonPropertyName("contents")]
-        public T Contents;
+        public List<T> Contents;
 
         public EventComponent() { }
-        public EventComponent(EventAction action, T value)
+        public EventComponent(EventAction action, List<T> value)
         {
             Action = action;
             Value = value;

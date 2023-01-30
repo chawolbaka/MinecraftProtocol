@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -55,7 +56,7 @@ namespace MinecraftProtocol.Chat
                 writer.WritePropertyName("clickEvent");
                 writer.WriteStartObject();
                 writer.WriteString("action", chatComponent.ClickEvent.Action.ToString());
-                writer.WriteString("value", chatComponent.ClickEvent.Value.Text);
+                writer.WriteString("value", chatComponent.ClickEvent.Value[0].Text);
                 writer.WriteEndObject();
             }
 
@@ -67,12 +68,18 @@ namespace MinecraftProtocol.Chat
                 if(chatComponent.HoverEvent.Value != null)
                 {
                     writer.WritePropertyName("value");
-                    WriteChatComponentObject(writer, chatComponent.HoverEvent.Value);
+                    if (chatComponent.HoverEvent.Value.Count > 1)
+                        WriteArrayObject(writer, chatComponent.HoverEvent.Value);
+                    else
+                        WriteChatComponentObject(writer, chatComponent.HoverEvent.Value[0]);
                 }
                 if (chatComponent.HoverEvent.Contents != null)
                 {
                     writer.WritePropertyName("contents");
-                    WriteChatComponentObject(writer, chatComponent.HoverEvent.Value);
+                    if (chatComponent.HoverEvent.Contents.Count > 1)
+                        WriteArrayObject(writer, chatComponent.HoverEvent.Contents);
+                    else
+                        WriteChatComponentObject(writer, chatComponent.HoverEvent.Contents[0]);
                 }
                 writer.WriteEndObject();
             }
@@ -140,15 +147,15 @@ namespace MinecraftProtocol.Chat
                     {
                         switch (propertyName)
                         {
-                            case "bold": chatComponent.Bold = reader.GetBoolean(); break;
-                            case "italic": chatComponent.Italic = reader.GetBoolean(); break;
-                            case "underlined": chatComponent.Underline = reader.GetBoolean(); break;
+                            case "bold":          chatComponent.Bold = reader.GetBoolean(); break;
+                            case "italic":        chatComponent.Italic = reader.GetBoolean(); break;
+                            case "underlined":    chatComponent.Underline = reader.GetBoolean(); break;
                             case "strikethrough": chatComponent.Strikethrough = reader.GetBoolean(); break;
-                            case "obfuscated": chatComponent.Obfuscated = reader.GetBoolean(); break;
-                            case "text": chatComponent.Text = reader.GetString(); break;
-                            case "color": chatComponent.Color = reader.GetString(); break;
-                            case "insertion": chatComponent.Insertion = reader.GetString(); break;
-                            case "translate": chatComponent.Translate = reader.GetString(); break;
+                            case "obfuscated":    chatComponent.Obfuscated = reader.GetBoolean(); break;
+                            case "text":          chatComponent.Text = reader.GetString(); break;
+                            case "color":         chatComponent.Color = reader.GetString(); break;
+                            case "insertion":     chatComponent.Insertion = reader.GetString(); break;
+                            case "translate":     chatComponent.Translate = reader.GetString(); break;
                         }
                         propertyName = null;
                     }
@@ -213,14 +220,31 @@ namespace MinecraftProtocol.Chat
                 }
                 else if (!string.IsNullOrEmpty(propertyName))
                 {
+
                     if (reader.TokenType is JsonTokenType.StartObject && propertyName == "value")
                     {
-                        eventComponent.Value = ReadChatComponentObject(ref reader, new ChatComponent());
+                        eventComponent.Value = new List<ChatComponent>
+                        {
+                            ReadChatComponentObject(ref reader, new ChatComponent())
+                        };
                         propertyName = null;
                     }
-                    if (reader.TokenType is JsonTokenType.StartObject && propertyName == "contents")
+                    else if (reader.TokenType is JsonTokenType.StartObject && propertyName == "contents")
                     {
-                        eventComponent.Contents = ReadChatComponentObject(ref reader, new ChatComponent());
+                        eventComponent.Contents = new List<ChatComponent>
+                        {
+                            ReadChatComponentObject(ref reader, new ChatComponent())
+                        };
+                        propertyName = null;
+                    }
+                    if (reader.TokenType is JsonTokenType.StartArray && propertyName == "value")
+                    {
+                        eventComponent.Value = ReadObjectArray(ref reader).Select(x => x is ChatComponent ? x as ChatComponent : new ChatComponent(x.ToString())).ToList();
+                        propertyName = null;
+                    }
+                    else if (reader.TokenType is JsonTokenType.StartArray && propertyName == "contents")
+                    {
+                        eventComponent.Contents = ReadObjectArray(ref reader).Select(x => x is ChatComponent ? x as ChatComponent : new ChatComponent(x.ToString())).ToList();
                         propertyName = null;
                     }
                     else if (reader.TokenType is JsonTokenType.String)
@@ -228,7 +252,7 @@ namespace MinecraftProtocol.Chat
                         switch (propertyName)
                         {
                             case "action": eventComponent.Action = Enum.Parse<EventAction>(reader.GetString()); break;
-                            case "value": eventComponent.Value = new ChatComponent() { Text = reader.GetString() }; break;
+                            case "value":  eventComponent.Value  = new List<ChatComponent> { new ChatComponent() { Text = reader.GetString() } }; break;
                         }
                         propertyName = null;
                     }
