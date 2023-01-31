@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
@@ -76,11 +77,11 @@ namespace MinecraftProtocol.IO
             //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
             if (compressionThreshold > 0)
             {
-                int size = VarInt.Read(ReadByte);
+                int size = VarInt.Read(ReadByte,out int sizeCount);
                 if (size != 0)
                 {
                     //组合data块
-                    byte[] buffer = new byte[bodyLength];
+                    byte[] buffer = new byte[bodyLength - sizeCount];
                     int count = 0;
                     for (; blockIndex < dataBlockLength; blockIndex++)
                     {
@@ -96,6 +97,7 @@ namespace MinecraftProtocol.IO
                         }
                         count += _dataBlock[blockIndex].Length;
                     }
+
 
                     Span<byte> decompressed = ZlibUtils.Decompress(buffer, 0, size);
                     _packet.ID = VarInt.Read(decompressed, out IdOffset);

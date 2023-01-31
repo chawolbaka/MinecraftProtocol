@@ -31,7 +31,6 @@ namespace MinecraftProtocol.IO
         protected GCHandle _bufferGCHandle;
         protected byte[] _buffer;
         protected bool _usePool;
-
         private int _syncCount;
 
         public NetworkListener(Socket socket) : this(socket, socket.ReceiveBufferSize) { }
@@ -137,7 +136,10 @@ namespace MinecraftProtocol.IO
             }
             catch (Exception ex)
             {
-                UnhandledException?.Invoke(this, new UnhandledIOExceptionEventArgs(ex));
+                UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(ex);
+                UnhandledException?.Invoke(this, eventArgs);
+                if (!eventArgs.Handled)
+                    throw;
             }
 
         }

@@ -5,9 +5,11 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Ionic.Zlib;
 using MinecraftProtocol.Crypto;
 using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.IO
 {
@@ -33,8 +35,8 @@ namespace MinecraftProtocol.IO
         public CryptoHandler Crypto => ThrowIfDisposed(_crypto);
 
         public event EventHandler<PacketReceivedEventArgs> PacketReceived;
+        public override event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
 
-        
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
         internal static ArrayPool<GCHandle> _gcHandleBlockPool = new SawtoothArrayPool<GCHandle>(1024 * 8, 512);
@@ -213,9 +215,19 @@ namespace MinecraftProtocol.IO
             //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
             if (dataLength >= _packetLengthOffset + _packetLength && _packetLength >= (_compressionThreshold > 0 ? 3 : 1))
             {
-                PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
-                prea.Setup(_gcHandleBlock, ref _gcHandleBlockIndex, ref _dataBlock, ref _dataBlockIndex, ref _packetLengthOffset, ref _packetLength, ref _protocolVersion, _compressionThreshold, _usePool);
-                PacketReceived?.Invoke(this, prea);
+                try
+                {
+                    PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
+                    prea.Setup(_gcHandleBlock, ref _gcHandleBlockIndex, ref _dataBlock, ref _dataBlockIndex, ref _packetLengthOffset, ref _packetLength, ref _protocolVersion, _compressionThreshold, _usePool);
+                    PacketReceived?.Invoke(this, prea);
+                }
+                catch (Exception ex)
+                {
+                    UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(ex);
+                    UnhandledException?.Invoke(this, eventArgs);
+                    if (!eventArgs.Handled)
+                        throw;
+                }
             }
             else if (_usePool)
             {

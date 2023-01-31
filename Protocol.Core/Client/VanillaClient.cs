@@ -20,6 +20,7 @@ using MinecraftProtocol.Entity;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
 using MinecraftProtocol.Chat;
+using Ionic.Zlib;
 
 namespace MinecraftProtocol.Client
 {
@@ -152,6 +153,8 @@ namespace MinecraftProtocol.Client
                         Disconnect(e.Exception.Message);
                     e.Handled = true;
                 }
+                else if (e.Exception is ZlibException && NetworkUtils.CheckConnect(TCP))
+                    e.Handled = true;
                 else if (e.Exception is OverflowException oe && oe.StackTrace.Contains(nameof(VarInt)))
                     throw new InvalidDataException("无法读取数据包长度", e.Exception);
                 else
