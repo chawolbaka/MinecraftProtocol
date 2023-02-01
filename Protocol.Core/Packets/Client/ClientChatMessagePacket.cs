@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using MinecraftProtocol.Compatible;
+using MinecraftProtocol.DataType;
 
 namespace MinecraftProtocol.Packets.Client
 {
@@ -15,8 +17,30 @@ namespace MinecraftProtocol.Packets.Client
         public const int OldMaxMessageLength = 100;
 
         [PacketProperty]
-        internal string _message;
+        private string _message;
 
+        [PacketProperty(IsOptional = true)]
+        private long _timestamp;
+
+        [PacketProperty(IsOptional = true)]
+        private long _salt;
+
+        [PacketProperty(IsOptional = true)]
+        private byte[] _signature;
+
+        [PacketProperty(IsOptional = true)]
+        private int _messageCount;
+
+        [PacketProperty(IsOptional = true)]
+        private BitSet _acknowledged;
+
+        [PacketProperty(IsOptional = true)]
+        private bool _signedPreview;
+
+        public ClientChatMessagePacket(string message, long timestamp, long salt, byte[] signature, int messageCount, BitSet bitSet, int protocolVersion) : this(message, timestamp, salt, signature, messageCount, bitSet, false, protocolVersion)
+        {
+
+        }
 
         protected override void CheckProperty()
         {
@@ -25,20 +49,63 @@ namespace MinecraftProtocol.Packets.Client
              * Max length for Chat Message (serverbound) (0x02) changed from 100 to 256.
              */
             base.CheckProperty();
+
             if (ProtocolVersion >= ProtocolVersions.V16w38a && _message.Length > MaxMessageLength)
                 throw new OverflowException($"message too long, max is {MaxMessageLength}");
-            else if (ProtocolVersion < ProtocolVersions.V16w38a && _message.Length > OldMaxMessageLength)
+            if (ProtocolVersion < ProtocolVersions.V16w38a && _message.Length > OldMaxMessageLength)
                 throw new OverflowException($"message too long, max is {OldMaxMessageLength}");
+
+            if (_timestamp == default)
+                _timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
         }
 
         protected override void Write()
         {
+            if (ProtocolVersion == ProtocolVersions.V1_19_1)
+                throw new NotSupportedException($"作者偷懒没有去兼容1.19.1和1.19.2 (都{DateTime.Now.Year:D4}年了为什还要玩这种版本呀！)");
+
             WriteString(_message);
+
+            if(ProtocolVersion >= ProtocolVersions.V1_19)
+            {
+                WriteLong(_timestamp);
+                WriteLong(_salt);
+                if (ProtocolVersion >= ProtocolVersions.V1_19_3)
+                    WriteOptionalByteArray(_signature);
+
+
+                if (ProtocolVersion >= ProtocolVersions.V1_19_3)
+                    WriteVarInt(_messageCount).WriteBytes(0, 0, 0); //看着java内部1000多行的BitSet暂时偷懒不去支持了
+                else if (ProtocolVersion <= ProtocolVersions.V1_19_2)
+                    WriteBoolean(_signedPreview);
+            }
         }
 
         protected override void Read()
         {
-            _message = AsReadOnly().ReadString();
+            _message = Reader.ReadString();
+            if (ProtocolVersion >= ProtocolVersions.V1_19)
+            {
+                _timestamp =Reader.ReadLong();
+
+                _salt = Reader.ReadLong();
+                WriteLong(_timestamp);
+                WriteLong(_salt);
+                if (ProtocolVersion >= ProtocolVersions.V1_19_3)
+                    _signature = Reader.ReadOptionalByteArray(ProtocolVersion);
+                else if (ProtocolVersion <= ProtocolVersions.V1_19_2)
+                    _signature = Reader.ReadByteArray(ProtocolVersion);
+
+
+                if (ProtocolVersion >= ProtocolVersions.V1_19_3)
+                    _messageCount = Reader.ReadVarInt();
+                else if (ProtocolVersion <= ProtocolVersions.V1_19_2)
+                    _signedPreview = Reader.ReadBoolean();
+
+                Reader.SetToEnd();
+            }
+            
         }
 
         public static int GetPacketId(int protocolVersion)
@@ -61,14 +128,15 @@ namespace MinecraftProtocol.Packets.Client
              * Changed ID of Chat Message from 0x01 to 0x02
              */
 
-            if (protocolVersion >= ProtocolVersions.V1_14)            return 0x03;
-            else if (protocolVersion >= ProtocolVersions.V1_13_pre7)  return 0x02;
-            else if (protocolVersion >= ProtocolVersions.V17w45a)     return 0x01;
-            else if (protocolVersion >= ProtocolVersions.V17w31a)     return 0x02;
-            //else if (protocolVersion >= ProtocolVersionNumbers.V1_12_pre5) return 0x03;
-            else if (protocolVersion >= ProtocolVersions.V17w13a)     return 0x03;
-            else if (protocolVersion >= ProtocolVersions.V15w43a)     return 0x02;
-            else return 0x01;
+            if (protocolVersion >= ProtocolVersions.V1_19_1)        return 0x05;
+            if (protocolVersion >= ProtocolVersions.V1_19)          return 0x04;
+            if (protocolVersion >= ProtocolVersions.V1_14)          return 0x03;
+            if (protocolVersion >= ProtocolVersions.V1_13_pre7)     return 0x02;
+            if (protocolVersion >= ProtocolVersions.V17w45a)        return 0x01;
+            if (protocolVersion >= ProtocolVersions.V17w31a)        return 0x02;
+            if (protocolVersion >= ProtocolVersions.V17w13a)        return 0x03;
+            if (protocolVersion >= ProtocolVersions.V15w43a)        return 0x02;
+            else                                                    return 0x01;
         }
     }
 }

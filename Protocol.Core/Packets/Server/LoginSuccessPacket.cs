@@ -7,10 +7,13 @@ namespace MinecraftProtocol.Packets.Server
     public partial class LoginSuccessPacket : DefinedPacket
     {
         [PacketProperty]
-        internal string _playerName;
+        private string _playerName;
 
         [PacketProperty]
-        internal UUID _playerUUID;
+        private UUID _playerUUID;
+
+        [PacketProperty]
+        private LoginSuccessProperty[] _properties;
 
         protected override void CheckProperty()
         {
@@ -35,6 +38,19 @@ namespace MinecraftProtocol.Packets.Server
             else
                 _playerUUID = UUID.Parse(Reader.ReadString());
             _playerName = Reader.ReadString();
+
+            if(ProtocolVersion >= ProtocolVersions.V1_19)
+            {
+                LoginSuccessProperty[] properties = new LoginSuccessProperty[Reader.ReadVarInt()];
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    LoginSuccessProperty property = new LoginSuccessProperty();
+                    property.Name = Reader.ReadString();
+                    property.Value = Reader.ReadString();
+                    property.Signature = Reader.ReadOptionalByteArray(ProtocolVersion);
+                    properties[i] = property;
+                }
+            }
         }
 
         public static int GetPacketId(int protocolVersion)

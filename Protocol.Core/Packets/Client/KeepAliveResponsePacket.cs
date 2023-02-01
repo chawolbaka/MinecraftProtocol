@@ -57,6 +57,8 @@ namespace MinecraftProtocol.Packets.Client
              * 15w36a(67)
              * Changed ID of Keep Alive (serverbound) from 0x00 to 0x0A
              */
+            
+            if (protocolVersion >= ProtocolVersions.V1_19)           return 0x11;
             if (protocolVersion >= ProtocolVersions.V1_17)           return 0x0F;
             if (protocolVersion >= ProtocolVersions.V1_16)           return 0x10;
             if (protocolVersion >= ProtocolVersions.V1_14)           return 0x0F;

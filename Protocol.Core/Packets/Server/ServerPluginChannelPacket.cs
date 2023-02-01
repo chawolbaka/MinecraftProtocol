@@ -69,6 +69,7 @@ namespace MinecraftProtocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Plugin Message (clientbound) from 0x3F to 0x18
              */
+            if (protocolVersion >= ProtocolVersions.V1_19)   return 0x15;
             if (protocolVersion >= ProtocolVersions.V1_16)   return 0x18;
             if (protocolVersion >= ProtocolVersions.V1_15)   return 0x19;
             if (protocolVersion >= ProtocolVersions.V1_14)   return 0x18;

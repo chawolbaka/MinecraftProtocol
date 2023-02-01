@@ -1,8 +1,6 @@
-﻿using MinecraftProtocol.Packets.Client;
+﻿using System;
+using MinecraftProtocol.Packets.Client;
 using MinecraftProtocol.Packets.Server;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MinecraftProtocol.Packets
 {
@@ -53,14 +51,14 @@ namespace MinecraftProtocol.Packets
             public static class Server
             {
                 public static readonly PacketType Response = new PacketType(nameof(PingResponsePacket), (ver) => PingResponsePacket.GetPacketID());
-                public static readonly PacketType Pong = new PacketType(nameof(PongPacket), (ver) => PongPacket.GetPacketId());
+                public static readonly PacketType Pong     = new PacketType(nameof(PongPacket), (ver) => PongPacket.GetPacketId());
             }
 
             /// <summary>从客户端发送到服务端Packet</summary>
             public static class Client
             {
                 public static readonly PacketType Request = new PacketType(nameof(PingRequestPacket), (ver) => PingRequestPacket.GetPacketId());
-                public static readonly PacketType Ping = new PacketType(nameof(PingPacket), (ver) => PingPacket.GetPacketId());
+                public static readonly PacketType Ping    = new PacketType(nameof(PingPacket), (ver) => PingPacket.GetPacketId());
             }
         }
 
@@ -69,17 +67,19 @@ namespace MinecraftProtocol.Packets
             /// <summary>从服务端发送到客户端Packet</summary>
             public static class Server
             {
-                public static readonly PacketType Disconnect = new PacketType(nameof(DisconnectLoginPacket), (ver) => DisconnectLoginPacket.GetPacketId(ver));
-                public static readonly PacketType LoginSuccess = new PacketType(nameof(LoginSuccessPacket), (ver) => LoginSuccessPacket.GetPacketId(ver));
-                public static readonly PacketType SetCompression = new PacketType(nameof(SetCompressionPacket), (ver) => SetCompressionPacket.GetPacketId(ver));
-                public static readonly PacketType EncryptionRequest = new PacketType(nameof(EncryptionRequestPacket), (ver) => EncryptionRequestPacket.GetPacketId(ver));
+                public static readonly PacketType Disconnect         = new PacketType(nameof(DisconnectLoginPacket), (ver) => DisconnectLoginPacket.GetPacketId(ver));
+                public static readonly PacketType LoginSuccess       = new PacketType(nameof(LoginSuccessPacket), (ver) => LoginSuccessPacket.GetPacketId(ver));
+                public static readonly PacketType SetCompression     = new PacketType(nameof(SetCompressionPacket), (ver) => SetCompressionPacket.GetPacketId(ver));
+                public static readonly PacketType EncryptionRequest  = new PacketType(nameof(EncryptionRequestPacket), (ver) => EncryptionRequestPacket.GetPacketId(ver));
+                public static readonly PacketType LoginPluginRequest = new PacketType(nameof(LoginPluginRequestPacket), (ver) => LoginPluginRequestPacket.GetPacketId(ver));
             }
 
             /// <summary>从客户端发送到服务端Packet</summary>
             public static class Client
             {
-                public static readonly PacketType LoginStart = new PacketType(nameof(LoginStartPacket), (ver) => LoginStartPacket.GetPacketId(ver));
-                public static readonly PacketType EncryptionResponse = new PacketType(nameof(EncryptionResponsePacket), (ver) => EncryptionResponsePacket.GetPacketId(ver));
+                public static readonly PacketType LoginStart          = new PacketType(nameof(LoginStartPacket), (ver) => LoginStartPacket.GetPacketId(ver));
+                public static readonly PacketType EncryptionResponse  = new PacketType(nameof(EncryptionResponsePacket), (ver) => EncryptionResponsePacket.GetPacketId(ver));
+                public static readonly PacketType LoginPluginResponse = new PacketType(nameof(LoginPluginResponsePacket), (ver) => LoginPluginResponsePacket.GetPacketId(ver));
             }
         }
 
@@ -88,18 +88,21 @@ namespace MinecraftProtocol.Packets
             /// <summary>从服务端发送到客户端Packet</summary>
             public static class Server
             {
-                public static readonly PacketType PluginChannel = new PacketType(nameof(ServerPluginChannelPacket), (ver) => ServerPluginChannelPacket.GetPacketId(ver));
-                public static readonly PacketType KeepAlive = new PacketType(nameof(KeepAliveRequestPacket), (ver) => KeepAliveRequestPacket.GetPacketId(ver));
-                public static readonly PacketType ChatMessage = new PacketType(nameof(ServerChatMessagePacket), (ver) => ServerChatMessagePacket.GetPacketId(ver));
-                public static readonly PacketType Disconnect = new PacketType(nameof(DisconnectPacket), (ver) => DisconnectPacket.GetPacketId(ver));
+                public static readonly PacketType PluginChannel         = new PacketType(nameof(ServerPluginChannelPacket), (ver) => ServerPluginChannelPacket.GetPacketId(ver));
+                public static readonly PacketType KeepAlive             = new PacketType(nameof(KeepAliveRequestPacket), (ver) => KeepAliveRequestPacket.GetPacketId(ver));
+                public static readonly PacketType ChatMessage           = new PacketType(nameof(ServerChatMessagePacket), (ver) => ServerChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType DisguisedChatMessage  = new PacketType(nameof(DisguisedChatMessagePacket), (ver) => DisguisedChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType SystemChatMessage     = new PacketType(nameof(SystemChatMessagePacket), (ver) => SystemChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType PlayerChatMessage     = new PacketType(nameof(PlayerChatMessagePacket), (ver) => PlayerChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType Disconnect            = new PacketType(nameof(DisconnectPacket), (ver) => DisconnectPacket.GetPacketId(ver));
             }
 
             /// <summary>从客户端发送到服务端Packet</summary>
             public static class Client
             {
-                public static readonly PacketType KeepAlive = new PacketType(nameof(KeepAliveResponsePacket), (ver) => KeepAliveResponsePacket.GetPacketId(ver));
-                public static readonly PacketType ChatMessage = new PacketType(nameof(ClientChatMessagePacket), (ver) => ClientChatMessagePacket.GetPacketId(ver));
-                public static readonly PacketType PluginChannel = new PacketType(nameof(ClientPluginChannelPacket), (ver) => ClientPluginChannelPacket.GetPacketId(ver));
+                public static readonly PacketType KeepAlive      = new PacketType(nameof(KeepAliveResponsePacket), (ver) => KeepAliveResponsePacket.GetPacketId(ver));
+                public static readonly PacketType ChatMessage    = new PacketType(nameof(ClientChatMessagePacket), (ver) => ClientChatMessagePacket.GetPacketId(ver));
+                public static readonly PacketType PluginChannel  = new PacketType(nameof(ClientPluginChannelPacket), (ver) => ClientPluginChannelPacket.GetPacketId(ver));
                 public static readonly PacketType ClientSettings = new PacketType(nameof(ClientSettingsPacket), (ver) => ClientSettingsPacket.GetPacketId(ver));
             }
         }

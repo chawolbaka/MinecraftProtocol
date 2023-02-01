@@ -50,6 +50,9 @@ namespace MinecraftProtocol.Packets.Server
              * 15w36a(67)
              * Changed ID of Keep Alive from 0x00 to 0x1F
              */
+
+            if (protocolVersion >= ProtocolVersions.V1_19_3)       return 0x1F;
+            if (protocolVersion >= ProtocolVersions.V1_19)         return 0x1E;
             if (protocolVersion >= ProtocolVersions.V1_17)         return 0x21;
             if (protocolVersion >= ProtocolVersions.V20w28a)       return 0x1F;
             if (protocolVersion >= ProtocolVersions.V1_16)         return 0x20;

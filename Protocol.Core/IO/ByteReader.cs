@@ -122,7 +122,18 @@ namespace MinecraftProtocol.IO
         {
             return new UUID(ReadLong(), ReadLong());
         }
+         
+        public virtual Identifier ReadIdentifier()
+        {
+            return Identifier.Parse(ReadString());
+        }
 
+        public virtual byte[] ReadBytes(int length)
+        {
+            byte[] result = _data.Span.Slice(offset, length).ToArray();
+            offset += length;
+            return result;
+        }
         public virtual byte[] ReadByteArray(int protocolVersion)
         {
             int ArrayLength = protocolVersion >= ProtocolVersions.V14w21a ? ReadVarInt() : ReadShort();
@@ -142,10 +153,33 @@ namespace MinecraftProtocol.IO
             return list;
         }
 
+        public virtual Identifier[] ReadIdentifierArray()
+        {
+            Identifier[] list = new Identifier[ReadVarInt()];
+            for (int i = 0; i < list.Length; i++)
+            {
+                list[i] = Identifier.Parse(ReadString());
+            }
+            return list;
+        }
+
+        public virtual T ReadOptionalField<T>(Func<T> func) where T : class
+        {
+            return ReadBoolean() ? func() : null;
+        }
+
+        public virtual byte[] ReadOptionalBytes(int length)
+        {
+            return ReadBoolean() ? ReadBytes(length) : null;
+        }
+        public virtual byte[] ReadOptionalByteArray(int protocolVersion)
+        {
+            return ReadBoolean() ? ReadByteArray(protocolVersion) : null;
+        }
 
         public virtual byte[] ReadAll()
         {
-            offset = _data.Length;
+            SetToEnd();
             return _data.Span.ToArray();
         }
 
@@ -158,6 +192,12 @@ namespace MinecraftProtocol.IO
         public virtual ReadOnlyMemory<byte> AsMemory()
         {
             return _data;
+        }
+
+
+        public virtual void SetToEnd()
+        {
+            offset = _data.Length;
         }
 
         public virtual void Reset()

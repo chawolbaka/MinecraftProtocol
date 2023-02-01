@@ -28,6 +28,7 @@ namespace MinecraftProtocol.Packets
         public bool IsReadProperty { get; set; }
         public bool IsWriteProperty { get; set; }
         public bool IsOverrideProperty { get; set; }
+        public bool IsOptional { get; set; }
 
         public PacketPropertyAttribute() { }
         public PacketPropertyAttribute(string name) { }
@@ -35,6 +36,7 @@ namespace MinecraftProtocol.Packets
         public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty) { }
         public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty) { }
         public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty, bool isOverrideProperty) { }
+        public PacketPropertyAttribute(string propertyName, int constructorPriority, bool isReadProperty, bool isWriteProperty, bool isOverrideProperty, bool isOptional) { }
     }
 }
 ";
@@ -135,9 +137,21 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 cotr.AppendLine($"        public {classSymbol.Name}(int protocolVersion): base(GetPacketId(protocolVersion), protocolVersion)");
             cotr.AppendLine("        {");
             cotr.Append(info.WriteInit);
-            cotr.AppendLine("            CheckProperty();")
-                .AppendLine("            Write();")
-                .Append("        }");
+            cotr.AppendLine("            CheckProperty();");
+            cotr.AppendLine("            Write();");
+            cotr.Append("        }");
+
+            if(info.HasOptionalProperty&&info.OptionalPropertyList.Count>0)
+            {
+                cotr.AppendLine();
+                cotr.AppendLine($"        public {classSymbol.Name}({string.Join(", ", info.OptionalPropertyList)}, int protocolVersion): base(GetPacketId(protocolVersion), protocolVersion)");
+                cotr.AppendLine("        {");
+                cotr.Append(info.OptionalInit);
+                cotr.AppendLine("            CheckProperty();");
+                cotr.AppendLine("            Write();");
+                cotr.Append("        }");
+            }
+
 
             if(info.ReadPropertyList.Count>0&& info.ReadPropertyNameList.Count == info.ReadPropertyList.Count)
             {
@@ -186,11 +200,18 @@ $@"                  return packet.Reader.IsReadToEnd;
         public class GenerateInfo
         {
             public List<string> WritePropertyList = new List<string>();
-            public List<string> WritePropertyNameList = new List<string>();
+            //public List<string> WritePropertyNameList = new List<string>();
+
+            public List<string> OptionalPropertyList = new List<string>();
+            //public List<string> OptionalPropertyNameList = new List<string>();
+
             public List<string> ReadPropertyList = new List<string>();
             public List<string> ReadPropertyNameList = new List<string>();
             public StringBuilder WriteInit = new StringBuilder();
+            public StringBuilder OptionalInit = new StringBuilder();
             public StringBuilder ReadInit = new StringBuilder();
+
+            public bool HasOptionalProperty;
 
             public GenerateInfo(IEnumerable<KeyValuePair<IFieldSymbol, AttributeProperty>> fields)
             {
@@ -204,14 +225,26 @@ $@"                  return packet.Reader.IsReadToEnd;
                     string CotrPropertyName = AttributeProperty.PropertyName.Substring(0, 1).ToLower() + AttributeProperty.PropertyName.Substring(1);
                     if (AttributeProperty.IsWriteProperty)
                     {
+                        if (!AttributeProperty.IsOptional)
+                        {
+                            OptionalPropertyList.Add($"{fieldSymbol.Type} {CotrPropertyName}");
+                            OptionalInit.AppendLine($"            this.{fieldSymbol.Name} = {CotrPropertyName};");
+                            //OptionalPropertyNameList.Add(CotrPropertyName);
+                        }
+                        else
+                        {
+                            HasOptionalProperty = true;
+                            OptionalInit.AppendLine($"            this.{fieldSymbol.Name} = default;");
+                        }
                         WritePropertyList.Add($"{fieldSymbol.Type} {CotrPropertyName}");
-                        WriteInit.AppendLine($"            {fieldSymbol.Name} = {CotrPropertyName};");
-                        WritePropertyNameList.Add(CotrPropertyName);
+                        WriteInit.AppendLine($"            this.{fieldSymbol.Name} = {CotrPropertyName};");
+                        //WritePropertyNameList.Add(CotrPropertyName);
+                        
                     }
                     if (AttributeProperty.IsReadProperty)
                     {
                         ReadPropertyList.Add($"{fieldSymbol.Type} {CotrPropertyName}");
-                        ReadInit.AppendLine($"            {fieldSymbol.Name} = {CotrPropertyName};");
+                        ReadInit.AppendLine($"            this.{fieldSymbol.Name} = {CotrPropertyName};");
                         ReadPropertyNameList.Add(CotrPropertyName);
                     }
 
@@ -225,13 +258,15 @@ $@"                  return packet.Reader.IsReadToEnd;
             public bool IsReadProperty { get; set; }
             public bool IsWriteProperty { get; set; }
             public bool IsOverrideProperty { get; set; }
-
+            public bool IsOptional { get; set; }
+            
             public AttributeProperty()
             {
                 ConstructorPriority = -1;
                 IsWriteProperty = true;
                 IsReadProperty = false;
                 IsOverrideProperty = false;
+                IsOptional = false;
             }
         }
     }

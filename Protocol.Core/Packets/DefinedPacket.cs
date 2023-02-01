@@ -40,6 +40,10 @@ namespace MinecraftProtocol.Packets
             ProtocolVersion = protcolVersion;
         }
 
+        public virtual ByteWriter WriteByteArray(ReadOnlySpan<byte> bytes) => WriteByteArray(bytes, ProtocolVersion);
+        public virtual ByteWriter WriteOptionalByteArray(ReadOnlySpan<byte> bytes) => WriteOptionalByteArray(bytes, ProtocolVersion);
+
+
         protected virtual void CheckProperty()
         {
             if (ProtocolVersion < 0)
@@ -52,6 +56,7 @@ namespace MinecraftProtocol.Packets
         }
         protected abstract void Write();
         protected abstract void Read();
+
 
         public new static Packet Depack(ReadOnlySpan<byte> data, int compress = -1)
         {

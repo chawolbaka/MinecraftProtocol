@@ -6,6 +6,7 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -205,6 +206,11 @@ namespace MinecraftProtocol.IO
             WriteBytes(VarLong.GetSpan(value));
             return this;
         }
+        public virtual ByteWriter WriteIdentifier(Identifier identifier)
+        {
+            WriteString(identifier.ToString());
+            return this;
+        }
         public virtual ByteWriter WriteUUID(UUID value)
         {
             TryGrow(sizeof(long) * 2);
@@ -214,6 +220,9 @@ namespace MinecraftProtocol.IO
         }
         public virtual ByteWriter WriteBytes(params ICollection<byte>[] collections)
         {
+            if (collections == null || collections.Length == 0)
+                return this;
+
             _version++;
             int length = 0;
             foreach (var conllection in collections)
@@ -229,6 +238,8 @@ namespace MinecraftProtocol.IO
         }
         public virtual ByteWriter WriteBytes(params byte[] value)
         {
+            if (value == null || value.Length == 0)
+                return this;
             _version++;
             TryGrow(value.Length);
             Array.Copy(value, 0, _data, _size, value.Length);
@@ -238,6 +249,8 @@ namespace MinecraftProtocol.IO
 
         public virtual ByteWriter WriteBytes(ReadOnlySpan<byte> value)
         {
+            if (value == null || value.Length == 0)
+                return this;
             _version++;
             TryGrow(value.Length);
             value.CopyTo(_data.AsSpan(_size));
@@ -246,30 +259,98 @@ namespace MinecraftProtocol.IO
         }
         public virtual ByteWriter WriteByteArray(ReadOnlySpan<byte> array, int protocolVersion)
         {
-            //14w21a: All byte arrays have VarInt length prefixes instead of short
+            int length = array != null ? 0 : array.Length;
             if (protocolVersion >= ProtocolVersions.V14w21a)
-                WriteVarInt(array.Length);
+                WriteVarInt(length);
             else
-                WriteShort((short)array.Length);
+                WriteShort((short)length);
+
             WriteBytes(array);
             return this;
         }
-        public virtual ByteWriter WriteStringArray(IList<string> array)
+        public virtual ByteWriter WriteStringArray(IEnumerable<string> array)
         {
-            _version++;
-            WriteVarInt(array.Count);
-            foreach (var str in array)
-                WriteString(str);
-            return this;
+            return WriteArray(WriteString, array, array.Count()); ;
         }
         public virtual ByteWriter WriteStringArray(ReadOnlySpan<string> array)
         {
-            _version++;
-            WriteVarInt(array.Length);
-            foreach (var str in array)
-                WriteString(str);
+            return WriteArray(WriteString, array); ;
+        }
+        public virtual ByteWriter WriteIdentifierArray(IEnumerable<Identifier> array)
+        {
+            return WriteArray(WriteIdentifier, array, array.Count());
+        }
+        public virtual ByteWriter WriteIdentifierArray(ReadOnlySpan<Identifier> array)
+        {
+            return WriteArray(WriteIdentifier, array);
+        }
+
+        private ByteWriter WriteArray<T>(Func<T, ByteWriter> write, ReadOnlySpan<T> array)
+        {
+            if(array != null)
+            {
+                WriteVarInt(array.Length);
+                foreach (T item in array)
+                    write(item);
+                return this;
+            }
+            else
+            {
+                WriteVarInt(0);
+                return this;
+            }
+        }
+        private ByteWriter WriteArray<T>(Func<T, ByteWriter> write, IEnumerable<T> array, int count)
+        {
+            WriteVarInt(count);
+            if (array != null)
+            {
+                foreach (T item in array)
+                {
+                    write(item);
+                }
+            }
             return this;
         }
+
+        public virtual ByteWriter WriteOptionalField<T>(Func<T, ByteWriter> func, T value) where T : class
+        {
+            bool isNull = value == null;
+            WriteBoolean(!isNull);
+            if (!isNull)
+                return func(value);
+            else
+                return this;
+        }
+        public virtual ByteWriter WriteOptionalString(string value)
+        {
+            bool isNull = string.IsNullOrEmpty(value);
+            WriteBoolean(!isNull);
+            if (!isNull)
+                return WriteString(value);
+            else
+                return this;
+        }
+        public virtual ByteWriter WriteOptionalBytes(ReadOnlySpan<byte> array)
+        {
+            bool isNull = array == null || array.Length == 0;
+            WriteBoolean(!isNull);
+            if (!isNull)
+                return WriteBytes(array);
+            else
+                return this;
+        }
+        public virtual ByteWriter WriteOptionalByteArray(ReadOnlySpan<byte> array, int protocolVersion)
+        {
+            bool isNull = array == null || array.Length == 0;
+            WriteBoolean(!isNull);
+            if (!isNull)
+                return WriteByteArray(array, protocolVersion);
+            else
+                return this;
+        }
+
+
 
         /// <summary>
         /// 用于对象池的清空需求

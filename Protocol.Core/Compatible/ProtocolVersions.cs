@@ -7,6 +7,26 @@ namespace MinecraftProtocol.Compatible
 {
     public static class ProtocolVersions
     {
+        [ProtocolVersion("1.19.3", ProtocolVersionType.Release)]
+        public const int V1_19_3 = 761;
+        
+        [ProtocolVersion("1.19.2", ProtocolVersionType.Release)]
+        public const int V1_19_2 = 760;
+        
+        [ProtocolVersion("1.19.1 ", ProtocolVersionType.Release)]
+        public const int V1_19_1 = 760;
+        
+        [ProtocolVersion("1.19", ProtocolVersionType.Release)]
+        public const int V1_19 = 759;
+        
+        [ProtocolVersion("1.18.2", ProtocolVersionType.Release)]
+        public const int V1_18_2 = 758;
+        
+        [ProtocolVersion("1.18.1", ProtocolVersionType.Release)]
+        public const int V1_18_1 = 757;
+
+        [ProtocolVersion("1.18", ProtocolVersionType.Release)]
+        public const int V1_18 = 757;
 
         [ProtocolVersion("1.17.1", ProtocolVersionType.Release)]
         public const int V1_17_1 = 756;
@@ -1339,6 +1359,7 @@ namespace MinecraftProtocol.Compatible
             }
             return ProtocolVersionDictionary;
         }
+
         //public static void PrintFromWiki()
         //{
         //    System.Net.WebClient tmp = new System.Net.WebClient();
@@ -1380,11 +1401,19 @@ namespace MinecraftProtocol.Compatible
         //    }
         //    foreach (var item in VersionNumbers)
         //    {
-        //        //样品:
-        //        /// <summary>1.12.2</summary>
-        //        //public const int V17w45a = 343;
-        //        Console.WriteLine($"/// <summary>{item.Key.Replace("-pre", " Pre-Release ")}".TrimEnd() + "</summary>");
-        //        Console.WriteLine($"public const int V{item.Key.Replace(" Pre-Release ", "_pre").Replace('.', '_').Replace(" ","__").Replace('-', 'M_M').Replace("∞", "INFINITAS")} = {item.Value};");
+        //        //Console.WriteLine($"/// <summary>{item.Key.Replace("-pre", " Pre-Release ")}".TrimEnd() + "</summary>");
+        //        ProtocolVersionType type;
+        //        if (item.Key.Contains('w'))
+        //            type = ProtocolVersionType.Snapshot;
+        //        else if (item.Key.Contains("rc"))
+        //            type = ProtocolVersionType.ReleaseCandidate;
+        //        else if (item.Key.Contains("pre"))
+        //            type = ProtocolVersionType.PreRelease;
+        //        else
+        //            type = ProtocolVersionType.Release;
+        //        Console.WriteLine($"[ProtocolVersion(\"{item.Key}\", ProtocolVersionType.{type})]");
+
+        //        Console.WriteLine($"public const int V{item.Key.Replace(" Pre-Release ", "_pre").Replace('.', '_').Replace(" ", "").Replace("-", "_").Replace("∞", "INFINITAS")} = {item.Value.Replace(" ","")};");
         //    }
         //}
     }

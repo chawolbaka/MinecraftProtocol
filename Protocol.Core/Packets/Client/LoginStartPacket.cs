@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using MinecraftProtocol.Compatible;
+using MinecraftProtocol.DataType;
 
 namespace MinecraftProtocol.Packets.Client
 {
@@ -10,7 +11,10 @@ namespace MinecraftProtocol.Packets.Client
     public partial class LoginStartPacket : DefinedPacket
     {
         [PacketProperty]
-        internal string _playerName;
+        private string _playerName;
+
+        [PacketProperty(IsOptional = true)]
+        private UUID _playerUUID;
 
         protected override void CheckProperty()
         {
@@ -25,11 +29,16 @@ namespace MinecraftProtocol.Packets.Client
         protected override void Write()
         {
             WriteString(_playerName);
+            WriteBoolean(_playerUUID != default);
+            if (_playerUUID != default)
+                WriteUUID(_playerUUID);
         }
 
         protected override void Read()
         {
             _playerName = Reader.ReadString();
+            if (Reader.ReadBoolean())
+                _playerUUID = Reader.ReadUUID();
         }
 
 
