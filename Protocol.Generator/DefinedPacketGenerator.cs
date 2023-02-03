@@ -14,6 +14,7 @@ namespace Protocol.Generator
         private static readonly string ReadOnlyCompatiblePacket = "ReadOnlyCompatiblePacket";
         private static readonly string CompatiblePacket = "CompatiblePacket";
         private static readonly string ReadOnlyPacket = "ReadOnlyPacket";
+        private static readonly string Packet = "Packet";
 
         //SourceGenerator是通过解析源码来获取信息的，所以这边不赋值也一样能正常使用
         private const string AttributeTextShort = @"
@@ -75,8 +76,7 @@ namespace MinecraftProtocol.Packets
            
             StringBuilder cotr = new StringBuilder();
             StringBuilder tryRead = new StringBuilder();
-            StringBuilder source = new StringBuilder($@"
-using System;
+            StringBuilder source = new StringBuilder($@"using System;
 
 namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 {{
@@ -105,13 +105,14 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             string ReadArguments = info.ReadPropertyNameList.Count > 0 ? string.Join(", ", info.ReadPropertyNameList) : "";
             if (info.ReadPropertyList.Count > 0)
             {
-                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet, {ReadFormalParameters}) : this(packet, {ReadArguments}, packet.ProtocolVersion) {{ }}");
+                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet, {ReadFormalParameters}) : this(packet, {ReadArguments}, packet.ProtocolVersion) {{ }}");               
                 cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ReadFormalParameters}, int protocolVersion) : base(packet, protocolVersion)")
                     .AppendLine("        {")
                     .AppendLine($@"            ID = GetPacketId(protocolVersion);")
                     .Append(info.ReadInit)
                     .AppendLine("            Read();")
                     .AppendLine("        }");
+
 
                 cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.ID, ref packet._size, ref packet._data, packet.ProtocolVersion)")
                     .AppendLine("        {")
@@ -126,6 +127,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet) : this(packet, packet.ProtocolVersion) {{ }}");
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ ID = GetPacketId(protocolVersion); Read(); }}");
                 cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.ID, ref packet._size, ref packet._data, packet.ProtocolVersion) {{ ID = GetPacketId(packet.ProtocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, int protocolVersion) : base(packet.ID, ref packet._size, ref packet._data, protocolVersion) {{ ID = GetPacketId(protocolVersion); Read(); }}");
 
             }
 
@@ -156,6 +158,8 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             if(info.ReadPropertyList.Count>0&& info.ReadPropertyNameList.Count == info.ReadPropertyList.Count)
             {
                 tryRead.Append($@"
+        public static bool TryRead({CompatiblePacket} readPacket, {ReadFormalParameters}) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out _);
+        public static bool TryRead({CompatiblePacket} readPacket, {ReadFormalParameters}, out {classSymbol.Name} packet) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out packet);
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, {ReadFormalParameters}) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out _);
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, {ReadFormalParameters}, out {classSymbol.Name} packet) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out packet);
         public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, int protocolVersion) => TryRead(readPacket, {ReadArguments}, protocolVersion, out _);
@@ -164,9 +168,21 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             else
             {
                 tryRead.Append($@"
+
+
+
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket) => TryRead(readPacket, readPacket.ProtocolVersion, out _);
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, out {classSymbol.Name} packet) => TryRead(readPacket, readPacket.ProtocolVersion, out packet);
         public static bool TryRead({ReadOnlyPacket} readPacket, int protocolVersion) => TryRead(readPacket, protocolVersion, out _);
+        public static bool TryRead({CompatiblePacket} readPacket) => TryRead(readPacket, out _);
+        public static bool TryRead({CompatiblePacket} readPacket, out {classSymbol.Name} packet) 
+        {{ 
+            packet = null;
+            if (readPacket is null || readPacket.ID != GetPacketId(readPacket.ProtocolVersion))
+                return false;
+            else 
+                return TryRead(readPacket.AsReadOnly(), readPacket.ProtocolVersion, out packet);
+        }}
         public static bool TryRead({ReadOnlyPacket} readPacket, int protocolVersion, out {classSymbol.Name} packet)");
             }
             tryRead.Append($@"
@@ -191,6 +207,8 @@ $@"                  return packet.Reader.IsReadToEnd;
             catch (OverflowException) {{ return false; }}
         }}
 ");
+
+
             source.Append(cotr);
             source.Append(tryRead);
             source.Append("} }");
