@@ -16,15 +16,15 @@ namespace MinecraftProtocol.Packets
         }
 
 
-        public static bool operator ==(PacketType left, CompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetId(right.ProtocolVersion);
+        public static bool operator ==(PacketType left, CompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.Id == left.GetId(right.ProtocolVersion);
         public static bool operator !=(PacketType left, CompatiblePacket right) => !(left == right);
-        public static bool operator ==(CompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetId(left.ProtocolVersion);
+        public static bool operator ==(CompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.Id == right.GetId(left.ProtocolVersion);
         public static bool operator !=(CompatiblePacket left, PacketType right) => !(left == right);
 
 
-        public static bool operator ==(PacketType left, ReadOnlyCompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.ID == left.GetId(right.ProtocolVersion);
+        public static bool operator ==(PacketType left, ReadOnlyCompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.Id == left.GetId(right.ProtocolVersion);
         public static bool operator !=(PacketType left, ReadOnlyCompatiblePacket right) => !(left == right);
-        public static bool operator ==(ReadOnlyCompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.ID == right.GetId(left.ProtocolVersion);
+        public static bool operator ==(ReadOnlyCompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.Id == right.GetId(left.ProtocolVersion);
         public static bool operator !=(ReadOnlyCompatiblePacket left, PacketType right) => !(left == right);
 
 

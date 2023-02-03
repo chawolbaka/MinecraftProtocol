@@ -9,7 +9,7 @@ namespace MinecraftProtocol.Packets
     /// </summary>
     public class ReadOnlyPacket : ByteReader, IPacket
     {
-        public int ID => _packet.ID;
+        public int Id => _packet.Id;
         public virtual bool IsReadOnly => true;
         internal Packet _packet;
 

@@ -100,14 +100,14 @@ namespace MinecraftProtocol.IO
 
 
                     Span<byte> decompressed = ZlibUtils.Decompress(buffer, 0, size);
-                    _packet.ID = VarInt.Read(decompressed, out IdOffset);
+                    _packet.Id = VarInt.Read(decompressed, out IdOffset);
                     _packet.Capacity = decompressed.Length - IdOffset;
                     _packet.WriteBytes(decompressed.Slice(IdOffset));
                     Packet = _packet; //提前赋值到全局变量是线程不安全的，因为有可能正在写入的时候就被回收了
                     return this;
                 }
             }
-            _packet.ID = VarInt.Read(ReadByte, out IdOffset);
+            _packet.Id = VarInt.Read(ReadByte, out IdOffset);
             _packet.Capacity = bodyLength - IdOffset;
 
             CheckBounds();

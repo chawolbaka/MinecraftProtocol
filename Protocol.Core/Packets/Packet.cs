@@ -10,11 +10,11 @@ namespace MinecraftProtocol.Packets
     public class Packet : ByteWriter, IPacket, IEquatable<Packet>
     {
 
-        public virtual bool IsEmpty => ID < 0 || _data is null;
+        public virtual bool IsEmpty => Id < 0 || _data is null;
 
         public virtual bool IsReadOnly => false;
 
-        public virtual int ID { get => _id; set { _id = value; _version++; } }
+        public virtual int Id { get => _id; set { _id = value; _version++; } }
 
         private int _id;
 
@@ -22,15 +22,15 @@ namespace MinecraftProtocol.Packets
         public Packet(int packetId) : this(packetId, DEFUALT_CAPACITY) { }
         internal Packet(int packetId, ref int size, ref byte[] packetData) : base(ref size, ref packetData)
         {
-            ID = packetId;
+            Id = packetId;
         }
         public Packet(int packetId, int size, ref byte[] packetData) : base(ref size, ref packetData)
         {
-            ID = packetId;
+            Id = packetId;
         }
         public Packet(int packetId, int capacity) : base(capacity)
         {
-            ID = packetId;
+            Id = packetId;
             RerentData(capacity);
         }
 
@@ -38,7 +38,7 @@ namespace MinecraftProtocol.Packets
         //（顺便如果不写base那么还是会调用基类的空构造函数结果就是从池里取出一个默认长度的，但这边很有可能创建不一样的所以那个16的不处理就回不去池内了处理了也浪费性能）
         public Packet(int packetId, ReadOnlySpan<byte> packetData) : base(packetData.Length) 
         {
-            ID = packetId;
+            Id = packetId;
             if (packetData.Length > 0)
             {
                 _size = packetData.Length;
@@ -48,7 +48,7 @@ namespace MinecraftProtocol.Packets
 
         internal Packet(ICompatiblePacket compatiblePacket)
         {
-            ID = compatiblePacket.ID;
+            Id = compatiblePacket.Id;
             if (compatiblePacket is null)
                 throw new ArgumentNullException(nameof(compatiblePacket));
             if (compatiblePacket is CompatiblePacket cp)
@@ -59,7 +59,7 @@ namespace MinecraftProtocol.Packets
                 _data = compatiblePacket.ToArray();
 
         }
-        public Packet(IPacket packet) : this(packet.ID, packet.ToArray()) { }
+        public Packet(IPacket packet) : this(packet.Id, packet.ToArray()) { }
 
         
 
@@ -78,7 +78,7 @@ namespace MinecraftProtocol.Packets
             ThrowIfDisposed();
 
             byte[] PackedData;
-            int uncompressLength = VarInt.GetLength(ID) + Count;
+            int uncompressLength = VarInt.GetLength(Id) + Count;
             int offset;
             if (compressionThreshold > 0 && _size >= compressionThreshold)
             {
@@ -95,7 +95,7 @@ namespace MinecraftProtocol.Packets
               
                 byte[] uncompressed = _dataPool.Rent(uncompressLength);
 
-                Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(ID, uncompressed),_size);
+                Array.Copy(_data, 0, uncompressed, VarInt.WriteTo(Id, uncompressed),_size);
                 byte[] compressed = ZlibUtils.Compress(uncompressed, 0, uncompressLength);
                 _dataPool.Return(uncompressed);
 
@@ -124,7 +124,7 @@ namespace MinecraftProtocol.Packets
                     offset = VarInt.WriteTo(uncompressLength, PackedData);
                 }
                 //写入ID和Data
-                offset += VarInt.WriteTo(ID, PackedData.AsSpan().Slice(offset));
+                offset += VarInt.WriteTo(Id, PackedData.AsSpan().Slice(offset));
                 if (_size > 0)
                     Array.Copy(_data, 0, PackedData, offset, PackedData.Length - offset);
                 return PackedData;
@@ -174,7 +174,7 @@ namespace MinecraftProtocol.Packets
         public virtual CompatiblePacket AsCompatible(int protocolVersion, int compressionThreshold) => new CompatiblePacket(this, protocolVersion, compressionThreshold);
         public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
 
-        public virtual Packet Clone() => ThrowIfDisposed(new Packet(ID, AsSpan()));
+        public virtual Packet Clone() => ThrowIfDisposed(new Packet(Id, AsSpan()));
         object ICloneable.Clone() => ThrowIfDisposed(Clone());
 
         public override string ToString()
@@ -203,7 +203,7 @@ namespace MinecraftProtocol.Packets
         public virtual bool Equals(Packet packet)
         {
             ThrowIfDisposed();
-            if (packet is null || ID != packet.ID || _size != packet._size) return false;
+            if (packet is null || Id != packet.Id || _size != packet._size) return false;
             if (ReferenceEquals(this, packet) || ReferenceEquals(this._data, packet._data)) return true;
             for (int i = 0; i < packet._size; i++)
             {
@@ -216,7 +216,7 @@ namespace MinecraftProtocol.Packets
         {
             ThrowIfDisposed();
             HashCode code = new HashCode();
-            code.Add(ID);
+            code.Add(Id);
             if (_size > 0)
             {
                 for (int i = 0; i < _size; i++)

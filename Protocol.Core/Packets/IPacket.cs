@@ -11,7 +11,7 @@ namespace MinecraftProtocol.Packets
         /// <summary>
         /// 获取数据包的ID
         /// </summary>
-        int ID { get; }
+        int Id { get; }
 
         /// <summary>
         /// 获取数据包中Data的长度

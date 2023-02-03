@@ -108,15 +108,15 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet, {ReadFormalParameters}) : this(packet, {ReadArguments}, packet.ProtocolVersion) {{ }}");               
                 cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ReadFormalParameters}, int protocolVersion) : base(packet, protocolVersion)")
                     .AppendLine("        {")
-                    .AppendLine($@"            ID = GetPacketId(protocolVersion);")
+                    .AppendLine($@"            Id = GetPacketId(protocolVersion);")
                     .Append(info.ReadInit)
                     .AppendLine("            Read();")
                     .AppendLine("        }");
 
 
-                cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.ID, ref packet._size, ref packet._data, packet.ProtocolVersion)")
+                cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion)")
                     .AppendLine("        {")
-                    .AppendLine($@"            ID = GetPacketId(packet.ProtocolVersion);")
+                    .AppendLine($@"            Id = GetPacketId(packet.ProtocolVersion);")
                     .Append(info.ReadInit)
                     .AppendLine("            Read();")
                     .AppendLine("        }"); ;
@@ -125,9 +125,9 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             else
             {
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet) : this(packet, packet.ProtocolVersion) {{ }}");
-                cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ ID = GetPacketId(protocolVersion); Read(); }}");
-                cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.ID, ref packet._size, ref packet._data, packet.ProtocolVersion) {{ ID = GetPacketId(packet.ProtocolVersion); Read(); }}");
-                cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, int protocolVersion) : base(packet.ID, ref packet._size, ref packet._data, protocolVersion) {{ ID = GetPacketId(protocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ Id = GetPacketId(protocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion) {{ Id = GetPacketId(packet.ProtocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, int protocolVersion) : base(packet.Id, ref packet._size, ref packet._data, protocolVersion) {{ Id = GetPacketId(protocolVersion); Read(); }}");
 
             }
 
@@ -178,7 +178,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
         public static bool TryRead({CompatiblePacket} readPacket, out {classSymbol.Name} packet) 
         {{ 
             packet = null;
-            if (readPacket is null || readPacket.ID != GetPacketId(readPacket.ProtocolVersion))
+            if (readPacket is null || readPacket.Id != GetPacketId(readPacket.ProtocolVersion))
                 return false;
             else 
                 return TryRead(readPacket.AsReadOnly(), readPacket.ProtocolVersion, out packet);
@@ -188,7 +188,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             tryRead.Append($@"
         {{
             packet = null;
-            if (readPacket is null || readPacket.ID != GetPacketId(protocolVersion))
+            if (readPacket is null || readPacket.Id != GetPacketId(protocolVersion))
                 return false;
             try
             {{

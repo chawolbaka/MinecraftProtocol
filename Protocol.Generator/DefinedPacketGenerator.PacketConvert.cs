@@ -36,7 +36,7 @@ namespace MinecraftProtocol.IO.Extensions
                 
                 source.AppendLine($@"
         {{
-            if (packet.ID != {ResultType}.GetPacketId(packet.ProtocolVersion))
+            if (packet.Id!= {ResultType}.GetPacketId(packet.ProtocolVersion))
                 throw new InvalidPacketException(packet);
 
             try
@@ -58,7 +58,7 @@ namespace MinecraftProtocol.IO.Extensions
                
                 source.AppendLine($@"
         {{
-            if (packet.ID != {ResultType}.GetPacketId(packet.ProtocolVersion))
+            if (packet.Id != {ResultType}.GetPacketId(packet.ProtocolVersion))
                 throw new InvalidPacketException(packet);
 
             try

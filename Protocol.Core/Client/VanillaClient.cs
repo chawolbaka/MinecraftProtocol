@@ -233,7 +233,7 @@ namespace MinecraftProtocol.Client
                     OnDisconnectLoginReceived(dlp);
 #if DEBUG
                 else
-                    throw new LoginException($"收到未知的包，id = {packet.ID}");
+                    throw new LoginException($"收到未知的包，id = {packet.Id}");
 #endif
             }
             return VanillaLoginState == VanillaLoginStatus.Success;
