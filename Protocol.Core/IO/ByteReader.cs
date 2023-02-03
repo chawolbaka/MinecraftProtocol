@@ -1,9 +1,12 @@
 ﻿using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
+using MinecraftProtocol.NBT;
+using MinecraftProtocol.NBT.Tags;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace MinecraftProtocol.IO
@@ -161,6 +164,18 @@ namespace MinecraftProtocol.IO
                 list[i] = Identifier.Parse(ReadString());
             }
             return list;
+        }
+
+        public virtual CompoundTag ReadNBT()
+        {
+            NBTReader reader = new NBTReader(this);
+            NBTTagType type = reader.ReadType();
+            if (type == NBTTagType.Compound)
+                return new CompoundTag().Read(reader) as CompoundTag;
+            else if (type == NBTTagType.End)
+                return new CompoundTag();
+            else
+                throw new InvalidDataException("Failed to read nbt");
         }
 
         public virtual T ReadOptionalField<T>(Func<T> func) where T : class

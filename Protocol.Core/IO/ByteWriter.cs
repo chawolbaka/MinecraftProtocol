@@ -2,6 +2,8 @@
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.IO.Pools;
+using MinecraftProtocol.NBT;
+using MinecraftProtocol.NBT.Tags;
 using System;
 using System.Buffers;
 using System.Collections;
@@ -209,6 +211,11 @@ namespace MinecraftProtocol.IO
         public virtual ByteWriter WriteIdentifier(Identifier identifier)
         {
             WriteString(identifier.ToString());
+            return this;
+        }
+        public virtual ByteWriter WriteNBT(NBTTag tag)
+        {
+            tag.Write(new NBTWriter(this));
             return this;
         }
         public virtual ByteWriter WriteUUID(UUID value)
