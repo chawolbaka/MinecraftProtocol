@@ -1,10 +1,11 @@
 ﻿using MinecraftProtocol.IO;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace MinecraftProtocol.NBT.Tags
 {
-    public class LongArrayTag : NBTTag, INBTPayload<long[]>
+    public class LongArrayTag : NBTTag, INBTPayload<long[]>, IEnumerable<long>
     {
         public override NBTTagType Type => NBTTagType.LongArray;
 
@@ -31,6 +32,16 @@ namespace MinecraftProtocol.NBT.Tags
                 writer.WriteLong(l);
             }
             return this;
+        }
+
+        public IEnumerator<long> GetEnumerator()
+        {
+            return ((IEnumerable<long>)Payload).GetEnumerator();
+        }
+        
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return Payload.GetEnumerator();
         }
     }
 }

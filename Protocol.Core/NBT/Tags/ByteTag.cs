@@ -25,5 +25,6 @@ namespace MinecraftProtocol.NBT.Tags
             writer.WriteByte(Payload);
             return this;
         }
+        public override string ToString() => Payload.ToString();
     }
 }
