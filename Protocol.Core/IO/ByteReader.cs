@@ -52,23 +52,48 @@ namespace MinecraftProtocol.IO
 
         public virtual int ReadInt()
         {
-            return _data.Span[offset++] << 24 |
-                   _data.Span[offset++] << 16 |
-                   _data.Span[offset++] << 08 |
-                   _data.Span[offset++];
+            ReadOnlySpan<byte> span = _data.Span;
+            return span[offset++] << 24 |
+                   span[offset++] << 16 |
+                   span[offset++] << 08 |
+                   span[offset++];
+
+        }
+
+        public virtual uint ReadUnsignedInt()
+        {
+            ReadOnlySpan<byte> span = _data.Span;
+            return ((uint)span[offset++]) << 24 |
+                   ((uint)span[offset++]) << 16 |
+                   ((uint)span[offset++]) << 08 |
+                   span[offset++];
 
         }
 
         public virtual long ReadLong()
         {
-           return ((long)_data.Span[offset++]) << 56 |
-                  ((long)_data.Span[offset++]) << 48 |
-                  ((long)_data.Span[offset++]) << 40 |
-                  ((long)_data.Span[offset++]) << 32 |
-                  ((long)_data.Span[offset++]) << 24 |
-                  ((long)_data.Span[offset++]) << 16 |
-                  ((long)_data.Span[offset++]) << 08 |
-                  _data.Span[offset++];
+            ReadOnlySpan<byte> span = _data.Span;
+            return ((long)span[offset++]) << 56 |
+                  ((long)span[offset++]) << 48 |
+                  ((long)span[offset++]) << 40 |
+                  ((long)span[offset++]) << 32 |
+                  ((long)span[offset++]) << 24 |
+                  ((long)span[offset++]) << 16 |
+                  ((long)span[offset++]) << 08 |
+                  span[offset++];
+        }
+
+        public virtual ulong ReadUnsignedLong()
+        {
+            ReadOnlySpan<byte> span = _data.Span;
+            return ((ulong)span[offset++]) << 56 |
+                   ((ulong)span[offset++]) << 48 |
+                   ((ulong)span[offset++]) << 40 |
+                   ((ulong)span[offset++]) << 32 |
+                   ((ulong)span[offset++]) << 24 |
+                   ((ulong)span[offset++]) << 16 |
+                   ((ulong)span[offset++]) << 08 |
+                   span[offset++];
         }
 
         public virtual float ReadFloat()
@@ -121,9 +146,15 @@ namespace MinecraftProtocol.IO
             return result;
         }
 
+        
         public virtual UUID ReadUUID()
         {
             return new UUID(ReadLong(), ReadLong());
+        }
+        
+        public virtual Position ReadPosition(int protocolVersion)
+        {
+            return new Position(ReadUnsignedLong(), protocolVersion);
         }
          
         public virtual Identifier ReadIdentifier()

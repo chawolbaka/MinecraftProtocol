@@ -1,4 +1,6 @@
-﻿using MinecraftProtocol.IO;
+﻿using MinecraftProtocol.Compatible;
+using MinecraftProtocol.DataType;
+using MinecraftProtocol.IO;
 using System;
 
 namespace MinecraftProtocol.Packets
@@ -40,6 +42,7 @@ namespace MinecraftProtocol.Packets
             ProtocolVersion = protcolVersion;
         }
 
+        public virtual ByteWriter WritePosition(Position position) => WritePosition(position, ProtocolVersion);
         public virtual ByteWriter WriteByteArray(ReadOnlySpan<byte> bytes) => WriteByteArray(bytes, ProtocolVersion);
         public virtual ByteWriter WriteOptionalByteArray(ReadOnlySpan<byte> bytes) => WriteOptionalByteArray(bytes, ProtocolVersion);
 

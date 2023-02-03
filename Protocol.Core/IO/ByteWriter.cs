@@ -161,7 +161,31 @@ namespace MinecraftProtocol.IO
             _data[_size++] = (byte)value;
             return this;
         }
+        public virtual ByteWriter WriteUnsignedInt(uint value)
+        {
+            _version++;
+            TryGrow(4);
+            _data[_size++] = (byte)(value >> 24);
+            _data[_size++] = (byte)(value >> 16);
+            _data[_size++] = (byte)(value >> 8);
+            _data[_size++] = (byte)value;
+            return this;
+        }
         public virtual ByteWriter WriteLong(long value)
+        {
+            _version++;
+            TryGrow(8);
+            _data[_size++] = (byte)(value >> 54);
+            _data[_size++] = (byte)(value >> 48);
+            _data[_size++] = (byte)(value >> 40);
+            _data[_size++] = (byte)(value >> 32);
+            _data[_size++] = (byte)(value >> 24);
+            _data[_size++] = (byte)(value >> 16);
+            _data[_size++] = (byte)(value >> 8);
+            _data[_size++] = (byte)value;
+            return this;
+        }
+        public virtual ByteWriter WriteUnsignedLong(ulong value)
         {
             _version++;
             TryGrow(8);
@@ -225,6 +249,12 @@ namespace MinecraftProtocol.IO
             WriteLong(value.Least);
             return this;
         }
+        public virtual ByteWriter WritePosition(Position value, int protocolVersion)
+        {
+            WriteUnsignedLong(value.Encode(protocolVersion));
+            return this;
+        }
+
         public virtual ByteWriter WriteBytes(params ICollection<byte>[] collections)
         {
             if (collections == null || collections.Length == 0)
