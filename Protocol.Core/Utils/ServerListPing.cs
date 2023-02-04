@@ -192,6 +192,7 @@ namespace MinecraftProtocol.Utils
             
         }
 
+        
         /// <summary>
         /// 解析服务器响应的Json
         /// </summary>
@@ -206,8 +207,7 @@ namespace MinecraftProtocol.Utils
             return PingInfo;
             
         }
-        private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions { Converters = { new ChatComponentConverter() } };
-
+        private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions { Converters = { new ChatComponentConverter(), new PingReply.Converter() } };
 
         private TimeSpan? GetTime(Socket socket)
         {
