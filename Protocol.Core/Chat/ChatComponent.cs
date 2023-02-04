@@ -9,8 +9,8 @@ namespace MinecraftProtocol.Chat
 {
     /*
      * (つ∀ ⊂ )感谢这个让我看懂了大概的结构(以前试着写过一次,看着wiki.vg上面的看的一脸懵逼完全脑补不出来Chat的结构)
-    * https://github.com/Naamloos/Obsidian/tree/c74ecbc33a4c9aaa714d1021eb7d930b45e78d40/Obsidian/Chat
-    */
+     * https://github.com/Naamloos/Obsidian/tree/c74ecbc33a4c9aaa714d1021eb7d930b45e78d40/Obsidian/Chat
+     */
     [JsonConverter(typeof(ChatComponentConverter))]
     public class ChatComponent: ITranslation
     {
@@ -386,7 +386,18 @@ namespace MinecraftProtocol.Chat
             Strikethrough = format.HasFlag(ChatFormat.Strikethrough);
             Obfuscated = format.HasFlag(ChatFormat.Obfuscated);
         }
+        public void SetStyle(ChatStyle style)
+        {
+            if (style is null)
+                return;
 
+            Bold = style.Bold;
+            Italic = style.Italic;
+            Underline = style.Underline;
+            Strikethrough = style.Strikethrough;
+            Obfuscated = style.Obfuscated;
+            Color = style.Color;
+        }
 
         private void SetFormat(char code)
         {
