@@ -60,17 +60,19 @@ namespace MinecraftProtocol.Compression
         /// <returns>Decompressed data as byte array</returns>
         public static byte[] Decompress(byte[] to_decompress)
         {
-            using (ZlibStream stream = new ZlibStream(new MemoryStream(to_decompress, false), CompressionMode.Decompress))
+            byte[] buffer = new byte[16 * 1024];
+            int read;
+            
+            using MemoryStream ms = new MemoryStream(to_decompress, false);
+            using ZlibStream stream = new ZlibStream(ms, CompressionMode.Decompress);   
+            using MemoryStream decompressedBuffer = new MemoryStream();
+            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
             {
-                byte[] buffer = new byte[16 * 1024];
-                using (MemoryStream decompressedBuffer = new MemoryStream())
-                {
-                    int read;
-                    while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
-                        decompressedBuffer.Write(buffer, 0, read);
-                    return decompressedBuffer.ToArray();
-                }
+                decompressedBuffer.Write(buffer, 0, read);
             }
+            return decompressedBuffer.ToArray();
+
+
         }
 
         public static async Task<byte[]> CompressAsync(Memory<byte> to_compress, CancellationToken cancellationToken = default)
