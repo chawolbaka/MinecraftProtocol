@@ -47,7 +47,7 @@ namespace MinecraftProtocol.Packets.Server
                     LoginSuccessProperty property = new LoginSuccessProperty();
                     property.Name = Reader.ReadString();
                     property.Value = Reader.ReadString();
-                    property.Signature = Reader.ReadOptionalByteArray(ProtocolVersion);
+                    property.Signature = Reader.ReadOptionalByteArray();
                     properties[i] = property;
                 }
             }

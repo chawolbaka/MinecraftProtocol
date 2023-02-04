@@ -23,7 +23,7 @@ namespace MinecraftProtocol.Packets.Client
             _messageId = Reader.ReadVarInt();
             _successful = Reader.ReadBoolean();
             if (!Reader.IsReadToEnd) //是这样读吗？wiki没写清楚，有问题再改吧。
-                _messageData = Reader.ReadByteArray(ProtocolVersion);
+                _messageData = Reader.ReadByteArray();
         }
 
         protected override void Write()

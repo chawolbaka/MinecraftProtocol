@@ -13,8 +13,8 @@ namespace MinecraftProtocol.Packets
         public const int UnsupportPacketId = -25;
         public virtual int ProtocolVersion { get; protected set; }
 
-        protected virtual ByteReader Reader => reader ??= new ByteReader(_data);
-        private ByteReader reader;
+        protected virtual CompatibleByteReader Reader => reader ??= new CompatibleByteReader(AsMemory(), ProtocolVersion);
+        private CompatibleByteReader reader;
 
         protected DefinedPacket(int id, int protocolVersion) : this(id, null, protocolVersion) { }
         protected DefinedPacket(int id, byte[] data, int protocolVersion) : base(id, data)
@@ -38,7 +38,7 @@ namespace MinecraftProtocol.Packets
             _size = packet.Count;
             RerentData(packet.Count);
             packet.AsSpan().CopyTo(_data);
-            reader = packet;
+            reader = new CompatibleByteReader(packet.AsMemory(), protcolVersion);
             ProtocolVersion = protcolVersion;
         }
 

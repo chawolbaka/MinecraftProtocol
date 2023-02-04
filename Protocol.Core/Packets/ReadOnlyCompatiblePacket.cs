@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.DataType;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -10,6 +11,10 @@ namespace MinecraftProtocol.Packets
         public int CompressionThreshold => _cpacket.CompressionThreshold;
 
         internal CompatiblePacket _cpacket;
+
+        public virtual Position ReadPosition() => ReadPosition(ProtocolVersion);
+        public virtual byte[] ReadByteArray() => ReadByteArray(ProtocolVersion);
+        public virtual byte[] ReadOptionalByteArray() => ReadOptionalByteArray(ProtocolVersion);
 
         public ReadOnlyCompatiblePacket(CompatiblePacket packet) : base(packet)
         {

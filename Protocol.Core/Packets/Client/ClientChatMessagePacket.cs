@@ -93,9 +93,9 @@ namespace MinecraftProtocol.Packets.Client
                 WriteLong(_timestamp);
                 WriteLong(_salt);
                 if (ProtocolVersion >= ProtocolVersions.V1_19_3)
-                    _signature = Reader.ReadOptionalByteArray(ProtocolVersion);
+                    _signature = Reader.ReadOptionalByteArray();
                 else if (ProtocolVersion <= ProtocolVersions.V1_19_2)
-                    _signature = Reader.ReadByteArray(ProtocolVersion);
+                    _signature = Reader.ReadByteArray();
 
 
                 if (ProtocolVersion >= ProtocolVersions.V1_19_3)

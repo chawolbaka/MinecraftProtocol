@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using MinecraftProtocol.Compression;
+using MinecraftProtocol.DataType;
+using MinecraftProtocol.IO;
 
 namespace MinecraftProtocol.Packets
 {
@@ -9,11 +11,12 @@ namespace MinecraftProtocol.Packets
     /// </summary>
     public class CompatiblePacket : Packet, ICompatiblePacket
     {
+        public int CompressionThreshold  { get => ThrowIfDisposed(_compressionThreshold); set => _compressionThreshold = ThrowIfDisposed(value); }
+        public int ProtocolVersion       { get => ThrowIfDisposed(_protocolVersion); set => _protocolVersion = ThrowIfDisposed(value); }
+
         private int _compressionThreshold;
         private int _protocolVersion;
 
-        public int CompressionThreshold  { get => ThrowIfDisposed(_compressionThreshold); set => _compressionThreshold = ThrowIfDisposed(value); }
-        public int ProtocolVersion       { get => ThrowIfDisposed(_protocolVersion); set => _protocolVersion = ThrowIfDisposed(value); }
 
         internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.Id, ref packet._size, ref packet._data)
         {
@@ -51,6 +54,12 @@ namespace MinecraftProtocol.Packets
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;
         }
+
+
+        public virtual ByteWriter WritePosition(Position position) => WritePosition(position, ProtocolVersion);
+        public virtual ByteWriter WriteByteArray(ReadOnlySpan<byte> bytes) => WriteByteArray(bytes, ProtocolVersion);
+        public virtual ByteWriter WriteOptionalByteArray(ReadOnlySpan<byte> bytes) => WriteOptionalByteArray(bytes, ProtocolVersion);
+
 
         public override byte[] Pack()
         {

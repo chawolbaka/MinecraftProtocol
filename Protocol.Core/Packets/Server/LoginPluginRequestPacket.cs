@@ -22,7 +22,7 @@ namespace MinecraftProtocol.Packets.Server
         {
             _messageId = Reader.ReadVarInt();
             _channel = Reader.ReadIdentifier();
-            _messageData = Reader.ReadByteArray(ProtocolVersion);
+            _messageData = Reader.ReadByteArray();
         }
 
         protected override void Write()

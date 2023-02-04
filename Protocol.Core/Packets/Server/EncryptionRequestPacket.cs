@@ -28,15 +28,15 @@ namespace MinecraftProtocol.Packets.Server
         protected override void Write()
         {
             WriteString(ServerID);
-            WriteByteArray(PublicKey, ProtocolVersion);
-            WriteByteArray(VerifyToken, ProtocolVersion);
+            WriteByteArray(PublicKey);
+            WriteByteArray(VerifyToken);
         }
 
         protected override void Read()
         {
             _serverID = Reader.ReadString();
-            _publicKey = Reader.ReadByteArray(ProtocolVersion);
-            _verifyToken = Reader.ReadByteArray(ProtocolVersion);
+            _publicKey = Reader.ReadByteArray();
+            _verifyToken = Reader.ReadByteArray();
         }
 
         public static int GetPacketId(int protocolVersion)

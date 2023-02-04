@@ -23,14 +23,14 @@ namespace MinecraftProtocol.Packets.Client
 
         protected override void Write()
         {
-            WriteByteArray(_sharedSecret, ProtocolVersion);
-            WriteByteArray(_verifyToken, ProtocolVersion);
+            WriteByteArray(_sharedSecret);
+            WriteByteArray(_verifyToken);
         }
 
         protected override void Read()
         {
-            _sharedSecret = Reader.ReadByteArray(ProtocolVersion);
-            _sharedSecret = Reader.ReadByteArray(ProtocolVersion);
+            _sharedSecret = Reader.ReadByteArray();
+            _sharedSecret = Reader.ReadByteArray();
         }
 
         public static int GetPacketId(int protocolVersion)

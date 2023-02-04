@@ -213,7 +213,7 @@ namespace MinecraftProtocol.Packets.Server
                 if (_hasDeathLocation)
                 {
                     _deathDimensionName = Reader.ReadIdentifier();
-                    _deathLocation = Reader.ReadPosition(ProtocolVersion);
+                    _deathLocation = Reader.ReadPosition();
                 }
             }
 
