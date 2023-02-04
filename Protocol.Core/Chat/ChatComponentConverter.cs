@@ -38,10 +38,10 @@ namespace MinecraftProtocol.Chat
             if (chatComponent.Translate != null)
                 writer.WriteString("translate", chatComponent.Translate);
 
-            if (chatComponent.TranslateArguments != null && chatComponent.TranslateArguments.Count > 0)
+            if (chatComponent.TranslateParameters != null && chatComponent.TranslateParameters.Count > 0)
             {
                 writer.WritePropertyName("with");
-                WriteArrayObject(writer, chatComponent.TranslateArguments);
+                WriteArrayObject(writer, chatComponent.TranslateParameters);
             }
 
 
@@ -135,7 +135,7 @@ namespace MinecraftProtocol.Chat
                     }
                     else if (reader.TokenType == JsonTokenType.StartArray && propertyName == "with")
                     {
-                        chatComponent.TranslateArguments = ReadObjectArray(ref reader);
+                        chatComponent.TranslateParameters = ReadObjectArray(ref reader);
                         propertyName = null;
                     }
                     else if (reader.TokenType == JsonTokenType.StartArray && propertyName == "extra")

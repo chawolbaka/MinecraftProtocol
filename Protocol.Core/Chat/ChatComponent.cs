@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -14,12 +15,11 @@ namespace MinecraftProtocol.Chat
     public class ChatComponent: ITranslation
     {
         public bool HasColorCode => !string.IsNullOrEmpty(Color);
-        
+
         public bool HasFormatCode => Bold || Italic || Underline || Strikethrough || Obfuscated;
-     
-        public bool IsSimpleText => !HasColorCode && !HasFormatCode && Extra == null && Translate == null && TranslateArguments == null && HoverEvent == null && ClickEvent == null && Insertion == null;
 
-
+        public bool IsSimpleText => !HasColorCode && !HasFormatCode && Extra == null && Translate == null && TranslateParameters == null && HoverEvent == null && ClickEvent == null && Insertion == null;
+        
         /// <summary>粗体</summary>
         public bool Bold;
 
@@ -35,17 +35,16 @@ namespace MinecraftProtocol.Chat
         /// <summary>随机</summary>
         public bool Obfuscated;
 
-        /// <summary>文本</summary>
-        public string Text;
-
         /// <summary>颜色</summary>
         public string Color;
+
+        public string Text;
 
         public string Insertion;
 
         public string Translate;
 
-        public List<object> TranslateArguments;
+        public List<object> TranslateParameters;
 
         public EventComponent<ChatComponent> ClickEvent;
 
@@ -61,23 +60,14 @@ namespace MinecraftProtocol.Chat
         {
             if (text.Length <= 0)
                 throw new ArgumentOutOfRangeException(nameof(text), "使用样式代码的情况下必须要有文字.");
-
-            if (format.HasFlag(ChatFormat.Bold))
-                Bold = true;
-            if (format.HasFlag(ChatFormat.Italic))
-                Italic = true;
-            if (format.HasFlag(ChatFormat.Underline))
-                Underline = true;
-            if (format.HasFlag(ChatFormat.Strikethrough))
-                Strikethrough = true;
-            if (format.HasFlag(ChatFormat.Obfuscated))
-                Obfuscated = true;
-
+            SetFormat(format);
         }
         public ChatComponent(ReadOnlySpan<char> text) : this(text.ToString()) { }
         public ChatComponent(ReadOnlySpan<char> text, ChatColor color) : this(text.ToString(), color) { }
         public ChatComponent(ReadOnlySpan<char> text, ChatColor color, ChatFormat format) : this(text.ToString(), color, format) { }
         public ChatComponent(ReadOnlySpan<char> text, ChatFormat format) : this(text.ToString(), format) { }
+
+       
 
 
         /// <summary>
@@ -175,35 +165,30 @@ namespace MinecraftProtocol.Chat
         }
 
 
-        public ChatComponent AddExtra(ChatComponent message)
-        {
-            if (Extra == null)
-                Extra = new List<ChatComponent>();
-
-            Extra.Add(message);
-
-            return this;
-        }
-
+        public ChatComponent AddExtra(params ChatComponent[] messages) => AddExtra(messages.AsEnumerable());
         public ChatComponent AddExtra(IEnumerable<ChatComponent> messages)
         {
-            if (Extra == null)
-                Extra = new List<ChatComponent>();
-
-            Extra.AddRange(messages);
-
+            (Extra ??= new()).AddRange(messages);
             return this;
         }
-
-        public ChatComponent AddExtra(params ChatComponent[] messages)
+        public ChatComponent AddExtra(ChatComponent message)
         {
-            if (Extra == null)
-                Extra = new List<ChatComponent>();
-
-            Extra.AddRange(messages);
-
+            (Extra ??= new()).Add(message);
             return this;
         }
+
+        public ChatComponent AddTranslateParameters(params ChatComponent[] items) => AddTranslateParameters(items.AsEnumerable());
+        public ChatComponent AddTranslateParameters(IEnumerable<object> items)
+        {
+            (TranslateParameters ??= new()).AddRange(items);
+            return this;
+        }
+        public ChatComponent AddTranslateParameter(object item)
+        {
+            (TranslateParameters ??= new()).Add(item);
+            return this;
+        }
+
 
         private static JsonSerializerOptions jsonSerializerOptions = new() { Converters = { new ChatComponentConverter() } };
         private static JsonSerializerOptions writeIndentedJsonSerializerOptions = new() { Converters = { new ChatComponentConverter() }, WriteIndented = true };
@@ -240,7 +225,7 @@ namespace MinecraftProtocol.Chat
             if (Obfuscated) sb.Append("§k");
             if (!string.IsNullOrEmpty(Color)) sb.Append(GetColorCode(Color));
             if (!string.IsNullOrEmpty(Text)) sb.Append(Text);
-            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, TranslateArguments, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this : lastFormat);
+            if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, TranslateParameters, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this : lastFormat);
             if (Extra != null && Extra.Count > 0)
             {
                 /*
@@ -391,6 +376,15 @@ namespace MinecraftProtocol.Chat
             if (chatMessage.Strikethrough) stringBuilder.Append("§m");
             if (chatMessage.Obfuscated) stringBuilder.Append("§k");
             return stringBuilder;
+        }
+
+        public void SetFormat(ChatFormat format)
+        {
+            Bold = format.HasFlag(ChatFormat.Bold);
+            Italic = format.HasFlag(ChatFormat.Italic);
+            Underline = format.HasFlag(ChatFormat.Underline);
+            Strikethrough = format.HasFlag(ChatFormat.Strikethrough);
+            Obfuscated = format.HasFlag(ChatFormat.Obfuscated);
         }
 
 
