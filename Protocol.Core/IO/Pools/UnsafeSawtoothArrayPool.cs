@@ -193,7 +193,7 @@ namespace MinecraftProtocol.IO.Pools
                     {
                         buffer = buffers[_index];
                         buffers[_index++] = default;
-                        allocateBuffer = buffer == default;
+                        allocateBuffer = buffer == default && buffer.IsAllocated;
                     }
                 }
                 finally

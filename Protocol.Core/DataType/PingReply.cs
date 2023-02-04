@@ -4,15 +4,11 @@ using System.Text.Json.Serialization;
 using System.Collections.Generic;
 using MinecraftProtocol.DataType.Forge;
 using MinecraftProtocol.Chat;
-using MinecraftProtocol.Packets.Client;
-using static MinecraftProtocol.DataType.PingReply;
-using System.Diagnostics.Tracing;
 
 namespace MinecraftProtocol.DataType
 {
 
     //这个类直接抄了https://gist.github.com/csh/2480d14fbbb33b4bbae3里面的(我来写代码啦(C/V).jpg)
-
     [JsonConverter(typeof(Converter))]
     public class PingReply
     {
@@ -20,9 +16,8 @@ namespace MinecraftProtocol.DataType
         public VersionPayload Version { get; set; }
 
         [JsonPropertyName("players"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-        public PlayersPayload Player { get; set; }
+        public PlayerPayload Player { get; set; }
 
-        //低版本有可能直接使用string使用不能直接序列化
         [JsonPropertyName("description"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault), JsonConverter(typeof(ChatComponentConverter))]
         public ChatComponent Motd { get; set; }
 
@@ -55,7 +50,7 @@ namespace MinecraftProtocol.DataType
             [JsonPropertyName("name")]
             public string Name { get; set; }
         }
-        public class PlayersPayload
+        public class PlayerPayload
         {
             [JsonPropertyName("max")]
             public int Max { get; set; }
@@ -63,20 +58,18 @@ namespace MinecraftProtocol.DataType
             [JsonPropertyName("online")]
             public int Online { get; set; }
 
-            /// <summary>
-            /// 玩家列表的样品, spigot的默认最大数量是12 (玩家数超出12时会随机取)
-            /// </summary>
+            /// <summary> 玩家列表的样品, spigot的默认最大数量是12 (玩家数超出12时会随机取) </summary>
             [JsonPropertyName("sample")]
             public List<PlayerSample> Samples { get; set; }
-        }
 
-        public class PlayerSample
-        {
-            [JsonPropertyName("name")]
-            public string Name { get; set; }
+            public class PlayerSample
+            {
+                [JsonPropertyName("name")]
+                public string Name { get; set; }
 
-            [JsonPropertyName("id")]
-            public string Id { get; set; }
+                [JsonPropertyName("id")]
+                public string Id { get; set; }
+            }
         }
 
         public override string ToString()
@@ -125,7 +118,7 @@ namespace MinecraftProtocol.DataType
                         }
                         else if (propertyName == "players")
                         {
-                            reply.Player = JsonSerializer.Deserialize<PlayersPayload>(ref reader, options);
+                            reply.Player = JsonSerializer.Deserialize<PlayerPayload>(ref reader, options);
                             propertyName = null;
                         }
                         else if (propertyName == "modinfo")

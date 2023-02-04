@@ -81,7 +81,8 @@ namespace MinecraftProtocol.Utils
             if (ReferenceEquals(b1, b2) || (b1.Length == 0 && b2.Length == 0))
                 return true;
             for (int i = 0; i < b1.Length; i++)
-                if (b1[i] != b2[i]) return false;
+                if (b1[i] != b2[i])
+                    return false;
             return true;
         }
 

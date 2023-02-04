@@ -29,15 +29,18 @@ namespace MinecraftProtocol.Packets.Client
         protected override void Write()
         {
             WriteString(_playerName);
-            WriteBoolean(_playerUUID != default);
             if (ProtocolVersion > ProtocolVersions.V1_19)
-                WriteUUID(_playerUUID);
+            {
+                WriteBoolean(_playerUUID != default);
+                if (_playerUUID != default)
+                    WriteUUID(_playerUUID);
+            }
         }
 
         protected override void Read()
         {
             _playerName = Reader.ReadString();
-            if (ProtocolVersion>ProtocolVersions.V1_19 && Reader.ReadBoolean())
+            if (ProtocolVersion > ProtocolVersions.V1_19 && Reader.ReadBoolean())
                 _playerUUID = Reader.ReadUUID();
         }
 
