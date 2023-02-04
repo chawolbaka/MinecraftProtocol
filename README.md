@@ -12,8 +12,7 @@ IPAddress ip;      //服务器IP地址
 ushort port;       //服务器端口号
 string playerName; //玩家名
 
-SimpleClient simpleClient = new SimpleClient(host, ip, port);
-MinecraftClient client = simpleClient.Client;
+MinecraftClient client = ClientCreator.FromServerListPing(ip, port)
 ChatType[] chatTypes = null;
 
 //监听收到的数据包
