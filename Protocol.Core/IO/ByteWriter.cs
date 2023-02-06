@@ -296,7 +296,7 @@ namespace MinecraftProtocol.IO
         }
         public virtual ByteWriter WriteByteArray(ReadOnlySpan<byte> array, int protocolVersion)
         {
-            int length = array != null ? 0 : array.Length;
+            int length = array == null ? 0 : array.Length;
             if (protocolVersion >= ProtocolVersions.V14w21a)
                 WriteVarInt(length);
             else
@@ -479,7 +479,15 @@ namespace MinecraftProtocol.IO
             _disposed = true;
             if (!disposed && _returnToPool && _data is not null)
             {
-                _dataPool.Return(_data);
+                try
+                {
+                    _dataPool.Return(_data);
+                }
+                catch (ArgumentException) { }
+                finally
+                {
+                    _data = null;
+                }
             }
         }
 
