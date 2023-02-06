@@ -178,22 +178,8 @@ namespace MinecraftProtocol.Client
             }    
         }
 
-        public override bool Join(string playerName) => Join(new SessionToken(null, playerName, null, null));
-        public virtual bool Join(string email, string password) => Join(email, password, out _);
-        public virtual bool Join(string email, string password, out SessionToken token)
-        {
-            ThrowIfDisposed();
-
-            if (string.IsNullOrWhiteSpace(email))
-                throw new ArgumentNullException(nameof(email));
-            if (string.IsNullOrEmpty(password))
-                throw new ArgumentNullException(nameof(password));
-
-            token = YggdrasilService.Authenticate(email, password);
-            return Join(token);
-        }
-
-        public virtual bool Join(SessionToken token)
+        public override Task<bool> JoinAsync(string playerName) => JoinAsync(new SessionToken(null, playerName, null, null));
+        public virtual async Task<bool> JoinAsync(SessionToken token)
         {
             ThrowIfNotConnected();
 
@@ -222,7 +208,7 @@ namespace MinecraftProtocol.Client
                 if (++count > 20960)
                     throw new OverflowException("异常的登录过程，服务端发送的数据包过多");
                 else if (EncryptionRequestPacket.TryRead(packet, ProtocolVersion, out EncryptionRequestPacket erp))
-                    OnEncryptionRequestReceived(erp);
+                    await OnEncryptionRequestReceived(erp);
                 else if (SetCompressionPacket.TryRead(packet, ProtocolVersion, out SetCompressionPacket scp))
                     OnSetCompressionReceived(scp.Threshold);
                 else if (LoginSuccessPacket.TryRead(packet, ProtocolVersion, out LoginSuccessPacket lsp))
@@ -239,7 +225,7 @@ namespace MinecraftProtocol.Client
             return VanillaLoginState == VanillaLoginStatus.Success;
         }
 
-        protected virtual void OnEncryptionRequestReceived(EncryptionRequestPacket encryptionRequest)
+        protected virtual async Task OnEncryptionRequestReceived(EncryptionRequestPacket encryptionRequest)
         {
             if (_loginToken.AccessToken == null)
                 throw new LoginException($"服务器开启了正版验证，但是{nameof(SessionToken)}中没有提供可用的AccessToken。", Disconnect);
@@ -247,7 +233,7 @@ namespace MinecraftProtocol.Client
             VanillaLoginState = VanillaLoginStatus.EncryptionRequest;
             byte[] SessionKey = CryptoUtils.GenerateSecretKey();
             string ServerHash = CryptoUtils.GetServerHash(encryptionRequest.ServerID, SessionKey, encryptionRequest.PublicKey);
-            YggdrasilService.Join(_loginToken, ServerHash);
+            await YggdrasilService.JoinAsync(_loginToken, ServerHash);
             RSA RSAService = RSA.Create();
             RSAService.ImportSubjectPublicKeyInfo(encryptionRequest.PublicKey, out _);
             SendPacket(new EncryptionResponsePacket(

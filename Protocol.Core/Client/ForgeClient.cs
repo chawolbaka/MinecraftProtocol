@@ -9,6 +9,7 @@ using MinecraftProtocol.Packets.Server;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Client.Channels;
 using MinecraftProtocol.Utils;
+using System.Threading.Tasks;
 
 namespace MinecraftProtocol.Client
 {
@@ -81,11 +82,12 @@ namespace MinecraftProtocol.Client
         public ForgeClient(IPEndPoint remoteEP, ModList clientMods, int protocolVersion) : this(null, remoteEP.Address, (ushort)remoteEP.Port, clientMods, null, protocolVersion) { }
         public ForgeClient(IPEndPoint remoteEP, ModList clientMods, IClientSettings settings, int protocolVersion) : this(null, remoteEP.Address, (ushort)remoteEP.Port, clientMods, settings, protocolVersion) { }
 
-        public override bool Join(SessionToken token)
+        public override async Task<bool> JoinAsync(SessionToken token)
         {
             ThrowIfDisposed();
-            if (!base.Join(token))
+            if (!await base.JoinAsync(token))
                 return false;
+
             _joined = false;
             _handshakeState = FMLHandshakeClientState.START;
             ForgeLoginState = ForgeLoginStatus.Start;

@@ -33,7 +33,9 @@ namespace MinecraftProtocol.Auth.Microsoft
                 throw new MicrosoftAuthenticationException($"Authentication failed ({httpResponse.StatusCode})");
 
             JsonNode json = JsonNode.Parse(await httpResponse.Content.ReadAsStringAsync());
-        
+            if (json.AsObject().TryGetPropertyValue("errorMessage", out var error))
+                throw new YggdrasilException(error.GetValue<string>(), YggdrasilError.Unknown, httpResponse);
+
 
             return new SessionToken(AccessToken, json["name"].GetValue<string>(), json["id"].GetValue<string>(), string.Empty);
         }

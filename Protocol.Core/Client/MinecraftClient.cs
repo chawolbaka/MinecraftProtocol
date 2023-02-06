@@ -67,7 +67,7 @@ namespace MinecraftProtocol.Client
         /// </summary>
         /// <param name="playerName">玩家名</param>
         /// <returns>登录是否成功</returns>
-        public abstract bool Join(string playerName);
+        public abstract Task<bool> JoinAsync(string playerName);
 
         /// <summary>
         /// 断开连接
