@@ -179,7 +179,7 @@ namespace MinecraftProtocol.Client
         }
 
         public override Task<bool> JoinAsync(string playerName) => JoinAsync(new SessionToken(null, playerName, null, null));
-        public virtual async Task<bool> JoinAsync(SessionToken token)
+        public override async Task<bool> JoinAsync(SessionToken token)
         {
             ThrowIfNotConnected();
 

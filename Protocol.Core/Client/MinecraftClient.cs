@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
+using MinecraftProtocol.Auth;
 
 namespace MinecraftProtocol.Client
 {
@@ -68,6 +69,13 @@ namespace MinecraftProtocol.Client
         /// <param name="playerName">玩家名</param>
         /// <returns>登录是否成功</returns>
         public abstract Task<bool> JoinAsync(string playerName);
+
+        /// <summary>
+        /// 发送登录服务器的请求
+        /// </summary>
+        /// <param name="session">通过微软或Mojang账号获取的SessionToken，用于正版登录</param>
+        /// <returns>登录是否成功</returns>
+        public abstract Task<bool> JoinAsync(SessionToken session);
 
         /// <summary>
         /// 断开连接

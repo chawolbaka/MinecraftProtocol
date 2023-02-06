@@ -6,11 +6,13 @@
 ps：英文极差，所以你可能会看见各种奇怪的英文。C#只学了一点点(真的非常少, 因为摸鱼非常严重)，里面大量代码都是从别人那边抄来的(来源我记得的话会尽量写在下面的)
    
    
-### 简单的演示代码
+# 演示代码  
+  
+#### 简单的控制台聊天程序  
 ```C#
 IPAddress ip;      //服务器IP地址
 ushort port;       //服务器端口号
-string playerName; //玩家名
+string playerName; //玩家名（如果需要正版登录请替换为SessionToken）
 
 MinecraftClient client = ClientCreator.FromServerListPing(ip, port)
 ChatType[] chatTypes = null;
@@ -42,7 +44,7 @@ if (Client.ProtocolVersion >= ProtocolVersions.V1_19)
 
 if (!Client.Connect()) //连接到服务器（Tcp握手）
     Console.WriteLine($"无法与服务器建立连接");
-else if (!Client.Join(playerName)) //进入服务器（发送登录包）
+else if (!await Client.JoinAsync(playerName)) //进入服务器（发送登录包）
     Console.WriteLine($"登陆失败");
 else //开始监听数据包（如果不监听PacketReceived事件不会触发）
     Client.StartListen(); 
@@ -54,8 +56,34 @@ while (Client.Joined)
     await Client.GetPlayer()?.SendMessageAsync(Input);
 }
 ```    
-            
-### 抄袭列表
+
+
+#### 通过Mojang账号获取SessionToken   
+```C#  
+SessionToken session = await MojangAccount.AuthenticateAsync("邮箱", "密码");
+```  
+
+#### 通过微软账号获取SessionToken  
+```C#  
+MicrosoftOAuth2Token microsoftToken = await MicrosoftAccount.AuthenticateAsync("邮箱", "密码");
+XboxLiveResponse xbl = await XboxLive.XBLAuthenticateAsync(microsoftToken);
+XboxLiveResponse xsts = await XboxLive.GetXSTSAuthorizeAsync(xbl);
+SessionToken session = await (await XboxLive.MinecraftAuthenticate(xsts)).AsSessionTokenAsync();
+```  
+
+  
+  
+  
+# 参考资料  
+https://wiki.vg/Protocol  
+https://github.com/bangbang93/minecraft-protocol  
+https://github.com/yushijinhun/authlib-injector/wiki
+https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf    
+https://blessing.studio/minecraft-yggdrasil-api-third-party-implementation/  
+https://software.intel.com/sites/landingpage/IntrinsicsGuide/#=undefined&cats=Cryptography  
+https://www.intel.com/content/dam/doc/white-paper/advanced-encryption-standard-new-instructions-set-paper.pdf  
+  
+### 抄袭列表  
 https://github.com/Naamloos/Obsidian  
 https://github.com/Nsiso/MinecraftOutClient  
 https://github.com/ORelio/Minecraft-Console-Client  
@@ -66,11 +94,3 @@ https://docs.microsoft.com/en-us/dotnet/framework/network-programming/asynchrono
 http://www.bouncycastle.org/csharp/  
 http://dotnetzip.codeplex.com  
 (数据包压缩部分我现在是直接复制了Minecraft-Console-Client这个项目里面的代码,不知道来源是不是这个)  
-### 参考资料
-https://wiki.vg/Protocol  
-https://github.com/bangbang93/minecraft-protocol  
-https://github.com/yushijinhun/authlib-injector/wiki
-https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf    
-https://blessing.studio/minecraft-yggdrasil-api-third-party-implementation/  
-https://software.intel.com/sites/landingpage/IntrinsicsGuide/#=undefined&cats=Cryptography  
-https://www.intel.com/content/dam/doc/white-paper/advanced-encryption-standard-new-instructions-set-paper.pdf  
