@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Security.Cryptography;
 using System.Text.Json.Serialization;
 
 namespace MinecraftProtocol.DataType.Forge
@@ -6,15 +7,19 @@ namespace MinecraftProtocol.DataType.Forge
     public class ModInfo : IEquatable<ModInfo>
     {
         [JsonPropertyName("modid")]
-        public readonly string Name;
-        [JsonPropertyName("version")]
-        public readonly string Version;
+        public string Name { get; set; }
 
-        
-        public ModInfo(string modName, string modVersion)
+        [JsonPropertyName("version")]
+        public string Version { get; set; }
+
+        public ModInfo()
         {
-            Name = modName ?? throw new ArgumentNullException(nameof(modName));
-            Version = modVersion ?? throw new ArgumentNullException(nameof(modVersion));
+
+        }
+        public ModInfo(string name, string version)
+        {
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            Version = version ?? throw new ArgumentNullException(nameof(version));
         }
 
         public override string ToString()

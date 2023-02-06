@@ -51,8 +51,8 @@ namespace MinecraftProtocol.DataType.Forge
             {
                 int index = mod.LastIndexOf('@');
                 result.Add(new ModInfo(
-                    modName: mod.AsSpan().Slice(0, index).ToString(),
-                    modVersion: mod.AsSpan().Slice(index+1).ToString()));
+                    name: mod.AsSpan().Slice(0, index).ToString(),
+                    version: mod.AsSpan().Slice(index+1).ToString()));
             }
             return result;
         }
