@@ -35,10 +35,7 @@ if (Client.ProtocolVersion >= ProtocolVersions.V1_19)
 {
     Client.PacketReceived += (m, args) =>
     {
-        if (JoinGamePacket.TryRead(args.Packet, out JoinGamePacket jgp))
-        {
-            chatTypes = jgp.GetChatTypeTable();
-        }
+        _ = JoinGamePacket.TryRead(args.Packet, out JoinGamePacket jgp) && jgp.TryGetChatTypes(out chatTypes);
     };
 }
 
