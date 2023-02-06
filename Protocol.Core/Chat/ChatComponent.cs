@@ -12,7 +12,7 @@ namespace MinecraftProtocol.Chat
      * https://github.com/Naamloos/Obsidian/tree/c74ecbc33a4c9aaa714d1021eb7d930b45e78d40/Obsidian/Chat
      */
     [JsonConverter(typeof(ChatComponentConverter))]
-    public class ChatComponent: ITranslation
+    public class ChatComponent
     {
         public bool HasColorCode => !string.IsNullOrEmpty(Color);
 
@@ -44,13 +44,13 @@ namespace MinecraftProtocol.Chat
 
         public string Translate;
 
-        public List<object> TranslateParameters;
-
-        public EventComponent<ChatComponent> ClickEvent;
-
-        public EventComponent<ChatComponent> HoverEvent;
+        public List<ChatComponent> TranslateParameters;
 
         public List<ChatComponent> Extra;
+
+        public EventComponent ClickEvent;
+
+        public EventComponent HoverEvent;
 
         public ChatComponent() { }
         public ChatComponent(string text) { Text = text; }
@@ -85,10 +85,10 @@ namespace MinecraftProtocol.Chat
             if (message[0] != sectionSign && message.Length < 3)
                 return new ChatComponent(message);
 
-            ChatComponent result = new ChatComponent("");//防止空json,好像MC至少需要有个Text组件
+            ChatComponent result = new ChatComponent(""); //防止空json, 好像MC至少需要有个Text组件
             ChatComponent ChatComponet = new ChatComponent();
             StringBuilder sb = new StringBuilder();
-            bool LastIsFormatCode = false;//用于样式代码的叠加，变量名乱写的。
+            bool LastIsFormatCode = false; //用于样式代码的叠加，变量名乱写的。
 
             for (int i = 0; i < message.Length; i++)
             {
@@ -178,12 +178,12 @@ namespace MinecraftProtocol.Chat
         }
 
         public ChatComponent AddTranslateParameters(params ChatComponent[] items) => AddTranslateParameters(items.AsEnumerable());
-        public ChatComponent AddTranslateParameters(IEnumerable<object> items)
+        public ChatComponent AddTranslateParameters(IEnumerable<ChatComponent> items)
         {
             (TranslateParameters ??= new()).AddRange(items);
             return this;
         }
-        public ChatComponent AddTranslateParameter(object item)
+        public ChatComponent AddTranslateParameter(ChatComponent item)
         {
             (TranslateParameters ??= new()).Add(item);
             return this;
@@ -218,13 +218,13 @@ namespace MinecraftProtocol.Chat
         private string ToString(Dictionary<string, string> lang, string lastColor, ChatComponent lastFormat)
         {
             StringBuilder sb = new StringBuilder();
-            if (Bold) sb.Append("§l");
-            if (Italic) sb.Append("§o");
-            if (Underline) sb.Append("§n");
-            if (Strikethrough) sb.Append("§m");
-            if (Obfuscated) sb.Append("§k");
+            if (Bold)           sb.Append("§l");
+            if (Italic)         sb.Append("§o");
+            if (Underline)      sb.Append("§n");
+            if (Strikethrough)  sb.Append("§m");
+            if (Obfuscated)     sb.Append("§k");
             if (!string.IsNullOrEmpty(Color)) sb.Append(GetColorCode(Color));
-            if (!string.IsNullOrEmpty(Text)) sb.Append(Text);
+            if (!string.IsNullOrEmpty(Text))  sb.Append(Text);
             if (!string.IsNullOrEmpty(Translate)) ResolveTranslate(Translate, lang, TranslateParameters, sb, lastColor is null ? Color : lastColor, lastFormat is null ? this : lastFormat);
             if (Extra != null && Extra.Count > 0)
             {
@@ -274,7 +274,7 @@ namespace MinecraftProtocol.Chat
             }
             return sb.ToString();
         }
-        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<object> translateArgs, StringBuilder sb, string lastColor, ChatComponent lastFormat)
+        private void ResolveTranslate(string translate, Dictionary<string, string> lang, List<ChatComponent> translateParameters, StringBuilder sb, string lastColor, ChatComponent lastFormat)
         {
             /*
              * 这东西的结构大概是这样的:
@@ -291,7 +291,7 @@ namespace MinecraftProtocol.Chat
             string text = lang.ContainsKey(translate) ? lang[translate] : translate;
 
             //纯翻译,没有%s的那种
-            if (translateArgs == null || translateArgs.Count == 0) { sb.Append(text); return; }
+            if (translateParameters == null || translateParameters.Count == 0) { sb.Append(text); return; }
 
             bool RestoreColor = false, RestoreFormat = false;
             int WithCount = 0;
@@ -321,7 +321,7 @@ namespace MinecraftProtocol.Chat
                     //这个%d是在forge的语言文件里面看见的,原版好像没有?
                     if (text[i + 1] == 's' || text[i + 1] == 'd')
                     {
-                        AppendWith(translateArgs[WithCount++]);
+                        AppendWith(translateParameters[WithCount++]);
                         i++;
                     }
                     else if (text[i + 1] == '%')
@@ -334,7 +334,7 @@ namespace MinecraftProtocol.Chat
                         //处理类型的: 给予%4$s时长为%5$s秒的%1$s（ID %2$s）*%3$s效果
                         //由于最高我只找到%5所以我不清楚这是16进制还是10进制,我暂时当成10进制处理了
                         //(还是最小只能9的10进制,超过9就解析不到了)
-                        AppendWith(translateArgs[number - 1]);
+                        AppendWith(translateParameters[number - 1]);
                         i += 3;
                     }
                     else
@@ -342,9 +342,9 @@ namespace MinecraftProtocol.Chat
                         sb.Append(text[i]);
                     }
                 }
-                else if (text[i] == '{' && i + 2 < text.Length && int.TryParse(text[i + 1].ToString(), out int index) && index < translateArgs.Count && text[i + 2] == '}')
+                else if (text[i] == '{' && i + 2 < text.Length && int.TryParse(text[i + 1].ToString(), out int index) && index < translateParameters.Count && text[i + 2] == '}')
                 {
-                    AppendWith(translateArgs[index]);
+                    AppendWith(translateParameters[index]);
                     i += 2;
                 }
                 else
@@ -352,29 +352,24 @@ namespace MinecraftProtocol.Chat
                     sb.Append(text[i]);
                 }
             }
-            void AppendWith(object item)
+            void AppendWith(ChatComponent cm)
             {
-                if (item is ChatComponent cm)
-                {
-                    RestoreColor = cm.HasColorCode;
-                    //第一天: 这么写有点针对性... 明天再想想怎么写的更通用?
-                    //第二天: 我写的什么东西? 不管啦，反正暂时没什么问题，等有bug了再说！
-                    RestoreFormat = lastFormat.HasFormatCode && !HasFormatCode && !cm.HasFormatCode;
-                    sb.Append(cm.ToString(lang, cm.HasColorCode ? null : lastColor, cm.HasFormatCode ? null : lastFormat));
-                }
-                else
-                    sb.Append(item is ITranslation itc ? itc.ToString(lang) : item.ToString());
+                RestoreColor = cm.HasColorCode;
+                //第一天: 这么写有点针对性... 明天再想想怎么写的更通用?
+                //第二天: 我写的什么东西? 不管啦，反正暂时没什么问题，等有bug了再说！
+                RestoreFormat = lastFormat.HasFormatCode && !HasFormatCode && !cm.HasFormatCode;
+                sb.Append(cm.ToString(lang, cm.HasColorCode ? null : lastColor, cm.HasFormatCode ? null : lastFormat));
             }
         }
 
         private static StringBuilder AppendFormatCode(StringBuilder stringBuilder, ChatComponent chatMessage)
         {
-            if (chatMessage == null) return stringBuilder;
-            if (chatMessage.Bold) stringBuilder.Append("§l");
-            if (chatMessage.Italic) stringBuilder.Append("§o");
-            if (chatMessage.Underline) stringBuilder.Append("§n");
+            if (chatMessage == null)       return stringBuilder;
+            if (chatMessage.Bold)          stringBuilder.Append("§l");
+            if (chatMessage.Italic)        stringBuilder.Append("§o");
+            if (chatMessage.Underline)     stringBuilder.Append("§n");
             if (chatMessage.Strikethrough) stringBuilder.Append("§m");
-            if (chatMessage.Obfuscated) stringBuilder.Append("§k");
+            if (chatMessage.Obfuscated)    stringBuilder.Append("§k");
             return stringBuilder;
         }
 
@@ -386,6 +381,7 @@ namespace MinecraftProtocol.Chat
             Strikethrough = format.HasFlag(ChatFormat.Strikethrough);
             Obfuscated = format.HasFlag(ChatFormat.Obfuscated);
         }
+
         public void SetStyle(ChatStyle style)
         {
             if (style is null)

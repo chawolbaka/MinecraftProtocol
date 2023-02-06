@@ -3,19 +3,19 @@ using System.Text.Json.Serialization;
 
 namespace MinecraftProtocol.Chat
 {
-    public class EventComponent<T>
+    public class EventComponent
     {
         [JsonPropertyName("action")]
         public EventAction Action;
 
         [JsonPropertyName("value")]
-        public List<T> Value;
+        public List<ChatComponent> Value;
 
         [JsonPropertyName("contents")]
-        public List<T> Contents;
+        public List<ChatComponent> Contents;
 
         public EventComponent() { }
-        public EventComponent(EventAction action, List<T> value)
+        public EventComponent(EventAction action, List<ChatComponent> value)
         {
             Action = action;
             Value = value;

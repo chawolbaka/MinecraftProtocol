@@ -19,6 +19,11 @@ namespace MinecraftProtocol.Chat
         private void WriteChatComponentObject(Utf8JsonWriter writer, ChatComponent chatComponent)
         {
             writer.WriteStartObject();
+
+            //防止只有一堆{}的json，如果是第一层的那么不管Text是不是null都写入
+            if (writer.CurrentDepth == 1 || chatComponent.Text != null)
+                writer.WriteString("text", chatComponent.Text ?? "");
+
             if (chatComponent.Bold != default)
                 writer.WriteBoolean("bold", chatComponent.Bold);
             if (chatComponent.Italic != default)
@@ -29,8 +34,6 @@ namespace MinecraftProtocol.Chat
                 writer.WriteBoolean("strikethrough", chatComponent.Strikethrough);
             if (chatComponent.Obfuscated != default)
                 writer.WriteBoolean("obfuscated", chatComponent.Obfuscated);
-            if (chatComponent.Text != null)
-                writer.WriteString("text", chatComponent.Text);
             if (chatComponent.Color != null)
                 writer.WriteString("color", chatComponent.Color);
             if (chatComponent.Insertion != null)
@@ -41,14 +44,14 @@ namespace MinecraftProtocol.Chat
             if (chatComponent.TranslateParameters != null && chatComponent.TranslateParameters.Count > 0)
             {
                 writer.WritePropertyName("with");
-                WriteArrayObject(writer, chatComponent.TranslateParameters);
+                WriteArrayObject(writer, chatComponent.TranslateParameters, true);
             }
 
 
             if (chatComponent.Extra != null && chatComponent.Extra.Count > 0)
             {
                 writer.WritePropertyName("extra");
-                WriteArrayObject(writer, chatComponent.Extra);
+                WriteArrayObject(writer, chatComponent.Extra, false);
             }
 
             if (chatComponent.ClickEvent != null)
@@ -69,7 +72,7 @@ namespace MinecraftProtocol.Chat
                 {
                     writer.WritePropertyName("value");
                     if (chatComponent.HoverEvent.Value.Count > 1)
-                        WriteArrayObject(writer, chatComponent.HoverEvent.Value);
+                        WriteArrayObject(writer, chatComponent.HoverEvent.Value, false);
                     else
                         WriteChatComponentObject(writer, chatComponent.HoverEvent.Value[0]);
                 }
@@ -77,7 +80,7 @@ namespace MinecraftProtocol.Chat
                 {
                     writer.WritePropertyName("contents");
                     if (chatComponent.HoverEvent.Contents.Count > 1)
-                        WriteArrayObject(writer, chatComponent.HoverEvent.Contents);
+                        WriteArrayObject(writer, chatComponent.HoverEvent.Contents, false);
                     else
                         WriteChatComponentObject(writer, chatComponent.HoverEvent.Contents[0]);
                 }
@@ -87,15 +90,16 @@ namespace MinecraftProtocol.Chat
             writer.WriteEndObject();
         }
 
-        private void WriteArrayObject<T>(Utf8JsonWriter writer, List<T> list)
+        private void WriteArrayObject(Utf8JsonWriter writer, List<ChatComponent> list, bool writeString)
         {
             writer.WriteStartArray();
-            foreach (var item in list)
+            foreach (var cc in list)
             {
-                if (item is ChatComponent)
-                    WriteChatComponentObject(writer, item as ChatComponent);
-                else if (item is string)
-                    writer.WriteStringValue(item.ToString());
+                //一般with里面如果只有一个text那么会是string，但我在读取的时候给他改成ChatComponent了所以再这边给他还原回去(但其它几个就不要这么搞了，因为我不确定mc那边的兼容性)
+                if (writeString && cc.IsSimpleText) 
+                    writer.WriteStringValue(cc.Text);
+                else
+                    WriteChatComponentObject(writer, cc);
             }
             writer.WriteEndArray();
         }
@@ -135,7 +139,7 @@ namespace MinecraftProtocol.Chat
                     }
                     else if (reader.TokenType == JsonTokenType.StartArray && propertyName == "with")
                     {
-                        chatComponent.TranslateParameters = ReadObjectArray(ref reader);
+                        chatComponent.TranslateParameters = ReadChatComponentArray(ref reader);
                         propertyName = null;
                     }
                     else if (reader.TokenType == JsonTokenType.StartArray && propertyName == "extra")
@@ -164,28 +168,6 @@ namespace MinecraftProtocol.Chat
             throw new JsonException("json格式错误");
         }
 
-        private List<object> ReadObjectArray(ref Utf8JsonReader reader)
-        {
-            List<object> list = new List<object>();
-            while (reader.Read())
-            {
-                if (reader.TokenType == JsonTokenType.EndArray)
-                    return list;
-
-                if (reader.TokenType == JsonTokenType.StartObject)
-                {
-                    list.Add(ReadChatComponentObject(ref reader, new ChatComponent()));
-                }
-                else if (reader.TokenType == JsonTokenType.String)
-                {
-                    list.Add(reader.GetString());
-                }
-            }
-
-            throw new JsonException("json格式错误");
-        }
-
-
         private List<ChatComponent> ReadChatComponentArray(ref Utf8JsonReader reader)
         {
             List<ChatComponent> list = new List<ChatComponent>();
@@ -198,14 +180,18 @@ namespace MinecraftProtocol.Chat
                 {
                     list.Add(ReadChatComponentObject(ref reader, new ChatComponent()));
                 }
+                else if (reader.TokenType == JsonTokenType.String)
+                {
+                    list.Add(new ChatComponent(reader.GetString()));
+                }
             }
 
             throw new JsonException("json格式错误");
         }
 
-        private EventComponent<ChatComponent> ReadEventComponentObject(ref Utf8JsonReader reader)
+        private EventComponent ReadEventComponentObject(ref Utf8JsonReader reader)
         {
-            EventComponent<ChatComponent> eventComponent = new EventComponent<ChatComponent>();
+            EventComponent eventComponent = new EventComponent();
 
             string propertyName = null;
             while (reader.Read())
@@ -239,12 +225,12 @@ namespace MinecraftProtocol.Chat
                     }
                     if (reader.TokenType is JsonTokenType.StartArray && propertyName == "value")
                     {
-                        eventComponent.Value = ReadObjectArray(ref reader).Select(x => x is ChatComponent ? x as ChatComponent : new ChatComponent(x.ToString())).ToList();
+                        eventComponent.Value = ReadChatComponentArray(ref reader);
                         propertyName = null;
                     }
                     else if (reader.TokenType is JsonTokenType.StartArray && propertyName == "contents")
                     {
-                        eventComponent.Contents = ReadObjectArray(ref reader).Select(x => x is ChatComponent ? x as ChatComponent : new ChatComponent(x.ToString())).ToList();
+                        eventComponent.Contents = ReadChatComponentArray(ref reader);
                         propertyName = null;
                     }
                     else if (reader.TokenType is JsonTokenType.String)
