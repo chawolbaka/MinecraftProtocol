@@ -43,7 +43,7 @@ namespace MinecraftProtocol.Client
         public override int CompressionThreshold { get => ThrowIfDisposed(base.CompressionThreshold); set => ThrowIfDisposed(base.CompressionThreshold = value); }
         public override int ProtocolVersion      { get => ThrowIfDisposed(base.ProtocolVersion);      set => ThrowIfDisposed(base.ProtocolVersion = value); }
 
-        public bool IsServerInOnlineMode         { get => ThrowIfNotJoined(PacketListen.Crypto.Enable); }
+        public bool IsServerInOnlineMode         { get => ThrowIfNotJoined(PacketListen.CryptoHandler.Enable); }
 
         public bool AutoKeepAlive    { get => ThrowIfDisposed(_autoKeepAlive);        set => _autoKeepAlive = ThrowIfDisposed(value); }
 
@@ -242,7 +242,7 @@ namespace MinecraftProtocol.Client
                 ProtocolVersion));
             VanillaLoginState = VanillaLoginStatus.EncryptionResponse;
 
-            PacketListen.Crypto.Init(SessionKey);
+            PacketListen.CryptoHandler.Init(SessionKey);
         }
 
         protected virtual void OnSetCompressionReceived(int threshold)
@@ -308,12 +308,12 @@ namespace MinecraftProtocol.Client
         {
             lock (ReadPacketLock)
             {
-                int PacketLength = VarInt.Read(() => PacketListen.Crypto.Enable ? PacketListen.Crypto.Decrypt(NetworkUtils.ReceiveData(1, TCP))[0] : NetworkUtils.ReceiveData(1, TCP)[0]);
+                int PacketLength = VarInt.Read(() => PacketListen.CryptoHandler.Enable ? PacketListen.CryptoHandler.Decrypt(NetworkUtils.ReceiveData(1, TCP))[0] : NetworkUtils.ReceiveData(1, TCP)[0]);
                 if (PacketLength == 0 && !UpdateConnectStatus())
                     throw new SocketException((int)SocketError.ConnectionReset);
 
-                if (PacketListen.Crypto.Enable)
-                    return CompatiblePacket.Depack(PacketListen.Crypto.Decrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), ProtocolVersion, CompressionThreshold);
+                if (PacketListen.CryptoHandler.Enable)
+                    return CompatiblePacket.Depack(PacketListen.CryptoHandler.Decrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), ProtocolVersion, CompressionThreshold);
                 else
                     return CompatiblePacket.Depack(NetworkUtils.ReceiveData(PacketLength, TCP), ProtocolVersion,CompressionThreshold);
             }
@@ -325,7 +325,7 @@ namespace MinecraftProtocol.Client
             if (EventUtils.InvokeCancelEvent(_packetSend, this, new SendPacketEventArgs(packet)))
                 return;
 
-            byte[] data = PacketListen.Crypto.Enable? PacketListen.Crypto.Encrypt(packet.Pack(CompressionThreshold)): packet.Pack(CompressionThreshold);
+            byte[] data = PacketListen.CryptoHandler.Enable? PacketListen.CryptoHandler.Encrypt(packet.Pack(CompressionThreshold)): packet.Pack(CompressionThreshold);
             //因为会异步发送Packet，不知道在不锁的情况下会不会出现乱掉的情况
             lock (SendPacketLock)
             {

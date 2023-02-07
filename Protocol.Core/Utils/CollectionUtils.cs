@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MinecraftProtocol.Utils
 {
-    internal static class CollectionUtils
+    public static class CollectionUtils
     {
         /// <summary>
         /// 拼接Byte数组

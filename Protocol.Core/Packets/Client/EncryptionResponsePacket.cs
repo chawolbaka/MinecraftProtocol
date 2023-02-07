@@ -30,7 +30,7 @@ namespace MinecraftProtocol.Packets.Client
         protected override void Read()
         {
             _sharedSecret = Reader.ReadByteArray();
-            _sharedSecret = Reader.ReadByteArray();
+            _verifyToken = Reader.ReadByteArray();
         }
 
         public static int GetPacketId(int protocolVersion)

@@ -37,6 +37,9 @@ namespace MinecraftProtocol.IO.Pools
 
         public virtual void Return(CompatiblePacket packet)
         {
+            if (packet == null)
+                return;
+            
             if (AutoClear)
                 packet.ClearToNullable();
             _packets.Add(packet);

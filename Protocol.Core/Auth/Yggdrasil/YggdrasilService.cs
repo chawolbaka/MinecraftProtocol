@@ -74,28 +74,32 @@ namespace MinecraftProtocol.Auth.Yggdrasil
         /// <summary>
         /// 检查会话的有效性
         /// </summary>
+        /// <param name="playerName">不区分大小写的玩家名</param>
+        /// <param name="serverHash">由serverID、secretKey、publicKey组合起来的hash</param>
         /// <exception cref="ArgumentNullException"/>
         /// <exception cref="YggdrasilService"/>
         /// <returns>如果会话有效那么就返回令牌所绑定角色的完整信息，否则为null</returns>
-        public static Task<string> HasJoinedAsync(string playerName, string serverID) => HasJoinedAsync(playerName, serverID, string.Empty);
-       
+        public static Task<string> HasJoinedAsync(string playerName, string serverHash) => HasJoinedAsync(playerName, serverHash, string.Empty);
+
         /// <summary>
         /// 检查会话的有效性
         /// </summary>
+        /// <param name="playerName">不区分大小写的玩家名</param>
+        /// <param name="serverHash">由serverID、secretKey、publicKey组合起来的hash</param>
         /// <param name="clientIP">如果不为空就会检查是不是这个IP发送的加入会话请求</param>
         /// <exception cref="ArgumentNullException"/>
         /// <exception cref="YggdrasilService"/>
         /// <returns>如果会话有效那么就返回令牌所绑定角色的完整信息，否则为null</returns>
-        public static async Task<string> HasJoinedAsync(string playerName, string serverID, string clientIP)
+        public static async Task<string> HasJoinedAsync(string playerName, string serverHash, string clientIP)
         {
             //大概可以验证2分钟内的(随便测的,不准确)
-            if (string.IsNullOrWhiteSpace(serverID))
-                throw new ArgumentNullException(nameof(serverID));
+            if (string.IsNullOrWhiteSpace(serverHash))
+                throw new ArgumentNullException(nameof(serverHash));
             if (string.IsNullOrWhiteSpace(playerName))
                 throw new ArgumentNullException(nameof(playerName));
 
             using HttpClient hc = new HttpClient();
-            using HttpResponseMessage HttpResponse = await hc.GetAsync($"{API_HAS_JOINED}?username={playerName}&serverId={serverID}{(!string.IsNullOrWhiteSpace(clientIP)? $"&ip={clientIP}" : "")}");
+            using HttpResponseMessage HttpResponse = await hc.GetAsync($"{API_HAS_JOINED}?username={playerName}&serverId={serverHash}{(!string.IsNullOrWhiteSpace(clientIP)? $"&ip={clientIP}" : "")}");
 
             if (HttpResponse.StatusCode == HttpStatusCode.OK)
                 return await HttpResponse.Content.ReadAsStringAsync();

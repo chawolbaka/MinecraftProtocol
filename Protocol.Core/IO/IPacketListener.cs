@@ -9,7 +9,7 @@ namespace MinecraftProtocol.IO
         event EventHandler<PacketReceivedEventArgs> PacketReceived;
 
         int CompressionThreshold { get; set; }
-        CryptoHandler Crypto { get; }
+        CryptoHandler CryptoHandler { get; }
         int ProtocolVersion { get; set; }
         
     }

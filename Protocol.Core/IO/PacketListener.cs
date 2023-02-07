@@ -32,8 +32,8 @@ namespace MinecraftProtocol.IO
             get => ThrowIfDisposed(_protocolVersion);
             set => ThrowIfDisposed(() => _protocolVersion = value);
         }
-        
-        public CryptoHandler Crypto => ThrowIfDisposed(_crypto);
+
+        public CryptoHandler CryptoHandler => ThrowIfDisposed(_cryptoHandler);
 
         public event EventHandler<PacketReceivedEventArgs> PacketReceived;
         public override event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
@@ -46,7 +46,7 @@ namespace MinecraftProtocol.IO
         private GCHandle[] _gcHandleBlock;
         private ushort _dataBlockIndex, _gcHandleBlockIndex;
 
-        private CryptoHandler _crypto;
+        private CryptoHandler _cryptoHandler;
         private int _compressionThreshold;
         private int _protocolVersion;
         private int _packetLength;
@@ -67,11 +67,14 @@ namespace MinecraftProtocol.IO
         {
             _compressionThreshold = -1;
             _protocolVersion = -1;
-            _crypto = new CryptoHandler();
+            _cryptoHandler = new CryptoHandler();
         }
 
         public override void Start(CancellationToken token = default)
         {
+            if (_internalToken != default)
+                throw new InvalidOperationException("started");
+
             _state = ReadState.PacketLength;
             ResetBlock();
             base.Start(token); //必须在后面，因为内部直接就会读取数据包
@@ -118,8 +121,8 @@ namespace MinecraftProtocol.IO
         {
             int bytesTransferred = e.BytesTransferred;
             //如果是加密数据就先将buffer解密再继续处理
-            if (!_disposed && !_internalToken.IsCancellationRequested && _crypto.Enable)
-                _crypto.Decrypt(_buffer, 0, bytesTransferred).AsSpan(0, bytesTransferred).CopyTo(_buffer);
+            if (!_disposed && !_internalToken.IsCancellationRequested && _cryptoHandler.Enable)
+                _cryptoHandler.Decrypt(_buffer, 0, bytesTransferred).AsSpan(0, bytesTransferred).CopyTo(_buffer);
 
             while (!_disposed && !_internalToken.IsCancellationRequested)
             {
@@ -265,7 +268,7 @@ namespace MinecraftProtocol.IO
             {
                 _buffer = null;
                 _socket = null;
-                _crypto = null;
+                _cryptoHandler = null;
                 GC.SuppressFinalize(this);
             }
         }

@@ -4,6 +4,7 @@ using MinecraftProtocol.IO;
 using MinecraftProtocol.Compression;
 using System.Text;
 using System.Runtime.InteropServices;
+using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Packets
 {
@@ -132,8 +133,6 @@ namespace MinecraftProtocol.Packets
         }
         public virtual byte[] Pack() => Pack(-1);
 
-
-
         public static Packet Depack(ReadOnlySpan<byte> data) => Depack(data, -1);
         public static Packet Depack(ReadOnlySpan<byte> data, int compressionThreshold)
         {
@@ -159,8 +158,6 @@ namespace MinecraftProtocol.Packets
             }
             return new Packet(VarInt.Read(data.Span, out int IdOffset), data.Span.Slice(IdOffset));
         }
-
-
         
         /// <summary>
         /// 浅拷贝一个受保护的只读Packet
@@ -168,7 +165,7 @@ namespace MinecraftProtocol.Packets
         public virtual ReadOnlyPacket AsReadOnly() => ThrowIfDisposed(new ReadOnlyPacket(this));
 
         /// <summary>
-        /// 从一个ICompatiblePacket中取出信息后并使用当前packet的data和id创建一个CompatiblePacket
+        /// 从一个<see cref="ICompatiblePacket"/>中取出信息后使用当前对象的data和id创建一个<see cref="CompatiblePacket"/>
         /// </summary>
         public virtual CompatiblePacket AsCompatible(ICompatiblePacket compatible) => new CompatiblePacket(this, compatible.ProtocolVersion, compatible.CompressionThreshold);
         public virtual CompatiblePacket AsCompatible(int protocolVersion, int compressionThreshold) => new CompatiblePacket(this, protocolVersion, compressionThreshold);

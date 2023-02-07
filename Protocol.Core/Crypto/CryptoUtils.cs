@@ -8,6 +8,13 @@ namespace MinecraftProtocol.Crypto
     public static class CryptoUtils
     {
         private const string SERVER_ID_STRING_ENCODE = "iso-8859-1";
+        private static readonly RandomNumberGenerator RNG = RandomNumberGenerator.Create();
+        public static byte[] GenerateRandomNumber(int size)
+        {
+            byte[] bytes = new byte[size];
+            RNG.GetBytes(bytes);
+            return bytes;
+        }
 
         public static byte[] GenerateSecretKey(int keySize = 128)
         {
