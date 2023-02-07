@@ -5,12 +5,13 @@ using System;
 
 namespace MinecraftProtocol.Packets
 {
-    public abstract class DefinedPacket : Packet
+    public abstract class DefinedPacket : Packet, ICompatible
     {
         /// <summary>
         /// 当前版本没有的包
         /// </summary>
-        public const int UnsupportPacketId = -25;
+        public const int UnsupportPacketId = -233;
+
         public virtual int ProtocolVersion { get; protected set; }
 
         protected virtual CompatibleByteReader Reader => reader ??= new CompatibleByteReader(AsMemory(), ProtocolVersion);

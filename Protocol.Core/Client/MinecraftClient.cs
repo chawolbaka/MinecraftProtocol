@@ -7,11 +7,12 @@ using MinecraftProtocol.Packets;
 using MinecraftProtocol.Utils;
 using MinecraftProtocol.Entity;
 using MinecraftProtocol.Auth;
+using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Client
 {
 
-    public abstract class MinecraftClient
+    public abstract class MinecraftClient : ICompatible
     {
         public const ushort DefaultServerPort = 25565;
 

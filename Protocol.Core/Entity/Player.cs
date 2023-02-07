@@ -1,9 +1,8 @@
 ﻿using System;
-using MinecraftProtocol.Packets;
-using MinecraftProtocol.Packets.Client;
 using System.Threading.Tasks;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Client;
+using MinecraftProtocol.Compatible;
 
 namespace MinecraftProtocol.Entity
 {
@@ -33,8 +32,7 @@ namespace MinecraftProtocol.Entity
         }
         public Task SendMessageAsync(string message)
         {
-            ClientChatMessagePacket cmp = new ClientChatMessagePacket(message, Client.ProtocolVersion);
-            return Client.SendPacketAsync(cmp);
+            return Client.SendPacketAsync(Client.BuildChatMessage(message));
         }
     }
 }

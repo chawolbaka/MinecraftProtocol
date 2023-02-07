@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Ionic.Zlib;
+using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Crypto;
 using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
@@ -18,7 +19,7 @@ namespace MinecraftProtocol.IO
     /// Minecraft数据包监听器
     /// <para>一直从传入的Socket读取Minecraft的数据包并通过<see cref="PacketReceived"/>事件吐出</para>
     /// </summary>
-    public partial class PacketListener : NetworkListener, IPacketListener
+    public partial class PacketListener : NetworkListener, IPacketListener, ICompatible
     {
         public int CompressionThreshold
         {

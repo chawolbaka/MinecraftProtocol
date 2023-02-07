@@ -2,9 +2,8 @@
 
 namespace MinecraftProtocol.Packets
 {
-    public interface ICompatiblePacket : IPacket
+    public interface ICompatiblePacket : IPacket, ICompatible
     {
         int CompressionThreshold { get; }
-        int ProtocolVersion { get; }
     }
 }

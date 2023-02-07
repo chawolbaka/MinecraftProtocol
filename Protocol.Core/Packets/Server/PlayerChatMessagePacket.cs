@@ -43,7 +43,7 @@ namespace MinecraftProtocol.Packets.Server
         /*Previous Messages*/
 
         [PacketProperty]
-        PreviousMessage[] _previousMessages;
+        SignaturedContent<int>[] _previousMessages;
 
         /*Other*/
 
@@ -74,12 +74,12 @@ namespace MinecraftProtocol.Packets.Server
             _timestamp = Reader.ReadLong();
             _salt = Reader.ReadLong();
 
-            _previousMessages = new PreviousMessage[Reader.ReadVarInt()]; 
+            _previousMessages = new SignaturedContent<int>[Reader.ReadVarInt()]; 
             for (int i = 0; i < _previousMessages.Length; i++)
             {
-               PreviousMessage previousMessage=  new PreviousMessage();
-                previousMessage.MessageId = Reader.ReadVarInt() - 1;
-                if (previousMessage.MessageId != -1 )
+                SignaturedContent<int> previousMessage =  new SignaturedContent<int>();
+                previousMessage.Content = Reader.ReadVarInt() - 1;
+                if (previousMessage.Content != -1)
                     previousMessage.Signature = Reader.ReadBytes(256);
                 _previousMessages[i] = previousMessage;
             }
@@ -109,8 +109,8 @@ namespace MinecraftProtocol.Packets.Server
             WriteVarInt(_previousMessages.Length);
             for (int i = 0; i < _previousMessages.Length; i++)
             {
-                WriteVarInt(_previousMessages[i].MessageId + 1);
-                if (_previousMessages[i].MessageId != -1)
+                WriteVarInt(_previousMessages[i].Content + 1);
+                if (_previousMessages[i].Content != -1)
                     WriteBytes(_previousMessages[i].Signature);
             }
 
