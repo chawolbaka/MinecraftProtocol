@@ -1,8 +1,9 @@
-﻿using System;
+﻿using MinecraftProtocol.Utils;
+using System;
 
 namespace MinecraftProtocol.IO
 {
-    public class UnhandledIOExceptionEventArgs : EventArgs
+    public class UnhandledIOExceptionEventArgs : CancelEventArgs
     {
         public Exception Exception { get; }
 

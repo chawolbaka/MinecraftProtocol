@@ -1,8 +1,9 @@
 ﻿using System;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.IO
 {
-    public class ListenEventArgs : EventArgs
+    public class ListenEventArgs : CancelEventArgs
     {
         public DateTime Time { get; }
         public bool IsStop { get; }

@@ -60,7 +60,7 @@ namespace MinecraftProtocol.Client
 
         protected CommonEventHandler<MinecraftClient, PacketReceivedEventArgs> _packetReceived;
         protected CommonEventHandler<MinecraftClient, SendPacketEventArgs> _packetSend;
-        
+
         protected CommonEventHandler<MinecraftClient, LoginEventArgs> _loginSuccess;
         protected CommonEventHandler<MinecraftClient, DisconnectEventArgs> _kicked;
         protected CommonEventHandler<MinecraftClient, DisconnectEventArgs> _disconnected;
@@ -76,8 +76,7 @@ namespace MinecraftProtocol.Client
             protected set
             {
                 _vanillaLoginState = value;
-               
-                _loginStatusChanged?.Invoke(this, new VanillaLoginEventArgs(value));
+                EventUtils.InvokeCancelEvent(_loginStatusChanged, this, new VanillaLoginEventArgs(value));
             }
         }
 
@@ -136,7 +135,7 @@ namespace MinecraftProtocol.Client
                 if (e.Packet == PacketType.Play.Server.Disconnect)
                 {
                     ChatComponent reason = e.Packet.AsDisconnect()?.Reason;
-                    _kicked?.Invoke(this, new DisconnectEventArgs(reason, e.ReceivedTime));
+                    EventUtils.InvokeCancelEvent(_kicked, this, new DisconnectEventArgs(reason, e.ReceivedTime));
                     DisconnectAsync(reason?.ToString());
                 }
                 else if (_autoKeepAlive && e.Packet == PacketType.Play.Server.KeepAlive)
@@ -257,14 +256,14 @@ namespace MinecraftProtocol.Client
             SetPlayer(lsp);
             VanillaLoginState = VanillaLoginStatus.Success;
             _joined = true;
-            _loginSuccess?.Invoke(this, new VanillaLoginEventArgs(VanillaLoginStatus.Success));
+            EventUtils.InvokeCancelEvent(_loginSuccess, this, new VanillaLoginEventArgs(VanillaLoginStatus.Success));
         }
 
         protected virtual void OnDisconnectLoginReceived(DisconnectPacket dp)
         {
             //DisconnectPacket一般不会在原版登录阶段收到，但Forge登录阶段会，而且可能会有什么插件会乱发...
             VanillaLoginState = VanillaLoginStatus.Failed;
-            _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
+            EventUtils.InvokeCancelEvent(_kicked, this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
             DisconnectAsync(dp.Json);
         }
 
@@ -322,7 +321,9 @@ namespace MinecraftProtocol.Client
         {
             ThrowIfNotConnected();
 
-            if (EventUtils.InvokeCancelEvent(_packetSend, this, new SendPacketEventArgs(packet)))
+            SendPacketEventArgs eventArgs = new SendPacketEventArgs(packet);
+            EventUtils.InvokeCancelEvent(_packetSend, this, eventArgs);
+            if (eventArgs.IsBlock)
                 return;
 
             byte[] data = PacketListen.CryptoHandler.Enable? PacketListen.CryptoHandler.Encrypt(packet.Pack(CompressionThreshold)): packet.Pack(CompressionThreshold);
@@ -414,7 +415,7 @@ namespace MinecraftProtocol.Client
                 _player = null;
                 PacketQueueHandleThread = null;
                 ReceivePacketCancellationToken = null;
-                _disconnected?.Invoke(this, new DisconnectEventArgs(reason));
+                EventUtils.InvokeCancelEvent(_disconnected, this, new DisconnectEventArgs(reason));
             }
         }
 

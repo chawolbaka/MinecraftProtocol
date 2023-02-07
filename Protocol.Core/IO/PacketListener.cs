@@ -35,8 +35,8 @@ namespace MinecraftProtocol.IO
 
         public CryptoHandler CryptoHandler => ThrowIfDisposed(_cryptoHandler);
 
-        public event EventHandler<PacketReceivedEventArgs> PacketReceived;
-        public override event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
+        public event CommonEventHandler<object,PacketReceivedEventArgs> PacketReceived;
+        public override event CommonEventHandler<object,UnhandledIOExceptionEventArgs> UnhandledException;
 
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
@@ -223,12 +223,13 @@ namespace MinecraftProtocol.IO
                 {
                     PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
                     prea.Setup(_gcHandleBlock, ref _gcHandleBlockIndex, ref _dataBlock, ref _dataBlockIndex, ref _packetLengthOffset, ref _packetLength, ref _protocolVersion, _compressionThreshold, _usePool);
-                    PacketReceived?.Invoke(this, prea);
+
+                    EventUtils.InvokeCancelEvent(PacketReceived, this, prea);
                 }
                 catch (Exception ex)
                 {
                     UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(ex);
-                    UnhandledException?.Invoke(this, eventArgs);
+                    EventUtils.InvokeCancelEvent(UnhandledException, this, eventArgs);
                     if (!eventArgs.Handled)
                         throw;
                 }

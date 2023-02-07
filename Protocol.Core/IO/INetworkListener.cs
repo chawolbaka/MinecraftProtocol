@@ -1,13 +1,14 @@
-﻿using System;
+﻿using MinecraftProtocol.Utils;
+using System;
 using System.Threading;
 
 namespace MinecraftProtocol.IO
 {
     public interface INetworkListener : IDisposable
     {
-        event EventHandler<ListenEventArgs> StartListen;
-        event EventHandler<ListenEventArgs> StopListen;
-        event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
+        event CommonEventHandler<object, ListenEventArgs> StartListen;
+        event CommonEventHandler<object, ListenEventArgs> StopListen;
+        event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
 
         int ReceiveBufferSize { get; set; }
      

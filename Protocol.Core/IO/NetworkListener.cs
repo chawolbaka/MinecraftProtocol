@@ -17,9 +17,9 @@ namespace MinecraftProtocol.IO
             set => ThrowIfDisposed(() => _receiveBufferSize = value > 32 ? value : throw new ArgumentOutOfRangeException(nameof(ReceiveBufferSize), $"{nameof(ReceiveBufferSize)} too short."));
         }
 
-        public virtual event EventHandler<ListenEventArgs> StartListen;
-        public virtual event EventHandler<ListenEventArgs> StopListen;
-        public virtual event EventHandler<UnhandledIOExceptionEventArgs> UnhandledException;
+        public virtual event CommonEventHandler<object, ListenEventArgs> StartListen;
+        public virtual event CommonEventHandler<object, ListenEventArgs> StopListen;
+        public virtual event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
 
         protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
 
@@ -42,8 +42,8 @@ namespace MinecraftProtocol.IO
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-            if (!disablePool && _dataPool == null) //考虑特意增大receiveBufferSize那部分的size
-                _dataPool = new UnsafeSawtoothArrayPool<byte>.Bucket<byte>(receiveBufferSize, 2048, Thread.CurrentThread.ManagedThreadId, true);
+            if (!disablePool && _dataPool == null)
+               _dataPool = new UnsafeSawtoothArrayPool<byte>.Bucket<byte>(receiveBufferSize, 2048, Thread.CurrentThread.ManagedThreadId, true);
 
             _usePool = !disablePool;
             _socket = socket;
@@ -64,13 +64,12 @@ namespace MinecraftProtocol.IO
             if (token != default)
                 token.Register(_internalToken.Cancel);
 
-
-            StartListen?.Invoke(this, new ListenEventArgs(false));
+            EventUtils.InvokeCancelEvent(StartListen, this, new ListenEventArgs(false));
             SocketAsyncEventArgs eventArgs = _usePool ? SAEAPool.Rent() : new SocketAsyncEventArgs();
             if (_usePool)
                 _internalToken.Token.Register(() => SAEAPool.Return(eventArgs));
 
-            _internalToken.Token.Register(() => StopListen?.Invoke(this, new ListenEventArgs(true)));
+            _internalToken.Token.Register(() => EventUtils.InvokeCancelEvent(StartListen, this, new ListenEventArgs(true)));
             eventArgs.RemoteEndPoint = _socket.RemoteEndPoint;
             eventArgs.SetBuffer(_buffer);
             eventArgs.Completed -= OnReceiveCompleted;
@@ -137,7 +136,7 @@ namespace MinecraftProtocol.IO
             catch (Exception ex)
             {
                 UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(ex);
-                UnhandledException?.Invoke(this, eventArgs);
+                EventUtils.InvokeCancelEvent(UnhandledException, this, eventArgs);
                 if (!eventArgs.Handled)
                     throw;
             }

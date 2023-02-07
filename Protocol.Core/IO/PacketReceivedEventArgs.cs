@@ -4,10 +4,11 @@ using System.Runtime.InteropServices;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
+using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.IO
 {
-    public class PacketReceivedEventArgs : EventArgs, IDisposable
+    public class PacketReceivedEventArgs : CancelEventArgs, IDisposable
     {
         /// <summary>
         /// 数据被完整的接收到的时间
@@ -18,7 +19,7 @@ namespace MinecraftProtocol.IO
         /// 接收到的Packet
         /// </summary>
         public CompatiblePacket Packet { get; private set; }
-
+        
         /// <summary>
         /// 完整的数据包
         /// </summary>
@@ -33,6 +34,7 @@ namespace MinecraftProtocol.IO
 
         private static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
 
+
         //那堆ref是为了减少值类型的内存复制，因为性能不好开始病态起来了
         internal PacketReceivedEventArgs Setup(GCHandle[] dataGCHandleBlock, ref ushort dataGCHandleBlockLength, ref Memory<byte>[] dataBlock, ref ushort dataBlockLength, ref byte headLength, ref int bodyLength, ref int protocolVersion, int compressionThreshold, bool usePool)
         {
@@ -42,6 +44,7 @@ namespace MinecraftProtocol.IO
             CompatiblePacket _packet;
             _usePool = usePool;
             _disposed = false;
+            _isCancelled = false;
             _dataBlock = dataBlock;
             _dataGCHandle = dataGCHandleBlock;
             _dataGCHandleBlockLength = dataGCHandleBlockLength;

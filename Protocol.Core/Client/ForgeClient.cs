@@ -32,10 +32,10 @@ namespace MinecraftProtocol.Client
                 _forgeLoginState = value;
                 if (value == ForgeLoginStatus.Success)
                 {
-                    _loginSuccess?.Invoke(this, new ForgeLoginEventArgs(value));
+                    EventUtils.InvokeCancelEvent(_loginSuccess, this, new ForgeLoginEventArgs(value));
                     _joined = true;
                 }
-                _loginStatusChanged?.Invoke(this, new ForgeLoginEventArgs(value));
+                EventUtils.InvokeCancelEvent(_loginStatusChanged, this, new ForgeLoginEventArgs(value));
             }
         }
         public virtual FMLHandshakeClientState HandshakeState
@@ -182,7 +182,7 @@ namespace MinecraftProtocol.Client
         protected override void OnDisconnectLoginReceived(DisconnectPacket dp)
         {
             ForgeLoginState = ForgeLoginStatus.Failed;
-            _kicked?.Invoke(this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
+            EventUtils.InvokeCancelEvent(_kicked, this, new DisconnectEventArgs(dp.Reason, DateTime.Now));
             DisconnectAsync(dp.Json);
         }
         
