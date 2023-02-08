@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using MinecraftProtocol.Chat;
-using MinecraftProtocol.NBT.Tags;
+using MinecraftProtocol.IO.NBT.Tags;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Packets.Server;
 

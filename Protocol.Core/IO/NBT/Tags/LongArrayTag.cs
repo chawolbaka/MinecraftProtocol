@@ -1,26 +1,23 @@
-﻿using MinecraftProtocol.IO;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace MinecraftProtocol.NBT.Tags
+namespace MinecraftProtocol.IO.NBT.Tags
 {
-    public class IntArrayTag : NBTTag, INBTPayload<int[]>, IEnumerable<int>
+    public class LongArrayTag : NBTTag, INBTPayload<long[]>, IEnumerable<long>
     {
-        public override NBTTagType Type => NBTTagType.IntArray;
+        public override NBTTagType Type => NBTTagType.LongArray;
 
-        public int[] Payload { get; set; }
-
-
+        public long[] Payload { get; set; }
 
         public override NBTTag Read(NBTReader reader)
         {
             if (!IsListItem)
                 Name = reader.ReadString();
-            Payload = new int[reader.ReadInt()];
+            Payload = new long[reader.ReadInt()];
             for (int i = 0; i < Payload.Length; i++)
             {
-                Payload[i] = reader.ReadInt();
+                Payload[i] = reader.ReadLong();
             }
             return this;
         }
@@ -31,16 +28,16 @@ namespace MinecraftProtocol.NBT.Tags
             writer.WriteInt(Payload.Length);
             foreach (var l in Payload)
             {
-                writer.WriteInt(l);
+                writer.WriteLong(l);
             }
             return this;
         }
 
-        public IEnumerator<int> GetEnumerator()
+        public IEnumerator<long> GetEnumerator()
         {
-            return ((IEnumerable<int>)Payload).GetEnumerator();
+            return ((IEnumerable<long>)Payload).GetEnumerator();
         }
-
+        
         IEnumerator IEnumerable.GetEnumerator()
         {
             return Payload.GetEnumerator();

@@ -1,8 +1,8 @@
 ﻿using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
-using MinecraftProtocol.NBT;
-using MinecraftProtocol.NBT.Tags;
+using MinecraftProtocol.IO.NBT;
+using MinecraftProtocol.IO.NBT.Tags;
 using System;
 using System.Collections;
 using System.Collections.Generic;

@@ -1,29 +1,29 @@
-﻿using MinecraftProtocol.IO;
-using System;
+﻿using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace MinecraftProtocol.NBT.Tags
+namespace MinecraftProtocol.IO.NBT.Tags
 {
-    public class StringTag : NBTTag, INBTPayload<string>
+    public class ByteTag : NBTTag, INBTPayload<byte>
     {
-        public override NBTTagType Type => NBTTagType.String;
+        public override NBTTagType Type => NBTTagType.Byte;
 
-        public string Payload { get; set; }
+        public byte Payload { get; set; }
 
         public override NBTTag Read(NBTReader reader)
         {
             if (!IsListItem)
                 Name = reader.ReadString();
-            Payload = reader.ReadString();
+            Payload = reader.ReadByte();
             return this;
         }
 
         public override NBTTag Write(NBTWriter writer)
         {
             WriteHeader(writer);
-            writer.WriteString(Payload);
+            writer.WriteByte(Payload);
             return this;
         }
-
         public override string ToString() => Payload.ToString();
     }
 }

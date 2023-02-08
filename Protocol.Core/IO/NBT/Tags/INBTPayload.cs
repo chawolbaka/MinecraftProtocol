@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinecraftProtocol.NBT.Tags
+namespace MinecraftProtocol.IO.NBT.Tags
 {
     public interface INBTPayload<T>
     {

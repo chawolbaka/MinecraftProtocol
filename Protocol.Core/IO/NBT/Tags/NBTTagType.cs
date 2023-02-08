@@ -1,4 +1,4 @@
-﻿namespace MinecraftProtocol.NBT.Tags
+﻿namespace MinecraftProtocol.IO.NBT.Tags
 {
     public enum NBTTagType : byte
     {

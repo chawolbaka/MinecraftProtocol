@@ -1,26 +1,25 @@
-﻿using MinecraftProtocol.IO;
-using System;
+﻿using System;
 
-namespace MinecraftProtocol.NBT.Tags
+namespace MinecraftProtocol.IO.NBT.Tags
 {
-    public class LongTag : NBTTag, INBTPayload<long>
+    public class FloatTag : NBTTag, INBTPayload<float>
     {
-        public override NBTTagType Type => NBTTagType.Long;
+        public override NBTTagType Type => NBTTagType.Float;
 
-        public long Payload { get; set; }
+        public float Payload { get; set; }
 
         public override NBTTag Read(NBTReader reader)
         {
             if (!IsListItem)
                 Name = reader.ReadString();
-            Payload = reader.ReadLong();
+            Payload = reader.ReadFloat();
             return this;
         }
 
         public override NBTTag Write(NBTWriter writer)
         {
             WriteHeader(writer);
-            writer.WriteLong(Payload);
+            writer.WriteFloat(Payload);
             return this;
         }
         public override string ToString() => Payload.ToString();

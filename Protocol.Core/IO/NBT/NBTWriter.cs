@@ -1,13 +1,9 @@
-﻿using MinecraftProtocol.IO;
-using MinecraftProtocol.NBT.Tags;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using MinecraftProtocol.IO.NBT.Tags;
 
-namespace MinecraftProtocol.NBT
+namespace MinecraftProtocol.IO.NBT
 {
     public class NBTWriter
     {

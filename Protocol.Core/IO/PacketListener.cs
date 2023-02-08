@@ -33,10 +33,14 @@ namespace MinecraftProtocol.IO
             set => ThrowIfDisposed(() => _protocolVersion = value);
         }
 
-        public CryptoHandler CryptoHandler => ThrowIfDisposed(_cryptoHandler);
+        public CryptoHandler CryptoHandler 
+        { 
+            get => ThrowIfDisposed(_cryptoHandler);
+            init => _cryptoHandler = value;
+        }
 
-        public event CommonEventHandler<object,PacketReceivedEventArgs> PacketReceived;
-        public override event CommonEventHandler<object,UnhandledIOExceptionEventArgs> UnhandledException;
+        public event CommonEventHandler<object, PacketReceivedEventArgs> PacketReceived;
+        public override event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
 
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
@@ -61,13 +65,12 @@ namespace MinecraftProtocol.IO
         }
 
 
-        public PacketListener(Socket socket) : this(socket, socket.ReceiveBufferSize) { }
-        public PacketListener(Socket socket, int receiveBufferSize) : this(socket, receiveBufferSize, false) { }
-        public PacketListener(Socket socket, int receiveBufferSize, bool disablePool) : base(socket, receiveBufferSize,disablePool)
+        public PacketListener(Socket socket) : this(socket, false) { }
+        public PacketListener(Socket socket, bool disablePool) : base(socket, disablePool)
         {
             _compressionThreshold = -1;
             _protocolVersion = -1;
-            _cryptoHandler = new CryptoHandler();
+            _cryptoHandler ??= new CryptoHandler();
         }
 
         public override void Start(CancellationToken token = default)

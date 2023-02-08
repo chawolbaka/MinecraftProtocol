@@ -1,7 +1,7 @@
 ﻿using System;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.Compatible;
-using MinecraftProtocol.NBT.Tags;
+using MinecraftProtocol.IO.NBT.Tags;
 
 namespace MinecraftProtocol.Packets.Server
 {

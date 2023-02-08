@@ -8,7 +8,7 @@ namespace MinecraftProtocol.Client
     public class SendPacketEventArgs : PacketEventArgs
     {
         public virtual IPacket Packet { get; }
-            {
+            
         public virtual bool IsBlock => _isBlock;
         protected bool _isBlock;
 

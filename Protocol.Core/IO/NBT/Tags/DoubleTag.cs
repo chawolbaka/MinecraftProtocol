@@ -1,7 +1,6 @@
-﻿using MinecraftProtocol.IO;
-using System;
+﻿using System;
 
-namespace MinecraftProtocol.NBT.Tags
+namespace MinecraftProtocol.IO.NBT.Tags
 {
     public class DoubleTag : NBTTag, INBTPayload<double>
     {

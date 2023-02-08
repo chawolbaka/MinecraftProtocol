@@ -1,8 +1,7 @@
-﻿using MinecraftProtocol.IO;
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace MinecraftProtocol.NBT.Tags
+namespace MinecraftProtocol.IO.NBT.Tags
 {
     public class CompoundTag : NBTTag, INBTPayload<List<NBTTag>>
     {

@@ -42,16 +42,35 @@ namespace MinecraftProtocol.Client
         public override ushort ServerPort        { get => ThrowIfDisposed(base.ServerPort); protected set => ThrowIfDisposed(base.ServerPort = value); }
         public override int CompressionThreshold { get => ThrowIfDisposed(base.CompressionThreshold); set => ThrowIfDisposed(base.CompressionThreshold = value); }
         public override int ProtocolVersion      { get => ThrowIfDisposed(base.ProtocolVersion);      set => ThrowIfDisposed(base.ProtocolVersion = value); }
+        public virtual bool AutoKeepAlive        { get => ThrowIfDisposed(_autoKeepAlive);            set => _autoKeepAlive = ThrowIfDisposed(value); }
+        public virtual bool IsServerInOnlineMode { get => ThrowIfNotJoined(PacketListen.CryptoHandler.Enable); }
 
-        public bool IsServerInOnlineMode         { get => ThrowIfNotJoined(PacketListen.CryptoHandler.Enable); }
+        public virtual VanillaLoginStatus VanillaLoginState
+        {
+            get => ThrowIfDisposed(_vanillaLoginState);
+            protected set
+            {
+                _vanillaLoginState = value;
+                EventUtils.InvokeCancelEvent(_loginStatusChanged, this, new VanillaLoginEventArgs(value));
+            }
+        }
 
-        public bool AutoKeepAlive    { get => ThrowIfDisposed(_autoKeepAlive);        set => _autoKeepAlive = ThrowIfDisposed(value); }
+        public virtual IClientSettings Settings
+        {
+            get => ThrowIfDisposed(_settings);
+            set
+            {
+                _settings = ThrowIfDisposed(value);
+                if (Joined)
+                    SendPacket(new ClientSettingsPacket(value, ProtocolVersion));
+            }
+        }
 
         public override event CommonEventHandler<MinecraftClient, PacketReceivedEventArgs> PacketReceived   { add => _packetReceived     += ThrowIfDisposed(value); remove => _packetReceived -= ThrowIfDisposed(value); }
         public override event CommonEventHandler<MinecraftClient, SendPacketEventArgs> PacketSend           { add => _packetSend         += ThrowIfDisposed(value); remove => _packetSend     -= ThrowIfDisposed(value); }
 
         public override event CommonEventHandler<MinecraftClient, LoginEventArgs> LoginSuccess              { add => _loginSuccess       += ThrowIfDisposed(value); remove => _loginSuccess       -= ThrowIfDisposed(value); }
-        public event CommonEventHandler<VanillaClient, VanillaLoginEventArgs> VanillaLoginStatusChanged   { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
+        public event CommonEventHandler<VanillaClient, VanillaLoginEventArgs> VanillaLoginStatusChanged     { add => _loginStatusChanged += ThrowIfDisposed(value); remove => _loginStatusChanged -= ThrowIfDisposed(value); }
 
         //这两个事件有什么区别?
         //Kicked是收到了断开连接的包，Disconnected是Disconnect方法被调用
@@ -64,38 +83,17 @@ namespace MinecraftProtocol.Client
         protected CommonEventHandler<MinecraftClient, LoginEventArgs> _loginSuccess;
         protected CommonEventHandler<MinecraftClient, DisconnectEventArgs> _kicked;
         protected CommonEventHandler<MinecraftClient, DisconnectEventArgs> _disconnected;
-        protected SessionToken _loginToken;
-        protected Player _player;
+
+        protected Thread PacketQueueHandleThread;
+        protected PacketListener PacketListen;
+        protected SessionToken LoginToken;
+        protected Player Player;
+        protected Socket TCP;
 
         private CommonEventHandler<VanillaClient, VanillaLoginEventArgs> _loginStatusChanged;
-
         private VanillaLoginStatus _vanillaLoginState;
-        public virtual VanillaLoginStatus VanillaLoginState
-        {
-            get => ThrowIfDisposed(_vanillaLoginState);
-            protected set
-            {
-                _vanillaLoginState = value;
-                EventUtils.InvokeCancelEvent(_loginStatusChanged, this, new VanillaLoginEventArgs(value));
-            }
-        }
-
-        protected IClientSettings _settings;
-        public virtual IClientSettings Settings
-        {
-            get => ThrowIfDisposed(_settings);
-            set
-            {
-                _settings = ThrowIfDisposed(value);
-                if (Joined)
-                    SendPacket(new ClientSettingsPacket(value, ProtocolVersion));
-            }
-        }
-
-        protected Socket TCP;
-        protected PacketListener PacketListen;
-        protected Thread PacketQueueHandleThread;
         private bool _autoKeepAlive = true;
+        private IClientSettings _settings;
 
         public override Socket GetSocket() => TCP;
 
@@ -110,11 +108,9 @@ namespace MinecraftProtocol.Client
             ServerHost = string.IsNullOrEmpty(host) ? serverIP.ToString() : host;
             ServerIP = serverIP;
             ServerPort = serverPort;
-            Settings = settings;
             ProtocolVersion = protocolVersion >= 0 ? protocolVersion : throw new ArgumentOutOfRangeException(nameof(protocolVersion), "协议号不能小于0");
-            if (Settings == null)
-                Settings = ProtocolVersion >= ProtocolVersions.V1_12_pre3 ? ClientSettings.Default : ClientSettings.LegacyDefault;
-            _loginSuccess += (sender, e) => _player.Init(this);
+            _settings = settings ?? (ProtocolVersion >= ProtocolVersions.V1_12_pre3 ? ClientSettings.Default : ClientSettings.LegacyDefault);
+            _loginSuccess += (sender, e) => Player.Init(this);
         }
         public VanillaClient(string host, IPAddress serverIP, ushort serverPort, int protocolVersion) : this(host, serverIP, serverPort, null, protocolVersion) { }
         public VanillaClient(string host, IPEndPoint remoteEP, int protocolVersion) : this(host, remoteEP, null, protocolVersion) { }
@@ -191,7 +187,7 @@ namespace MinecraftProtocol.Client
             if (ProtocolVersion < 0)
                 throw new LoginException("协议号不能小于0");
 
-            _loginToken = token;
+            LoginToken = token;
 
             //开始握手
             SendPacket(new HandshakePacket(ServerHost, ServerPort, HandshakePacket.State.Login, ProtocolVersion));
@@ -226,13 +222,13 @@ namespace MinecraftProtocol.Client
 
         protected virtual async Task OnEncryptionRequestReceived(EncryptionRequestPacket encryptionRequest)
         {
-            if (_loginToken.AccessToken == null)
+            if (LoginToken.AccessToken == null)
                 throw new LoginException($"服务器开启了正版验证，但是{nameof(SessionToken)}中没有提供可用的AccessToken。", Disconnect);
 
             VanillaLoginState = VanillaLoginStatus.EncryptionRequest;
             byte[] SessionKey = CryptoUtils.GenerateSecretKey();
             string ServerHash = CryptoUtils.GetServerHash(encryptionRequest.ServerID, SessionKey, encryptionRequest.PublicKey);
-            await YggdrasilService.JoinAsync(_loginToken, ServerHash);
+            await YggdrasilService.JoinAsync(LoginToken, ServerHash);
             RSA RSAService = RSA.Create();
             RSAService.ImportSubjectPublicKeyInfo(encryptionRequest.PublicKey, out _);
             SendPacket(new EncryptionResponsePacket(
@@ -284,7 +280,7 @@ namespace MinecraftProtocol.Client
             if (!Joined)
                 return null;
             else
-                return _player;
+                return Player;
         }
 
         protected virtual void SetPlayer(Packet packet)
@@ -296,7 +292,7 @@ namespace MinecraftProtocol.Client
                 lsp = packet as LoginSuccessPacket;
             else if (!LoginSuccessPacket.TryRead(packet, ProtocolVersion, out lsp))
                 throw new InvalidPacketException(packet);
-            _player = new Player(lsp.PlayerName, lsp.PlayerUUID);
+            Player = new Player(lsp.PlayerName, lsp.PlayerUUID);
         }
 
 
@@ -412,7 +408,7 @@ namespace MinecraftProtocol.Client
                 PacketListen?.Dispose();
                 ReceiveQueue?.Dispose();
                 CompressionThreshold = -1;
-                _player = null;
+                Player = null;
                 PacketQueueHandleThread = null;
                 ReceivePacketCancellationToken = null;
                 EventUtils.InvokeCancelEvent(_disconnected, this, new DisconnectEventArgs(reason));

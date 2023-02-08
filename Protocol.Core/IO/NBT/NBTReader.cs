@@ -1,12 +1,11 @@
-﻿using MinecraftProtocol.IO;
-using MinecraftProtocol.NBT.Tags;
+﻿using MinecraftProtocol.IO.NBT.Tags;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MinecraftProtocol.NBT
+namespace MinecraftProtocol.IO.NBT
 {
     public class NBTReader
     {
