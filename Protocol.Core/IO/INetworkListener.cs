@@ -9,9 +9,7 @@ namespace MinecraftProtocol.IO
         event CommonEventHandler<object, ListenEventArgs> StartListen;
         event CommonEventHandler<object, ListenEventArgs> StopListen;
         event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
-
-        int ReceiveBufferSize { get; set; }
-     
+        
         void Start(CancellationToken token = default);
     }
 }

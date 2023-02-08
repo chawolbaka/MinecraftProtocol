@@ -11,11 +11,6 @@ namespace MinecraftProtocol.IO
 {
     public abstract partial class NetworkListener : INetworkListener
     {
-        public int ReceiveBufferSize
-        {
-            get => ThrowIfDisposed(_receiveBufferSize);
-            set => ThrowIfDisposed(() => _receiveBufferSize = value > 32 ? value : throw new ArgumentOutOfRangeException(nameof(ReceiveBufferSize), $"{nameof(ReceiveBufferSize)} too short."));
-        }
 
         public virtual event CommonEventHandler<object, ListenEventArgs> StartListen;
         public virtual event CommonEventHandler<object, ListenEventArgs> StopListen;
@@ -26,31 +21,33 @@ namespace MinecraftProtocol.IO
         internal static UnsafeSawtoothArrayPool<byte>.Bucket<byte> _dataPool;
         protected CancellationTokenSource _internalToken;
         protected Socket _socket;
-        protected int _receiveBufferSize;
         protected int _bufferOffset;
         protected GCHandle _bufferGCHandle;
         protected byte[] _buffer;
         protected bool _usePool;
         private int _syncCount;
 
-        public NetworkListener(Socket socket) : this(socket, socket.ReceiveBufferSize) { }
-        public NetworkListener(Socket socket, int receiveBufferSize) : this(socket, receiveBufferSize, false) { }
-        public NetworkListener(Socket socket, int receiveBufferSize, bool disablePool)
+        public NetworkListener(Socket socket) : this(socket, false) { }
+        public NetworkListener(Socket socket,  bool disablePool)
         {
-            if (receiveBufferSize < 32)
-                throw new ArgumentOutOfRangeException(nameof(receiveBufferSize), $"{nameof(receiveBufferSize)} too short.");
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
             if (!disablePool && _dataPool == null)
-               _dataPool = new UnsafeSawtoothArrayPool<byte>.Bucket<byte>(receiveBufferSize, 2048, Thread.CurrentThread.ManagedThreadId, true);
+                SetPoolSize(socket.ReceiveBufferSize, 2048);
 
             _usePool = !disablePool;
             _socket = socket;
             _buffer = AllocateByteArray();
-            _receiveBufferSize = receiveBufferSize;
         }
 
+        public static void SetPoolSize(int bufferLength, int numberOfBuffers)
+        {
+            if (_dataPool != null)
+                throw new InvalidOperationException("数组池已被设置");
+
+            _dataPool = new UnsafeSawtoothArrayPool<byte>.Bucket<byte>(bufferLength, numberOfBuffers, Thread.CurrentThread.ManagedThreadId, true);
+        }
 
         public virtual void Start(CancellationToken token = default)
         {
@@ -145,15 +142,17 @@ namespace MinecraftProtocol.IO
 
         private byte[] AllocateByteArray()
         {
-            GCHandle handle = _usePool ? _dataPool.Rent() : GCHandle.Alloc(new byte[_receiveBufferSize]);
+            if (!_usePool)
+                return new byte[8192];
+
             try
             {
-                _bufferGCHandle = handle;
-                return (byte[])handle.Target;
+                _bufferGCHandle = _dataPool.Rent();
+                return (byte[])_bufferGCHandle.Target;
             }
             catch (InvalidOperationException)
             {
-                _bufferGCHandle = GCHandle.Alloc(new byte[_receiveBufferSize]);
+                _bufferGCHandle = GCHandle.Alloc(new byte[8192]);
                 return (byte[])_bufferGCHandle.Target;
             }
         }
@@ -173,9 +172,10 @@ namespace MinecraftProtocol.IO
         {
             bool disposed = _disposed;
             _disposed = true;
-            if (_usePool && _buffer is not null)
+            if (_usePool && _buffer != null && _bufferGCHandle != default)
                 _dataPool?.Return(_bufferGCHandle);
-            else if (_bufferGCHandle != default && _bufferGCHandle.IsAllocated)
+           
+            if (_bufferGCHandle != default && _bufferGCHandle.IsAllocated)
                 _bufferGCHandle.Free();
 
             if (!disposed && disposing)
