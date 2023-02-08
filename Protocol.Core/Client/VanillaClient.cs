@@ -303,14 +303,11 @@ namespace MinecraftProtocol.Client
         {
             lock (ReadPacketLock)
             {
-                int PacketLength = VarInt.Read(() => PacketListen.CryptoHandler.Enable ? PacketListen.CryptoHandler.Decrypt(NetworkUtils.ReceiveData(1, TCP))[0] : NetworkUtils.ReceiveData(1, TCP)[0]);
+                int PacketLength = VarInt.Read(() => PacketListen.CryptoHandler.TryDecrypt(NetworkUtils.ReceiveData(1, TCP))[0]);
                 if (PacketLength == 0 && !UpdateConnectStatus())
                     throw new SocketException((int)SocketError.ConnectionReset);
 
-                if (PacketListen.CryptoHandler.Enable)
-                    return CompatiblePacket.Depack(PacketListen.CryptoHandler.Decrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), ProtocolVersion, CompressionThreshold);
-                else
-                    return CompatiblePacket.Depack(NetworkUtils.ReceiveData(PacketLength, TCP), ProtocolVersion,CompressionThreshold);
+                return CompatiblePacket.Depack(PacketListen.CryptoHandler.TryDecrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), ProtocolVersion, CompressionThreshold);
             }
         }
         public override void SendPacket(IPacket packet)
@@ -322,7 +319,7 @@ namespace MinecraftProtocol.Client
             if (eventArgs.IsBlock)
                 return;
 
-            byte[] data = PacketListen.CryptoHandler.Enable? PacketListen.CryptoHandler.Encrypt(packet.Pack(CompressionThreshold)): packet.Pack(CompressionThreshold);
+            byte[] data = PacketListen.CryptoHandler.TryEncrypt(packet.Pack(CompressionThreshold));
             //因为会异步发送Packet，不知道在不锁的情况下会不会出现乱掉的情况
             lock (SendPacketLock)
             {

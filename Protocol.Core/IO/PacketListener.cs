@@ -125,7 +125,7 @@ namespace MinecraftProtocol.IO
             int bytesTransferred = e.BytesTransferred;
             //如果是加密数据就先将buffer解密再继续处理
             if (!_disposed && !_internalToken.IsCancellationRequested && _cryptoHandler.Enable)
-                _cryptoHandler.Decrypt(_buffer, 0, bytesTransferred).AsSpan(0, bytesTransferred).CopyTo(_buffer);
+                _cryptoHandler.Decrypt(_buffer.AsSpan(0, bytesTransferred));
 
             while (!_disposed && !_internalToken.IsCancellationRequested)
             {
