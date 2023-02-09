@@ -17,7 +17,7 @@ namespace MinecraftProtocol.Crypto
         private byte[] _encryptIV;
         private byte[] _decryptIV;
 
-        private EncryptOnlyAes _fastAes;
+        private AesCfbOnly _fastAes;
         private Aes _defaultAes;
 
         public void Init(byte[] secretKey)
@@ -26,7 +26,7 @@ namespace MinecraftProtocol.Crypto
             _key = (byte[])secretKey.Clone();
             _encryptIV = (byte[])_key.Clone();
             _decryptIV = (byte[])_key.Clone();
-            if (!EncryptOnlyAes.IsSupported)
+            if (!AesCfbOnly.IsSupported)
             {
                 _defaultAes = Aes.Create();
                 _defaultAes.BlockSize = 128;
@@ -37,7 +37,7 @@ namespace MinecraftProtocol.Crypto
             }
             else
             {
-                _fastAes = new EncryptOnlyAes(_key);
+                _fastAes = new AesCfbOnly(_key);
             }
         }
 
@@ -48,6 +48,7 @@ namespace MinecraftProtocol.Crypto
         /// </summary>
         public byte[] TryEncrypt(byte[] input)
         {
+            
             if (_enable)
                 Encrypt(input);
             return input;
@@ -65,7 +66,7 @@ namespace MinecraftProtocol.Crypto
 
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public void Encrypt(Span<byte> buffer)
+        public void Encrypt(Span<byte> buffer) 
         {
             if (!_enable)
                 throw new InvalidOperationException("加密未开启。");
@@ -75,21 +76,37 @@ namespace MinecraftProtocol.Crypto
             //加密完成后取密钥流第n块的第0位对明文进行xor得到密文
             //块的位置向后移动1位，并将密文加到当前块的末位
             //（1块的大小是16字节）
-            Span<byte> keyStream = new byte[buffer.Length + BLOCK_SIZE];
-            _encryptIV.CopyTo(keyStream); buffer.CopyTo(keyStream.Slice(BLOCK_SIZE));
 
-            Span<byte> blockOutput = stackalloc byte[BLOCK_SIZE];
+
+
+            //这边只声明这种长度的keyStream是一种轻微的优化，因为如果超出这个长度就可以直接对着buffer进行加密流，所以这样可以避免每次加密都声明buffer.Length + BLOCK_SIZE的keyStream
+            Span<byte> keyStream = new byte[(BLOCK_SIZE * 2)];
+            _encryptIV.CopyTo(keyStream); //复制IV到密钥流的开头
+            buffer.Slice(0, buffer.Length <= 16 ? buffer.Length: BLOCK_SIZE).CopyTo(keyStream.Slice(BLOCK_SIZE)); //复制明文到剩下的位置
+
+            //如果是直接使用AES-NI那么就不需要这个blockOutput，因为可以直接修改代码，但C#自带的AES类我无法修改所以还是需要声明一个blockOutput
+            Span<byte> blockOutput = _fastAes == null ? stackalloc byte[BLOCK_SIZE] : null;
             for (int i = 0; i < buffer.Length; i++)
             {
-                if (_fastAes != null)
-                    _fastAes.Encrypt(keyStream.Slice(i, BLOCK_SIZE), blockOutput);
-                else
-                    _defaultAes.EncryptEcb(keyStream.Slice(i, BLOCK_SIZE), blockOutput, PaddingMode.None);
+                Span<byte> currentBlock = i > 16 ? buffer.Slice(i - BLOCK_SIZE, BLOCK_SIZE) : keyStream.Slice(i, BLOCK_SIZE);
 
-                keyStream[BLOCK_SIZE + i] = (byte)(buffer[i] ^ blockOutput[0]);
-                buffer[i] = keyStream[BLOCK_SIZE + i];
+                if (_fastAes == null)
+                {
+                    _defaultAes.EncryptEcb(currentBlock, blockOutput, PaddingMode.None);
+                    buffer[i] = (byte)(buffer[i] ^ blockOutput[0]);
+                }
+                else
+                {
+                    _fastAes.EncryptCfbBlock(currentBlock, ref buffer[i]);
+                }
+                if (i < 16)
+                    keyStream[BLOCK_SIZE + i] = buffer[i];
             }
-            keyStream.Slice(buffer.Length).CopyTo(_encryptIV);
+
+            if (buffer.Length > 16)
+                buffer.Slice(buffer.Length - BLOCK_SIZE).CopyTo(_encryptIV);
+            else
+                keyStream.Slice(buffer.Length, BLOCK_SIZE).CopyTo(_encryptIV);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
@@ -99,17 +116,21 @@ namespace MinecraftProtocol.Crypto
                 throw new InvalidOperationException("加密未开启。");
 
             Span<byte> keyStream = new byte[buffer.Length + BLOCK_SIZE];
-            _decryptIV.CopyTo(keyStream); buffer.CopyTo(keyStream.Slice(BLOCK_SIZE));
+            _decryptIV.CopyTo(keyStream);
+            buffer.CopyTo(keyStream.Slice(BLOCK_SIZE));
 
-            Span<byte> blockOutput = stackalloc byte[BLOCK_SIZE];
+            Span<byte> blockOutput = _fastAes == null ? stackalloc byte[BLOCK_SIZE] : null;
             for (int i = 0; i < buffer.Length; i++)
             {
-                if (_fastAes != null)
-                    _fastAes.Encrypt(keyStream.Slice(i, BLOCK_SIZE), blockOutput);
-                else
+                if (_fastAes == null)
+                {
                     _defaultAes.EncryptEcb(keyStream.Slice(i, BLOCK_SIZE), blockOutput, PaddingMode.None);
-
-                buffer[i] = (byte)(buffer[i] ^ blockOutput[0]);
+                    buffer[i] = (byte)(buffer[i] ^ blockOutput[0]);
+                }
+                else
+                {
+                    _fastAes.EncryptCfbBlock(keyStream.Slice(i, BLOCK_SIZE), ref buffer[i]);
+                }
             }
             keyStream.Slice(buffer.Length).CopyTo(_decryptIV);
         }
