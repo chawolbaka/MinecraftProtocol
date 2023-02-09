@@ -11,11 +11,11 @@ namespace MinecraftProtocol.Packets.Server
     /// </summary>
     public partial class ServerChatMessagePacket : DefinedPacket
     {
-        public ChatComponent Message => !string.IsNullOrWhiteSpace(_json) ? _message ??= ChatComponent.Deserialize(Json) : throw new ArgumentNullException(nameof(Json), "json is empty");
-        internal ChatComponent _message;
+        public ChatComponent Message => !string.IsNullOrEmpty(_context) ? _message ??= ChatComponent.Deserialize(_context) : throw new ArgumentNullException(nameof(_context), $"{nameof(Context)} is empty");
+        private ChatComponent _message;
 
         [PacketProperty]
-        public string _json;
+        public string _context;
         
         [PacketProperty]
         public byte? _position; // 0: chat (chat box), 1: system message (chat box), 2: game info (above hotbar).
@@ -26,26 +26,26 @@ namespace MinecraftProtocol.Packets.Server
         protected override void CheckProperty()
         {
             base.CheckProperty();
-            if (string.IsNullOrWhiteSpace(_json))
-                throw new ArgumentNullException(nameof(Json));
+            if (string.IsNullOrWhiteSpace(_context))
+                throw new ArgumentNullException(nameof(Context));
         }
 
         protected override void Write()
         {
-            WriteString(Json);
+            WriteString(_context);
             //14w02a:Added 'Position' to Chat Message Clientbound
             if (ProtocolVersion >= ProtocolVersions.V14w02a)
                 WriteUnsignedByte(_position ?? 0);
             if (ProtocolVersion >= ProtocolVersions.V1_16)
                 WriteUUID(_sender ?? throw new ArgumentNullException(nameof(Sender)));
 
-            if (Count > 32767)
-                throw new ArgumentOutOfRangeException(nameof(Json));
+            if (_size > 32767)
+                throw new ArgumentOutOfRangeException(nameof(Context));
         }
 
         protected override void Read()
         {
-            _json = Reader.ReadString();
+            _context = Reader.ReadString();
             if (ProtocolVersion >= ProtocolVersions.V14w02a && !Reader.IsReadToEnd)
                 _position = Reader.ReadUnsignedByte();
             if (ProtocolVersion >= ProtocolVersions.V1_16)

@@ -34,18 +34,19 @@ namespace MinecraftProtocol.Utils
 
             return false;
         }
-        public static async Task<bool> InvokeCancelEventAsync<TSender, TEventArgs>(AsyncCommonEventHandler<TSender, TEventArgs> handler, TSender sender, TEventArgs e) => await InvokeCancelEventAsync(handler, sender, e, null);
-        public static async Task<bool> InvokeCancelEventAsync<TSender, TEventArgs>(AsyncCommonEventHandler<TSender, TEventArgs> handler, TSender sender, TEventArgs e, Action<TSender, TEventArgs> actionBeforeEveryInvoke)
+
+        public static bool InvokeCancelEvent<T>(EventHandler<T> handler, object sender, T e) => InvokeCancelEvent(handler, sender, e, null);
+        public static bool InvokeCancelEvent<T>(EventHandler<T> handler, object sender, T e, Action<object, T> actionBeforeEveryInvoke)
         {
             if (handler == null || e == null)
                 return false;
 
             if (e is ICancelEvent eventArgs)
             {
-                foreach (AsyncCommonEventHandler<TSender, TEventArgs> Method in handler.GetInvocationList())
+                foreach (EventHandler<T> Method in handler.GetInvocationList())
                 {
                     actionBeforeEveryInvoke?.Invoke(sender, e);
-                    await Method.Invoke(sender, e);
+                    Method.Invoke(sender, e);
                     if (eventArgs.IsCancelled)
                         return true;
                 }
@@ -58,18 +59,19 @@ namespace MinecraftProtocol.Utils
             return false;
         }
 
-        public static bool InvokeCancelEvent<T>(EventHandler<T> handler, object sender, T e) => InvokeCancelEvent(handler, sender, e, null);
-        public static bool InvokeCancelEvent<T>(EventHandler<T> handler, object sender, T e, Action<object,T> actionBeforeEveryInvoke)
+
+        public static async Task<bool> InvokeCancelEventAsync<TSender, TEventArgs>(AsyncCommonEventHandler<TSender, TEventArgs> handler, TSender sender, TEventArgs e) => await InvokeCancelEventAsync(handler, sender, e, null);
+        public static async Task<bool> InvokeCancelEventAsync<TSender, TEventArgs>(AsyncCommonEventHandler<TSender, TEventArgs> handler, TSender sender, TEventArgs e, Action<TSender, TEventArgs> actionBeforeEveryInvoke)
         {
             if (handler == null || e == null)
                 return false;
 
             if (e is ICancelEvent eventArgs)
             {
-                foreach (EventHandler<T> Method in handler.GetInvocationList())
+                foreach (AsyncCommonEventHandler<TSender, TEventArgs> Method in handler.GetInvocationList())
                 {
                     actionBeforeEveryInvoke?.Invoke(sender, e);
-                    Method.Invoke(sender, e);
+                    await Method.Invoke(sender, e);
                     if (eventArgs.IsCancelled)
                         return true;
                 }

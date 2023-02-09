@@ -80,7 +80,7 @@ namespace MinecraftProtocol.IO
             //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
             if (compressionThreshold > 0)
             {
-                int size = VarInt.Read(ReadByte,out int sizeCount);
+                int size = VarInt.Read(ReadByte, out int sizeCount);
                 if (size != 0)
                 {
                     //组合data块

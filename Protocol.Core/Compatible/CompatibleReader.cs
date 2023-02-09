@@ -11,9 +11,16 @@ namespace MinecraftProtocol.Compatible
     public static class CompatibleReader
     {
         public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message) => TryReadChatMessage(packet, Array.Empty<ChatType>(), out message);
+        public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message, out DefinedPacket definedPacket) => TryReadChatMessage(packet, Array.Empty<ChatType>(), out message, out definedPacket);
         public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message)
         {
-            message = null;
+            TryReadChatMessage(packet, chatTypes, out message, out DefinedPacket definedPacket);
+            definedPacket?.Dispose();
+            return message == null;
+        }
+        public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message, out DefinedPacket definedPacket)
+        {
+            definedPacket = null; message = null;
             if (packet.ProtocolVersion >= ProtocolVersions.V1_19)
             {
                 if (PlayerChatMessagePacket.TryRead(packet, out PlayerChatMessagePacket pcmp))
@@ -21,6 +28,7 @@ namespace MinecraftProtocol.Compatible
                     if (chatTypes is null)
                         throw new ArgumentNullException(nameof(chatTypes));
 
+                    definedPacket = pcmp;
                     message = CrateChatComponentFromChatType(pcmp.ChatType, chatTypes);
                     ChatComponent sender = ChatComponent.Deserialize(pcmp.NetworkTargetName ?? pcmp.NetworkName);
                     foreach (var parameter in chatTypes[pcmp.ChatType].TranslationParameters)
@@ -38,6 +46,7 @@ namespace MinecraftProtocol.Compatible
                     if (chatTypes is null)
                         throw new ArgumentNullException(nameof(chatTypes));
 
+                    definedPacket = dcmp;
                     message = CrateChatComponentFromChatType(dcmp.ChatType, chatTypes);
                     foreach (var parameter in chatTypes[dcmp.ChatType].TranslationParameters)
                     {
@@ -49,11 +58,13 @@ namespace MinecraftProtocol.Compatible
                 }
                 else if (SystemChatMessagePacket.TryRead(packet, out SystemChatMessagePacket scmp))
                 {
+                    definedPacket = scmp;
                     message = scmp.Message;
                 }
             }
-            else if(ServerChatMessagePacket.TryRead(packet, out var scmp))
+            else if(ServerChatMessagePacket.TryRead(packet, out ServerChatMessagePacket scmp))
             {
+                definedPacket = scmp;
                 message = scmp.Message;
             }
             return message is not null;
