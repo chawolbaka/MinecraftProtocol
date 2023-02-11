@@ -12,6 +12,7 @@ namespace Protocol.Generator
         private static readonly string PacketPropertyAttributeNamespace = "MinecraftProtocol.Packets";
         private static readonly string PacketPropertyAttribute = "PacketPropertyAttribute";
         private static readonly string ReadOnlyCompatiblePacket = "ReadOnlyCompatiblePacket";
+        private static readonly string ICompatible = "ICompatible";
         private static readonly string CompatiblePacket = "CompatiblePacket";
         private static readonly string ReadOnlyPacket = "ReadOnlyPacket";
         private static readonly string Packet = "Packet";
@@ -77,6 +78,7 @@ namespace MinecraftProtocol.Packets
             StringBuilder cotr = new StringBuilder();
             StringBuilder tryRead = new StringBuilder();
             StringBuilder source = new StringBuilder($@"using System;
+using MinecraftProtocol.Compatible;
 
 namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 {{
@@ -96,7 +98,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             {{
                 ThrowIfDisposed();
                 {fieldSymbol.Name} = value;                
-                SetProperty(""{fieldSymbol.Name}"",value);
+                SetProperty(""{fieldSymbol.Name}"", value);
             }}
         }}");
             }
@@ -105,14 +107,14 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             string ReadArguments = info.ReadPropertyNameList.Count > 0 ? string.Join(", ", info.ReadPropertyNameList) : "";
             if (info.ReadPropertyList.Count > 0)
             {
-                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet, {ReadFormalParameters}) : this(packet, {ReadArguments}, packet.ProtocolVersion) {{ }}");               
+                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet, {ReadFormalParameters}) : this(packet, {ReadArguments}, packet.ProtocolVersion) {{ }}");
+                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ReadFormalParameters}, {ICompatible} compatible) : this(packet, {ReadArguments}, compatible.ProtocolVersion) {{ }}");
                 cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ReadFormalParameters}, int protocolVersion) : base(packet, protocolVersion)")
                     .AppendLine("        {")
                     .AppendLine($@"            Id = GetPacketId(protocolVersion);")
                     .Append(info.ReadInit)
                     .AppendLine("            Read();")
                     .AppendLine("        }");
-
 
                 cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion)")
                     .AppendLine("        {")
@@ -125,8 +127,10 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             else
             {
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet) : this(packet, packet.ProtocolVersion) {{ }}");
+                cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ICompatible} compatible) : this(packet, compatible.ProtocolVersion) {{ }}");
                 cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ Id = GetPacketId(protocolVersion); Read(); }}");
                 cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion) {{ Id = GetPacketId(packet.ProtocolVersion); Read(); }}");
+                cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, {ICompatible} compatible) : base(packet.Id, ref packet._size, ref packet._data, compatible.ProtocolVersion) {{ Id = GetPacketId(compatible.ProtocolVersion); Read(); }}");
                 cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, int protocolVersion) : base(packet.Id, ref packet._size, ref packet._data, protocolVersion) {{ Id = GetPacketId(protocolVersion); Read(); }}");
 
             }
@@ -134,9 +138,18 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
 
             if (info.WritePropertyList.Count > 0)
+            {
+                cotr.AppendLine($"        public {classSymbol.Name}({string.Join(", ", info.WritePropertyList)}, {ICompatible} compatible): this({string.Join(", ",info.WritePropertyNameList)}, compatible.ProtocolVersion) {{}}");
+       
                 cotr.AppendLine($"        public {classSymbol.Name}({string.Join(", ", info.WritePropertyList)}, int protocolVersion): base(GetPacketId(protocolVersion), protocolVersion)");
+
+            }
             else
+            {
+                cotr.AppendLine($"        public {classSymbol.Name}({ICompatible} compatible): this(compatible.ProtocolVersion) {{}}");
                 cotr.AppendLine($"        public {classSymbol.Name}(int protocolVersion): base(GetPacketId(protocolVersion), protocolVersion)");
+            }
+                
             cotr.AppendLine("        {");
             cotr.Append(info.WriteInit);
             cotr.AppendLine("            CheckProperty();");
@@ -145,7 +158,9 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             if(info.HasOptionalProperty&&info.OptionalPropertyList.Count>0)
             {
+
                 cotr.AppendLine();
+                cotr.AppendLine($"        public {classSymbol.Name}({string.Join(", ", info.OptionalPropertyList)}, {ICompatible} compatible) : this({string.Join(", ",info.OptionalPropertyNameList)}, compatible.ProtocolVersion) {{}}");
                 cotr.AppendLine($"        public {classSymbol.Name}({string.Join(", ", info.OptionalPropertyList)}, int protocolVersion): base(GetPacketId(protocolVersion), protocolVersion)");
                 cotr.AppendLine("        {");
                 cotr.Append(info.OptionalInit);
@@ -162,6 +177,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
         public static bool TryRead({CompatiblePacket} readPacket, {ReadFormalParameters}, out {classSymbol.Name} packet) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out packet);
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, {ReadFormalParameters}) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out _);
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, {ReadFormalParameters}, out {classSymbol.Name} packet) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out packet);
+        public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, {ICompatible} compatible) => TryRead(readPacket, {ReadArguments}, compatible.ProtocolVersion, out _);        
         public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, int protocolVersion) => TryRead(readPacket, {ReadArguments}, protocolVersion, out _);
         public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, int protocolVersion, out {classSymbol.Name} packet)");
             }
@@ -173,6 +189,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket) => TryRead(readPacket, readPacket.ProtocolVersion, out _);
         public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, out {classSymbol.Name} packet) => TryRead(readPacket, readPacket.ProtocolVersion, out packet);
+        public static bool TryRead({ReadOnlyPacket} readPacket, {ICompatible} compatible) => TryRead(readPacket, compatible.ProtocolVersion, out _);
         public static bool TryRead({ReadOnlyPacket} readPacket, int protocolVersion) => TryRead(readPacket, protocolVersion, out _);
         public static bool TryRead({CompatiblePacket} readPacket) => TryRead(readPacket, out _);
         public static bool TryRead({CompatiblePacket} readPacket, out {classSymbol.Name} packet) 
@@ -183,6 +200,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             else 
                 return TryRead(readPacket.AsReadOnly(), readPacket.ProtocolVersion, out packet);
         }}
+        public static bool TryRead({ReadOnlyPacket} readPacket, {ICompatible} compatible, out {classSymbol.Name} packet) => TryRead(readPacket, compatible.ProtocolVersion, out packet);
         public static bool TryRead({ReadOnlyPacket} readPacket, int protocolVersion, out {classSymbol.Name} packet)");
             }
             tryRead.Append($@"
@@ -211,17 +229,20 @@ $@"                  return packet.Reader.IsReadToEnd;
 
             source.Append(cotr);
             source.Append(tryRead);
-            source.Append("} }");
+            source.AppendLine($"        public static int GetPacketId({ICompatible} compatible) => GetPacketId(compatible.ProtocolVersion);");
+            source.AppendLine("    }");
+            source.Append("}");
+
             return source.ToString();
         }
 
         public class GenerateInfo
         {
             public List<string> WritePropertyList = new List<string>();
-            //public List<string> WritePropertyNameList = new List<string>();
+            public List<string> WritePropertyNameList = new List<string>();
 
             public List<string> OptionalPropertyList = new List<string>();
-            //public List<string> OptionalPropertyNameList = new List<string>();
+            public List<string> OptionalPropertyNameList = new List<string>();
 
             public List<string> ReadPropertyList = new List<string>();
             public List<string> ReadPropertyNameList = new List<string>();
@@ -245,25 +266,25 @@ $@"                  return packet.Reader.IsReadToEnd;
                     {
                         if (!AttributeProperty.IsOptional)
                         {
+                            OptionalPropertyNameList.Add(CotrPropertyName);
                             OptionalPropertyList.Add($"{fieldSymbol.Type} {CotrPropertyName}");
                             OptionalInit.AppendLine($"            this.{fieldSymbol.Name} = {CotrPropertyName};");
-                            //OptionalPropertyNameList.Add(CotrPropertyName);
                         }
                         else
                         {
                             HasOptionalProperty = true;
                             OptionalInit.AppendLine($"            this.{fieldSymbol.Name} = default;");
                         }
+                        WritePropertyNameList.Add(CotrPropertyName);
                         WritePropertyList.Add($"{fieldSymbol.Type} {CotrPropertyName}");
                         WriteInit.AppendLine($"            this.{fieldSymbol.Name} = {CotrPropertyName};");
-                        //WritePropertyNameList.Add(CotrPropertyName);
                         
                     }
                     if (AttributeProperty.IsReadProperty)
                     {
+                        ReadPropertyNameList.Add(CotrPropertyName);
                         ReadPropertyList.Add($"{fieldSymbol.Type} {CotrPropertyName}");
                         ReadInit.AppendLine($"            this.{fieldSymbol.Name} = {CotrPropertyName};");
-                        ReadPropertyNameList.Add(CotrPropertyName);
                     }
 
                 }
