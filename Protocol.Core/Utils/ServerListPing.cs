@@ -10,11 +10,13 @@ using System.Diagnostics;
 using MinecraftProtocol.IO.Extensions;
 using MinecraftProtocol.Chat;
 using System.Text.Json;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace MinecraftProtocol.Utils
 {
     /// <summary>
-    /// Support Version: 1.7 - 1.15.2
+    /// Support Version: 1.7 - 1.19.3
     /// </summary>
     /// <remarks>http://wiki.vg/Server_List_Ping</remarks>
     public class ServerListPing
@@ -133,8 +135,8 @@ namespace MinecraftProtocol.Utils
             this.Host = remoteEP.Address.ToString();
             this.ServerPort = (ushort)remoteEP.Port;
         }
-        
-        
+
+
         /// <summary>
         /// 向服务器发送ServerListPing相关的包并解析返回的json
         /// </summary>
@@ -143,11 +145,9 @@ namespace MinecraftProtocol.Utils
         /// <exception cref="PacketException"/>
         /// <exception cref="SocketException"/>
         /// <exception cref="JsonException"/>
-        public PingReply Send()
-        {
-            using (Socket socket = new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp))
-                return Send(socket, false);
-        }
+        public Task<PingReply> SendAsync(CancellationToken cancellationToken = default) => SendAsync(new Socket(ServerIP.AddressFamily, SocketType.Stream, ProtocolType.Tcp), cancellationToken);
+            
+        
         
         /// <summary>
         /// 向服务器发送ServerListPing相关的包并解析返回的json
@@ -157,16 +157,16 @@ namespace MinecraftProtocol.Utils
         /// <exception cref="SocketException"/>
         /// <exception cref="PacketException"/>
         /// <exception cref="JsonException"/>
-        public PingReply Send(Socket socket, bool reuseSocket=true)
+        public async Task<PingReply> SendAsync(Socket socket, CancellationToken cancellationToken = default)
         {
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-                
-            if (EnableDnsRoundRobin&&IPAddressList!=null&&IPAddressList.Length>1)
+
+            if (EnableDnsRoundRobin && IPAddressList != null && IPAddressList.Length > 1)
                 DnsRoundRobinHandler();
-            if(!socket.Connected)
-                socket.Connect(ServerIP, ServerPort);
+            if (!socket.Connected)
+                await socket.ConnectAsync(ServerIP, ServerPort, cancellationToken);
             if (ReceiveTimeout != default)
                 socket.ReceiveTimeout = ReceiveTimeout;
 
@@ -177,14 +177,14 @@ namespace MinecraftProtocol.Utils
             socket.Send(PingRequest.Pack());
 
             //Receive Packet
-            Packet ResponsePacket = ProtocolUtils.ReceivePacket(socket);
+            Packet ResponsePacket = await ProtocolUtils.ReceivePacketAsync(socket, -1, cancellationToken);
             if (PingResponsePacket.TryRead(ResponsePacket, -1, out PingResponsePacket PingResponse) && !string.IsNullOrWhiteSpace(PingResponse.Content))
             {
                 PingReply PingResult = ResolveJson(PingResponse.Content);
-                PingResult.Elapsed = EnableDelayDetect ? GetTime(socket) : null;
+                PingResult.Elapsed = EnableDelayDetect ? await GetTimeAsync(socket, cancellationToken) : null;
                 PingResult.Json = PingResponse.Content;
                 socket.Shutdown(SocketShutdown.Both);
-                socket.Disconnect(reuseSocket);
+                socket.Close();
                 return PingResult;
             }
             else
@@ -209,7 +209,7 @@ namespace MinecraftProtocol.Utils
         }
         private static JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions { Converters = { new ChatComponentConverter(), new PingReply.Converter() } };
 
-        private TimeSpan? GetTime(Socket socket)
+        private async Task<TimeSpan?> GetTimeAsync(Socket socket, CancellationToken cancellationToken = default)
         {
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
@@ -224,13 +224,13 @@ namespace MinecraftProtocol.Utils
                 socket.Send(RequestPacket);
 
                 //http://wiki.vg/Server_List_Ping#Pong
-                ReadOnlySpan<byte> ResponesPacket = NetworkUtils.ReceiveData(ProtocolUtils.ReceivePacketLength(socket), socket);
+                byte[] ResponesPacket = await NetworkUtils.ReceiveDataAsync(socket,ProtocolUtils.ReceivePacketLength(socket), cancellationToken);
                 sw.Stop();
 
                 //校验
                 if (ResponesPacket.Length != 9 || ResponesPacket[0] != 0x01)
                     return null;
-                if (ResponesPacket.Slice(1).AsLong() != code)
+                if (new ReadOnlySpan<byte>(ResponesPacket).Slice(1).AsLong() != code)
                     return null;
             }
             catch

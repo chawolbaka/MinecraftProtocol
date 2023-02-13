@@ -27,7 +27,7 @@ namespace MinecraftProtocol.Compression
         public static long Read(Stream stream) => Read(() => (byte)stream.ReadByte(), out _);
         public static long Read(Stream stream, out int readCount) => Read(() => { int read = stream.ReadByte(); return read >= 0 ? (byte)read : throw new InvalidDataException("negative"); }, out readCount);
         public static long Read(Socket socket) => Read(socket, out _);
-        public static long Read(Socket socket, out int readCount) => Read(() => NetworkUtils.ReceiveData(1, socket)[0], out readCount);
+        public static long Read(Socket socket, out int readCount) => Read(() => NetworkUtils.ReceiveDataAsync(socket, 1).Result[0], out readCount);
         public static long Read(Func<byte> readByte) => Read(readByte, out _);
         public static long Read(Func<byte> readByte, out int readCount)
         {

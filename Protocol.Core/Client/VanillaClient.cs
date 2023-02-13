@@ -303,11 +303,11 @@ namespace MinecraftProtocol.Client
         {
             lock (ReadPacketLock)
             {
-                int PacketLength = VarInt.Read(() => PacketListen.CryptoHandler.TryDecrypt(NetworkUtils.ReceiveData(1, TCP))[0]);
+                int PacketLength = VarInt.Read(() => PacketListen.CryptoHandler.TryDecrypt(NetworkUtils.ReceiveDataAsync(TCP,1).Result)[0]);
                 if (PacketLength == 0 && !UpdateConnectStatus())
                     throw new SocketException((int)SocketError.ConnectionReset);
 
-                return CompatiblePacket.Depack(PacketListen.CryptoHandler.TryDecrypt(NetworkUtils.ReceiveData(PacketLength, TCP)), ProtocolVersion, CompressionThreshold);
+                return CompatiblePacket.Depack(PacketListen.CryptoHandler.TryDecrypt(NetworkUtils.ReceiveDataAsync(TCP, PacketLength).Result), ProtocolVersion, CompressionThreshold);
             }
         }
         public override void SendPacket(IPacket packet)

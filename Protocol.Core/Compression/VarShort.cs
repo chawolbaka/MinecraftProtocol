@@ -38,7 +38,7 @@ namespace MinecraftProtocol.Compression
             }, out readCount);
         }
         public static int Read(Socket socket) => Read(socket, out _);
-        public static int Read(Socket socket, out int readCount) => Read((c) => NetworkUtils.ReceiveData(c, socket), out readCount);
+        public static int Read(Socket socket, out int readCount) => Read((c) => NetworkUtils.ReceiveDataAsync(socket, c).Result, out readCount);
         public static int Read(Func<int,byte[]> readBytes, out int readCount)
         {
             byte[] buffer = readBytes(2);

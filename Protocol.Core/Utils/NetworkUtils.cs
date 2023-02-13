@@ -4,6 +4,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace MinecraftProtocol.Utils
 {
@@ -13,56 +14,47 @@ namespace MinecraftProtocol.Utils
         /// <summary>
         /// 一直接收，直到length全部被读取完
         /// </summary>
-        public static byte[] ReceiveData(int length, Socket tcp)
+        public static async Task<byte[]> ReceiveDataAsync(Socket tcp, int length, CancellationToken cancellationToken = default)
         {
-            byte[] buffer = new byte[length]; 
-            int read = 0;
-            int count = 0;
+            byte[] buffer = new byte[length];
+            int read = 0, count = 0;
             while (read < length)
             {
-                if (count >= 26)
+                if (++count >= 32)
                 {
                     if (!CheckConnect(tcp))
                     {
-                        tcp.Disconnect(false);
+                        tcp.Close();
                         throw new SocketException((int)SocketError.ConnectionReset);
                     }
                     else
                     {
-                        count /= 2;
+                        count = 16;
                     }
                 }
-                else
-                {
-                    read += tcp.Receive(buffer, read, length - read, SocketFlags.None);
-                    count++;
-                }
+                read += await tcp.ReceiveAsync(buffer.AsMemory(read), SocketFlags.None, cancellationToken);
             }
             return buffer;
         }
 
-        public static async Task SendDataAsync(Socket socket, byte[] data)
+        public static async Task SendDataAsync(Socket socket, Memory<byte> data, CancellationToken cancellationToken = default)
         {
             int send = 0, count = 0;
-
             while (send < data.Length)
             {
-                if(count>26)
+                if (++count > 32)
                 {
                     if (!CheckConnect(socket))
                     {
-                        socket.Disconnect(false);
+                        socket.Close();
                         throw new SocketException((int)SocketError.ConnectionReset);
                     }
                     else
                     {
-                        count /= 2;
+                        count = 16;
                     }
-
                 }
-
-                send += await socket.SendAsync(data, SocketFlags.None);
-                count++;
+                send += await socket.SendAsync(data.Slice(send), SocketFlags.None, cancellationToken);
             }
         } 
 

@@ -13,15 +13,15 @@ namespace MinecraftProtocol.Client
 {
     public static class ClientCreator
     {
-        public static MinecraftClient FromServerListPing(IPEndPoint endPoint) => FromServerListPing(string.Empty, endPoint.Address, (ushort)endPoint.Port);
-        public static MinecraftClient FromServerListPing(IPAddress serverIP, ushort serverPort) => FromServerListPing(string.Empty, serverIP, serverPort);
-        public static MinecraftClient FromServerListPing(string host, IPAddress serverIP, ushort serverPort)
+        public static Task<MinecraftClient> FromServerListPingAsync(IPEndPoint endPoint) => FromServerListPingAsync(string.Empty, endPoint.Address, (ushort)endPoint.Port);
+        public static Task<MinecraftClient> FromServerListPingAsync(IPAddress serverIP, ushort serverPort) => FromServerListPingAsync(string.Empty, serverIP, serverPort);
+        public static async Task<MinecraftClient> FromServerListPingAsync(string host, IPAddress serverIP, ushort serverPort)
         {
             ServerListPing slp = new ServerListPing(host, serverIP, serverPort);
             slp.EnableDelayDetect = false;
             slp.EnableDnsRoundRobin = false;
 
-            PingReply PingResult = slp.Send();
+            PingReply PingResult = await slp.SendAsync();
             int protocolVersion = PingResult.Version.Protocol;
 
             if (protocolVersion == -1 && !string.IsNullOrWhiteSpace(PingResult.Version.Name))
