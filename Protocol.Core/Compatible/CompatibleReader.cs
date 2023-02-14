@@ -4,21 +4,39 @@ using System.Linq;
 using MinecraftProtocol.Chat;
 using MinecraftProtocol.IO.NBT.Tags;
 using MinecraftProtocol.Packets;
+using MinecraftProtocol.Packets.Client;
 using MinecraftProtocol.Packets.Server;
 
 namespace MinecraftProtocol.Compatible
 {
     public static class CompatibleReader
     {
-        public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message) => TryReadChatMessage(packet, Array.Empty<ChatType>(), out message);
-        public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message, out DefinedPacket definedPacket) => TryReadChatMessage(packet, Array.Empty<ChatType>(), out message, out definedPacket);
-        public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message)
+        public static bool TryReadClientChatMessage(ReadOnlyCompatiblePacket packet, out string message) => TryReadClientChatMessage(packet, out message, out _);
+        public static bool TryReadClientChatMessage(ReadOnlyCompatiblePacket packet, out string message, out DefinedPacket definedPacket)
         {
-            TryReadChatMessage(packet, chatTypes, out message, out DefinedPacket definedPacket);
+            definedPacket = null; message = null;
+            if(packet.ProtocolVersion >= ProtocolVersions.V1_19&&ChatCommandPacket.TryRead(packet,out ChatCommandPacket ccp))
+            {
+                message = ccp.Command;
+                definedPacket = ccp;
+            }
+            else if(ClientChatMessagePacket.TryRead(packet,out ClientChatMessagePacket ccmp))
+            {
+                message = ccmp.Message;
+                definedPacket = ccmp;
+            }
+
+            return message == null;
+        }
+        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message) => TryReadServerChatMessage(packet, Array.Empty<ChatType>(), out message);
+        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message, out DefinedPacket definedPacket) => TryReadServerChatMessage(packet, Array.Empty<ChatType>(), out message, out definedPacket);
+        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message)
+        {
+            TryReadServerChatMessage(packet, chatTypes, out message, out DefinedPacket definedPacket);
             definedPacket?.Dispose();
             return message == null;
         }
-        public static bool TryReadChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message, out DefinedPacket definedPacket)
+        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message, out DefinedPacket definedPacket)
         {
             definedPacket = null; message = null;
             if (packet.ProtocolVersion >= ProtocolVersions.V1_19)

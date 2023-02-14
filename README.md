@@ -24,7 +24,7 @@ client.PacketReceived += (m, args) =>
         return;
 
     //如果收到从服务器发送给客户端的聊天信息数据包就输出到命令行
-    if (CompatibleReader.TryReadChatMessage(args.Packet, chatTypes, out var chatMessage))
+    if (CompatibleReader.TryReadServerChatMessage(args.Packet, chatTypes, out var chatMessage))
     {
         Console.WriteLine(chatMessage);
     }
