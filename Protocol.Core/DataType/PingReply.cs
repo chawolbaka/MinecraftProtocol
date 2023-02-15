@@ -33,6 +33,12 @@ namespace MinecraftProtocol.DataType
         [JsonIgnore]
         public string Json { get; set; }
 
+        public PingReply()
+        {
+            Version = new VersionPayload();
+            Player = new PlayerPayload();
+        }
+
         public class ForgePayLoad
         {
             [JsonPropertyName("type")]
@@ -41,14 +47,48 @@ namespace MinecraftProtocol.DataType
             [JsonPropertyName("modList")]
             public List<ModInfo> ModList { get; set; }
 
+            public ForgePayLoad()
+            {
+                ModList = new List<ModInfo>();
+            }
+
+            public ForgePayLoad(string type) : this()
+            {
+                Type = type;
+            }
+
+            public ForgePayLoad(string type, List<ModInfo> modList)
+            {
+                Type = type;
+                ModList = modList;
+            }
+
+            public ForgePayLoad(string type, ModList modList)
+            {
+                Type = type;
+                ModList = new List<ModInfo>(modList);
+            }
         }
         public class VersionPayload
         {
+            [JsonPropertyName("name")]
+            public string Name { get; set; }
+
             [JsonPropertyName("protocol")]
             public int Protocol { get; set; }
 
-            [JsonPropertyName("name")]
-            public string Name { get; set; }
+            
+            public VersionPayload()
+            {
+
+            }
+
+            public VersionPayload(string name, int protocol)
+            {
+                Name = name;
+                Protocol = protocol;
+            }
+
         }
         public class PlayerPayload
         {
@@ -62,13 +102,42 @@ namespace MinecraftProtocol.DataType
             [JsonPropertyName("sample")]
             public List<PlayerSample> Samples { get; set; }
 
-            public class PlayerSample
+            public PlayerPayload()
             {
-                [JsonPropertyName("name")]
-                public string Name { get; set; }
+                Samples = new List<PlayerSample>();
+            }
 
-                [JsonPropertyName("id")]
-                public string Id { get; set; }
+            public PlayerPayload(int max, int online):this()
+            {
+                Max = max;
+                Online = online;
+            }
+
+            public PlayerPayload(int max, int online, List<PlayerSample> samples)
+            {
+                Max = max;
+                Online = online;
+                Samples = samples;
+            }
+        }
+
+        public class PlayerSample
+        {
+            [JsonPropertyName("id")]
+            public string Id { get; set; }
+
+            [JsonPropertyName("name")]
+            public string Name { get; set; }
+
+            public PlayerSample()
+            {
+
+            }
+
+            public PlayerSample(string id, string name)
+            {
+                Name = name;
+                Id = id;
             }
         }
 

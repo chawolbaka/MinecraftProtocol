@@ -10,13 +10,6 @@ using System.Threading.Tasks;
 
 namespace MinecraftProtocol.Packets.Server
 {
-    public enum MessageFilterType
-    {
-        PassThrough       = 0,
-        FullyFiltered     = 1,
-        PartiallyFiltered = 2
-    }
-
     public partial class PlayerChatMessagePacket : DefinedPacket
     {
 

@@ -14,7 +14,7 @@ namespace MinecraftProtocol.Utils
         /// <summary>
         /// 一直接收，直到length全部被读取完
         /// </summary>
-        public static async Task<byte[]> ReceiveDataAsync(Socket tcp, int length, CancellationToken cancellationToken = default)
+        public static async ValueTask<byte[]> ReceiveDataAsync(Socket tcp, int length, CancellationToken cancellationToken = default)
         {
             byte[] buffer = new byte[length];
             int read = 0, count = 0;
@@ -37,7 +37,7 @@ namespace MinecraftProtocol.Utils
             return buffer;
         }
 
-        public static async Task SendDataAsync(Socket socket, Memory<byte> data, CancellationToken cancellationToken = default)
+        public static async ValueTask SendDataAsync(Socket socket, Memory<byte> data, CancellationToken cancellationToken = default)
         {
             int send = 0, count = 0;
             while (send < data.Length)

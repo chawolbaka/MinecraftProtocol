@@ -29,6 +29,17 @@ namespace MinecraftProtocol.Packets.Client
         private int start = 0;
         private int offset = 0;
 
+        /// <summary>
+        /// 获取不带着额外参数的服务器地址
+        /// </summary>
+        public string GetServerAddressOnly()
+        {
+            if (_serverAddress.Contains('\0'))
+                return _serverAddress.Substring(0, _serverAddress.IndexOf('\0'));
+            else
+                return _serverAddress;
+        }
+
         protected override void CheckProperty()
         {
             if (string.IsNullOrEmpty(_serverAddress))

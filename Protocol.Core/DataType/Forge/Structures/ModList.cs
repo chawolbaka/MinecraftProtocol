@@ -70,6 +70,7 @@ namespace MinecraftProtocol.DataType.Forge
             }
             return data.AsSpan().ToArray();
         }
+
         public static ModList Read(ReadOnlySpan<byte> data)
         {
             if (data.Length < 1)
