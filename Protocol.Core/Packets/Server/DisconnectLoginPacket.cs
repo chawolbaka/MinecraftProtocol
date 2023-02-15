@@ -22,7 +22,6 @@ namespace MinecraftProtocol.Packets.Server
 
         protected override void CheckProperty()
         {
-            base.CheckProperty();
             if (string.IsNullOrWhiteSpace(_json))
                 throw new ArgumentNullException(nameof(Json));
         }

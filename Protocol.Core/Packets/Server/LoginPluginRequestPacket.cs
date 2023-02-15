@@ -18,6 +18,8 @@ namespace MinecraftProtocol.Packets.Server
         [PacketProperty("Data")]
         private byte[] _messageData;
 
+        protected override void CheckProperty() { }
+
         protected override void Read()
         {
             _messageId = Reader.ReadVarInt();

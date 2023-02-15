@@ -19,7 +19,6 @@ namespace MinecraftProtocol.Packets.Server
 
         protected override void CheckProperty()
         {
-            base.CheckProperty();
             if (_publicKey is null)
              throw new ArgumentNullException(nameof(PublicKey));
             if(_verifyToken is null)

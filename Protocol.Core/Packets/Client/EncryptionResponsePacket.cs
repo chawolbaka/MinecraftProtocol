@@ -14,7 +14,6 @@ namespace MinecraftProtocol.Packets.Client
         
         protected override void CheckProperty()
         {
-            base.CheckProperty();
             if (_sharedSecret == null || _sharedSecret.Length == 0)
                 throw new ArgumentNullException(nameof(SharedSecret));
             if (_verifyToken == null || _verifyToken.Length == 0)
