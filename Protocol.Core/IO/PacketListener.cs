@@ -1,15 +1,11 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Ionic.Zlib;
 using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Crypto;
 using MinecraftProtocol.IO.Pools;
-using MinecraftProtocol.Packets;
 using MinecraftProtocol.Utils;
 
 namespace MinecraftProtocol.IO
@@ -40,8 +36,7 @@ namespace MinecraftProtocol.IO
         }
 
         public event CommonEventHandler<object, PacketReceivedEventArgs> PacketReceived;
-        public override event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
-
+        
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
         internal static ArrayPool<GCHandle> _gcHandleBlockPool = new SawtoothArrayPool<GCHandle>(1024 * 8, 512);
@@ -231,9 +226,7 @@ namespace MinecraftProtocol.IO
                 }
                 catch (Exception ex)
                 {
-                    UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(ex);
-                    EventUtils.InvokeCancelEvent(UnhandledException, this, eventArgs);
-                    if (!eventArgs.Handled)
+                    if (!InvokeUnhandledException(ex))
                         throw;
                 }
             }
@@ -266,6 +259,7 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool && _buffer is not null)
                     _dataPool.Return(_bufferGCHandle);
+
             }
             catch (ArgumentException) { }
             if (!disposed && disposing)

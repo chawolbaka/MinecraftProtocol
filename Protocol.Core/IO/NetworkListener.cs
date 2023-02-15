@@ -2,6 +2,7 @@
 using MinecraftProtocol.Utils;
 using System;
 using System.Buffers;
+using System.Diagnostics.Tracing;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -12,9 +13,9 @@ namespace MinecraftProtocol.IO
     public abstract partial class NetworkListener : INetworkListener
     {
 
-        public virtual event CommonEventHandler<object, ListenEventArgs> StartListen;
-        public virtual event CommonEventHandler<object, ListenEventArgs> StopListen;
-        public virtual event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
+        public event CommonEventHandler<object, ListenEventArgs> StartListen;
+        public event CommonEventHandler<object, ListenEventArgs> StopListen;
+        public event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
 
         protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
 
@@ -25,6 +26,8 @@ namespace MinecraftProtocol.IO
         protected GCHandle _bufferGCHandle;
         protected byte[] _buffer;
         protected bool _usePool;
+
+        protected bool _disposed = false;
         private int _syncCount;
 
         public NetworkListener(Socket socket) : this(socket, false) { }
@@ -81,12 +84,12 @@ namespace MinecraftProtocol.IO
             //检查连接状态
             if (e.SocketError != SocketError.Success)
             {
-                UnhandledException?.Invoke(this, new UnhandledIOExceptionEventArgs(new SocketException((int)e.SocketError)));
+                InvokeUnhandledException(new SocketException((int)e.SocketError));
                 _internalToken.Cancel();
             }
             else if (e.BytesTransferred <= 0 && _socket != null && !NetworkUtils.CheckConnect(_socket))
             {
-                UnhandledException?.Invoke(this, new UnhandledIOExceptionEventArgs(new SocketException((int)SocketError.ConnectionReset)));
+                InvokeUnhandledException(new SocketException((int)SocketError.ConnectionReset));
                 _internalToken.Cancel();
             }
             else
@@ -132,12 +135,19 @@ namespace MinecraftProtocol.IO
             }
             catch (Exception ex)
             {
-                UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(ex);
-                EventUtils.InvokeCancelEvent(UnhandledException, this, eventArgs);
-                if (!eventArgs.Handled)
+                if (!InvokeUnhandledException(ex))
                     throw;
             }
 
+        }
+
+        
+        /// <returns>异常是否被处理</returns>
+        protected bool InvokeUnhandledException(Exception exception)
+        {
+            UnhandledIOExceptionEventArgs eventArgs = new UnhandledIOExceptionEventArgs(exception);
+            EventUtils.InvokeCancelEvent(UnhandledException, this, eventArgs);
+            return eventArgs.Handled;
         }
 
         private byte[] AllocateByteArray()
@@ -167,14 +177,13 @@ namespace MinecraftProtocol.IO
             Dispose(true);
         }
 
-        protected bool _disposed = false;
         protected virtual void Dispose(bool disposing)
         {
             bool disposed = _disposed;
             _disposed = true;
             if (_usePool && _buffer != null && _bufferGCHandle != default)
                 _dataPool?.Return(_bufferGCHandle);
-           
+
             if (_bufferGCHandle != default && _bufferGCHandle.IsAllocated)
                 _bufferGCHandle.Free();
 
