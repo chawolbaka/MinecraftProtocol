@@ -101,7 +101,7 @@ namespace MinecraftProtocol.IO
             _dataBlock[_dataBlockIndex++] = data;
         }
 
-        private void AddGCHandle(ref GCHandle gcHandle)
+        private void TransferBuffer()
         {
             if (_gcHandleBlockIndex + 1 > _gcHandleBlock.Length)
             {
@@ -111,7 +111,9 @@ namespace MinecraftProtocol.IO
                 _gcHandleBlock = newGCHandleBlock;
                 _gcHandleBlockPool.Return(oldGCHandleBlock, true);
             }
-            _gcHandleBlock[_gcHandleBlockIndex++] = gcHandle;
+
+            _gcHandleBlock[_gcHandleBlockIndex++] = _bufferGCHandle;
+
         }
 
 
@@ -133,12 +135,14 @@ namespace MinecraftProtocol.IO
                     for (; _packetLengthOffset < 5;)
                     {
                         //如果当前buffer不足以读取一个完整的varint就等待缓存区刷新后继续向_readLength写入
-                        if (!_disposed && _bufferOffset + 1 > bytesTransferred)
+                        if (_disposed)
+                            return;
+                        else if (_bufferOffset + 1 > bytesTransferred)
                         {
                             if(_packetLengthOffset > 0)
                             {
                                 AddData(new Memory<byte>(_buffer, _packetLengthOffset - _packetLengthOffset, _packetLengthOffset));
-                                AddGCHandle(ref _bufferGCHandle);
+                                TransferBuffer();
                             }
                             ReceiveNextBuffer(e);
                             return;
@@ -156,48 +160,39 @@ namespace MinecraftProtocol.IO
                         throw new OverflowException("varint too big");
                 }
 
-                if(!_disposed && _packetDataOffset == 0 && bytesTransferred - _bufferOffset >= _packetLength)
+                if(!_disposed && bytesTransferred - _bufferOffset >= _packetLength - _packetDataOffset)
                 {
                     int start = _bufferOffset - _packetLengthOffset;
                     if (start < 0)
                         start = 0;
-                    AddData(new Memory<byte>(_buffer, start, _packetLengthOffset + _packetLength));
-                    _bufferOffset += _packetLength;
+                    if (_dataBlockIndex > 0)
+                        AddData(new Memory<byte>(_buffer, _bufferOffset, _packetLength - _packetDataOffset));
+                    else
+                        AddData(new Memory<byte>(_buffer, start, _packetLengthOffset + _packetLength - _packetDataOffset));
+                    _bufferOffset += _packetLength - _packetDataOffset;
+                    _packetDataOffset = 0;
+
                     if (_bufferOffset + 1 > bytesTransferred)
-                        AddGCHandle(ref _bufferGCHandle);
+                        TransferBuffer();
                     InvokeReceived();
                 }
                 else
                 {
-                    if (!_disposed && _packetLength - _packetDataOffset < bytesTransferred - _bufferOffset)
+                    if (_packetDataOffset == 0 && _dataBlockIndex == 0)
                     {
-                        AddData(new Memory<byte>(_buffer, _bufferOffset, _packetLength - _packetDataOffset));
-                       
-                        _bufferOffset += _packetLength - _packetDataOffset;
-                        _packetDataOffset = 0;
-
-                        if (_bufferOffset + 1 > bytesTransferred)
-                            AddGCHandle(ref _bufferGCHandle);
-                        InvokeReceived();
+                        int start = _bufferOffset - _packetLengthOffset;
+                        if (_packetDataOffset == 0 && start < 0)
+                            start = 0;
+                        AddData(new Memory<byte>(_buffer, start, bytesTransferred - start));
                     }
-                    else //剩下的全部是当前数据包的部分，但并不够完整
+                    else
                     {
-                        if (_packetDataOffset == 0)
-                        {
-                            int start = _bufferOffset - _packetLengthOffset;
-                            if (_packetDataOffset == 0 && start < 0)
-                                start = 0;
-                            AddData(new Memory<byte>(_buffer, start, bytesTransferred - start));
-                        }
-                        else
-                        {
-                            AddData(new Memory<byte>(_buffer, _bufferOffset, bytesTransferred - _bufferOffset));
-                        }
-                        AddGCHandle(ref _bufferGCHandle); //因为剩下的都是这个数据包的了所以当然归他来回收当前的buffer
-                        _packetDataOffset += bytesTransferred - _bufferOffset;
-                        ReceiveNextBuffer(e);
-                        return;
+                        AddData(new Memory<byte>(_buffer, _bufferOffset, bytesTransferred - _bufferOffset));
                     }
+                    _packetDataOffset += bytesTransferred - _bufferOffset;
+                    TransferBuffer(); //因为剩下的都是这个数据包的了所以当然归他来回收当前的buffer
+                    ReceiveNextBuffer(e);
+                    return;
                 }
             }
         }
@@ -236,7 +231,8 @@ namespace MinecraftProtocol.IO
                 {
                     if (_gcHandleBlock[i] == default)
                         break;
-                    _gcHandleBlock[i].Free();
+
+                    _dataPool.Return(_gcHandleBlock[i]);
                 }
             }
                 
@@ -259,7 +255,6 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool && _buffer is not null)
                     _dataPool.Return(_bufferGCHandle);
-
             }
             catch (ArgumentException) { }
             if (!disposed && disposing)
@@ -270,5 +265,6 @@ namespace MinecraftProtocol.IO
                 GC.SuppressFinalize(this);
             }
         }
+    
     }
 }
