@@ -17,37 +17,23 @@ namespace MinecraftProtocol.IO
     /// </summary>
     public partial class PacketListener : NetworkListener, IPacketListener, ICompatible
     {
-        public int CompressionThreshold
-        {
-            get => ThrowIfDisposed(_compressionThreshold);
-            set => ThrowIfDisposed(() => _compressionThreshold = value);
-        }
 
-        public int ProtocolVersion
-        {
-            get => ThrowIfDisposed(_protocolVersion);
-            set => ThrowIfDisposed(() => _protocolVersion = value);
-        }
+        public int ProtocolVersion { get; set; }
 
-        public CryptoHandler CryptoHandler 
-        { 
-            get => ThrowIfDisposed(_cryptoHandler);
-            init => _cryptoHandler = value;
-        }
+        public int CompressionThreshold { get; set; }
+
+        public CryptoHandler CryptoHandler { get; init; }
 
         public event CommonEventHandler<object, PacketReceivedEventArgs> PacketReceived;
         
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
-        internal static ArrayPool<GCHandle> _gcHandleBlockPool = new SawtoothArrayPool<GCHandle>(1024 * 8, 512);
+        internal static ArrayPool<byte[]> _bufferBlockPool = new SawtoothArrayPool<byte[]>(1024 * 8, 512);
         
         private Memory<byte>[] _dataBlock;
-        private GCHandle[] _gcHandleBlock;
-        private ushort _dataBlockIndex, _gcHandleBlockIndex;
+        private byte[][] _bufferBlock;
+        private ushort _dataBlockIndex, _bufferBlockIndex;
 
-        private CryptoHandler _cryptoHandler;
-        private int _compressionThreshold;
-        private int _protocolVersion;
         private int _packetLength;
         private byte _packetLengthOffset;
         private int _packetDataOffset;
@@ -63,9 +49,9 @@ namespace MinecraftProtocol.IO
         public PacketListener(Socket socket) : this(socket, false) { }
         public PacketListener(Socket socket, bool disablePool) : base(socket, disablePool)
         {
-            _compressionThreshold = -1;
-            _protocolVersion = -1;
-            _cryptoHandler ??= new CryptoHandler();
+            CompressionThreshold = -1;
+            ProtocolVersion = -1;
+            CryptoHandler ??= new CryptoHandler();
         }
 
         public override void Start(CancellationToken token = default)
@@ -83,9 +69,9 @@ namespace MinecraftProtocol.IO
         {
             const int DEFUALT_SIZE = 16;
             _dataBlockIndex = 0;
-            _gcHandleBlockIndex = 0;
+            _bufferBlockIndex = 0;
             _dataBlock = _usePool ? _dataBlockPool.Rent(DEFUALT_SIZE) : new Memory<byte>[DEFUALT_SIZE];
-            _gcHandleBlock = _usePool ? _gcHandleBlockPool.Rent(DEFUALT_SIZE) : new GCHandle[DEFUALT_SIZE];
+            _bufferBlock = _usePool ? _bufferBlockPool.Rent(DEFUALT_SIZE) : new byte[DEFUALT_SIZE][];
         }
 
         private void AddData(Memory<byte> data)
@@ -103,17 +89,17 @@ namespace MinecraftProtocol.IO
 
         private void TransferBuffer()
         {
-            if (_gcHandleBlockIndex + 1 > _gcHandleBlock.Length)
+            if (_bufferBlockIndex + 1 > _bufferBlock.Length)
             {
-                GCHandle[] newGCHandleBlock = _usePool ? _gcHandleBlockPool.Rent(_dataBlock.Length * 2) : new GCHandle[_dataBlock.Length * 2];
-                GCHandle[] oldGCHandleBlock = _gcHandleBlock;
+                byte[][] newGCHandleBlock = _usePool ? _bufferBlockPool.Rent(_dataBlock.Length * 2) : new byte[_dataBlock.Length * 2][];
+                byte[][] oldGCHandleBlock = _bufferBlock;
                 oldGCHandleBlock.CopyTo(newGCHandleBlock.AsSpan());
-                _gcHandleBlock = newGCHandleBlock;
-                _gcHandleBlockPool.Return(oldGCHandleBlock, true);
+                _bufferBlock = newGCHandleBlock;
+                _bufferBlockPool.Return(oldGCHandleBlock, true);
             }
 
-            _gcHandleBlock[_gcHandleBlockIndex++] = _bufferGCHandle;
-
+            _bufferBlock[_bufferBlockIndex++] = _buffer;
+            _buffer = null;
         }
 
 
@@ -121,8 +107,8 @@ namespace MinecraftProtocol.IO
         {
             int bytesTransferred = e.BytesTransferred;
             //如果是加密数据就先将buffer解密再继续处理
-            if (!_disposed && !_internalToken.IsCancellationRequested && _cryptoHandler.Enable)
-                _cryptoHandler.Decrypt(_buffer.AsSpan(0, bytesTransferred));
+            if (!_disposed && !_internalToken.IsCancellationRequested && CryptoHandler.Enable)
+                CryptoHandler.Decrypt(_buffer.AsSpan(0, bytesTransferred));
 
             while (!_disposed && !_internalToken.IsCancellationRequested)
             {
@@ -210,12 +196,12 @@ namespace MinecraftProtocol.IO
 
 
             //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
-            if (dataLength >= _packetLengthOffset + _packetLength && _packetLength >= (_compressionThreshold > 0 ? 3 : 1))
+            if (dataLength >= _packetLengthOffset + _packetLength && _packetLength >= (CompressionThreshold > 0 ? 3 : 1))
             {
                 try
                 {
                     PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
-                    prea.Setup(_gcHandleBlock, ref _gcHandleBlockIndex, ref _dataBlock, ref _dataBlockIndex, ref _packetLengthOffset, ref _packetLength, ref _protocolVersion, _compressionThreshold, _usePool);
+                    prea.Setup(_dataBlock, _dataBlockIndex, _bufferBlock, _bufferBlockIndex, _packetLengthOffset, _packetLength, ProtocolVersion, CompressionThreshold, _usePool);
 
                     EventUtils.InvokeCancelEvent(PacketReceived, this, prea);
                 }
@@ -225,45 +211,12 @@ namespace MinecraftProtocol.IO
                         throw;
                 }
             }
-            else if (_usePool)
-            {
-                for (int i = 0; i < _gcHandleBlockIndex; i++)
-                {
-                    if (_gcHandleBlock[i] == default)
-                        break;
-
-                    _dataPool.Return(_gcHandleBlock[i]);
-                }
-            }
                 
             _state = ReadState.PacketLength;
 
             _packetLengthOffset = 0;
             if (_usePool)
                 ResetBlock();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            bool disposed = _disposed;
-            if (disposed)
-                return;
-
-            _disposed = true;
-
-            try
-            {
-                if (_usePool && _buffer is not null)
-                    _dataPool.Return(_bufferGCHandle);
-            }
-            catch (ArgumentException) { }
-            if (!disposed && disposing)
-            {
-                _buffer = null;
-                _socket = null;
-                _cryptoHandler = null;
-                GC.SuppressFinalize(this);
-            }
         }
     
     }

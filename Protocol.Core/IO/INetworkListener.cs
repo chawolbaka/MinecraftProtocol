@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace MinecraftProtocol.IO
 {
-    public interface INetworkListener : IDisposable
+    public interface INetworkListener
     {
         event CommonEventHandler<object, ListenEventArgs> StartListen;
         event CommonEventHandler<object, ListenEventArgs> StopListen;

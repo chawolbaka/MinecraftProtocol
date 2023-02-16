@@ -2,13 +2,13 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Numerics;
-using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace MinecraftProtocol.IO.Pools
 {
-    public class SawtoothArrayPool<T> : ArrayPool<T>
+    public partial class SawtoothArrayPool<T> : ArrayPool<T>
     {
-        private readonly Bucket[] _buckets;
+        private readonly Bucket<T>[] _buckets;
 
         public SawtoothArrayPool(params int[] bucketSize)
         {
@@ -20,10 +20,10 @@ namespace MinecraftProtocol.IO.Pools
             // Create the buckets.
             int poolId = Id;
             int maxBuckets = SelectBucketIndex((int)Math.Pow(2,bucketSize.Length+3));
-            var buckets = new Bucket[maxBuckets + 1];
+            var buckets = new Bucket<T>[maxBuckets + 1];
             for (int i = 0; i < buckets.Length; i++)
             {
-                buckets[i] = new Bucket(GetMaxSizeForBucket(i), bucketSize[i], poolId);
+                buckets[i] = new Bucket<T>(GetMaxSizeForBucket(i), bucketSize[i], poolId, false);
             }
             _buckets = buckets;
         }
@@ -127,94 +127,6 @@ namespace MinecraftProtocol.IO.Pools
             // Zero is a valid bufferSize, and it is assigned the highest bucket index so that zero-length
             // buffers are not retained by the pool. The pool will return the Array.Empty singleton for these.
             return BitOperations.Log2((uint)bufferSize - 1 | 15) - 3;
-        }
-
-        private sealed class Bucket
-        {
-            internal readonly int _bufferLength;
-            private readonly T[]?[] _buffers;
-            private readonly int _poolId;
-
-            private SpinLock _lock; // do not make this readonly; it's a mutable struct
-            private int _index;
-
-            internal Bucket(int bufferLength, int numberOfBuffers, int poolId)
-            {
-                _lock = new SpinLock(Debugger.IsAttached); // only enable thread tracking if debugger is attached; it adds non-trivial overheads to Enter/Exit
-                _buffers = new T[numberOfBuffers][];
-                _bufferLength = bufferLength;
-                _poolId = poolId;
-            }
-
-            internal int Id => GetHashCode();
-
-            internal T[]? Rent()
-            {
-                T[]?[] buffers = _buffers;
-                T[]? buffer = null;
-
-                // While holding the lock, grab whatever is at the next available index and
-                // update the index.  We do as little work as possible while holding the spin
-                // lock to minimize contention with other threads.  The try/finally is
-                // necessary to properly handle thread aborts on platforms which have them.
-                bool lockTaken = false, allocateBuffer = false;
-                try
-                {
-                    _lock.Enter(ref lockTaken);
-
-                    if (_index < buffers.Length)
-                    {
-                        buffer = buffers[_index];
-                        buffers[_index++] = null;
-                        allocateBuffer = buffer == null;
-                    }
-                }
-                finally
-                {
-                    if (lockTaken) _lock.Exit(false);
-                }
-
-                // While we were holding the lock, we grabbed whatever was at the next available index, if
-                // there was one.  If we tried and if we got back null, that means we hadn't yet allocated
-                // for that slot, in which case we should do so now.
-                if (allocateBuffer)
-                {
-                    buffer = new T[_bufferLength];
-                }
-
-                return buffer;
-            }
-
-            internal void Return(T[] array)
-            {
-                // Check to see if the buffer is the correct size for this bucket
-                if (array.Length != _bufferLength)
-                {
-                    throw new ArgumentException("Buffer Not From Pool", nameof(array));
-                }
-
-                bool returned;
-
-                // While holding the spin lock, if there's room available in the bucket,
-                // put the buffer into the next available slot.  Otherwise, we just drop it.
-                // The try/finally is necessary to properly handle thread aborts on platforms
-                // which have them.
-                bool lockTaken = false;
-                try
-                {
-                    _lock.Enter(ref lockTaken);
-
-                    returned = _index != 0;
-                    if (returned)
-                    {
-                        _buffers[--_index] = array;
-                    }
-                }
-                finally
-                {
-                    if (lockTaken) _lock.Exit(false);
-                }
-            }
         }
     }
 }

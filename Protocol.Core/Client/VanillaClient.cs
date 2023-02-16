@@ -402,7 +402,6 @@ namespace MinecraftProtocol.Client
                 _joined = false;
 				_connected = false;
                 TCP = null;
-                PacketListen?.Dispose();
                 ReceiveQueue?.Dispose();
                 CompressionThreshold = -1;
                 Player = null;

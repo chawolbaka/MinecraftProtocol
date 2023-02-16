@@ -29,14 +29,12 @@ namespace MinecraftProtocol.IO
         private bool _disposed = false;
 
         private Memory<byte>[] _dataBlock;
-        private GCHandle[] _dataGCHandle;
-        private ushort _dataGCHandleBlockLength;
+        private byte[][] _bufferBlock;
+        private ushort _bufferBlockLength;
 
         private static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
 
-
-        //那堆ref是为了减少值类型的内存复制，因为性能不好开始病态起来了
-        internal PacketReceivedEventArgs Setup(GCHandle[] dataGCHandleBlock, ref ushort dataGCHandleBlockLength, ref Memory<byte>[] dataBlock, ref ushort dataBlockLength, ref byte headLength, ref int bodyLength, ref int protocolVersion, int compressionThreshold, bool usePool)
+        internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, ushort dataBlockLength, byte[][] bufferBlock, ushort bufferBlockLength, byte headLength, int bodyLength, int protocolVersion, int compressionThreshold, bool usePool)
         {
             RawData = new Memory<Memory<byte>>(dataBlock, 0, dataBlockLength);
             ReceivedTime = DateTime.Now;
@@ -46,8 +44,8 @@ namespace MinecraftProtocol.IO
             _disposed = false;
             _isCancelled = false;
             _dataBlock = dataBlock;
-            _dataGCHandle = dataGCHandleBlock;
-            _dataGCHandleBlockLength = dataGCHandleBlockLength;
+            _bufferBlock = bufferBlock;
+            _bufferBlockLength = bufferBlockLength;
 
             int blockIndex = 0, blockOffset = 0, IdOffset;
 
@@ -159,26 +157,23 @@ namespace MinecraftProtocol.IO
                 if (_usePool)
                 {
                     _CPPool.Return(Packet);
-                    for (int i = 0; i < _dataGCHandleBlockLength; i++)
+                    for (int i = 0; i < _bufferBlockLength; i++)
                     {
-                        NetworkListener._dataPool.Return(_dataGCHandle[i]);
+                        NetworkListener._bufferPool.Return(_bufferBlock[i]);
                     }
-                    PacketListener._dataBlockPool.Return(_dataBlock);
-                    PacketListener._gcHandleBlockPool.Return(_dataGCHandle);
+                    //虽然一般buffer会从上面返回数组池，但有极少部分不会回去，因此为了防止那极少数的buffer被block长期占着导致无法被GC回收，所以这边需要每次都清空block
+                    PacketListener._dataBlockPool.Return(_dataBlock, true); 
+                    PacketListener._bufferBlockPool.Return(_bufferBlock, true);
                     PacketListener.PREAPool.Return(this);
-                }
-                else
-                {
-                    for (int i = 0; i < _dataGCHandle.Length; i++)
-                    {
-                        _dataGCHandle[i].Free();
-                    }
+                    _bufferBlock = null; _dataBlock = null; RawData = null; Packet = null; 
                 }
             }
+#if !DEBUG //防止因为非数组池的数组返回池内导致的异常
             catch (ArgumentException)
             {
-
+                
             }
+#endif
             finally
             {
                 if (disposing)

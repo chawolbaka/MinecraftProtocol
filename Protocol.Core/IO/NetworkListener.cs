@@ -19,11 +19,10 @@ namespace MinecraftProtocol.IO
 
         protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
 
-        internal static UnsafeSawtoothArrayPool<byte>.Bucket<byte> _dataPool;
+        internal static Bucket<byte> _bufferPool;
         protected CancellationTokenSource _internalToken;
         protected Socket _socket;
         protected int _bufferOffset;
-        protected GCHandle _bufferGCHandle;
         protected byte[] _buffer;
         protected bool _usePool;
 
@@ -36,20 +35,20 @@ namespace MinecraftProtocol.IO
             if (socket == null)
                 throw new ArgumentNullException(nameof(socket));
 
-            if (!disablePool && _dataPool == null)
+            if (!disablePool && _bufferPool == null)
                 SetPoolSize(socket.ReceiveBufferSize, 2048);
 
             _usePool = !disablePool;
             _socket = socket;
-            _buffer = AllocateByteArray();
+            AllocateBuffer();
         }
 
         public static void SetPoolSize(int bufferLength, int numberOfBuffers)
         {
-            if (_dataPool != null)
+            if (_bufferPool != null)
                 throw new InvalidOperationException("数组池已被设置");
 
-            _dataPool = new UnsafeSawtoothArrayPool<byte>.Bucket<byte>(bufferLength, numberOfBuffers, Thread.CurrentThread.ManagedThreadId, true);
+            _bufferPool = new Bucket<byte>(bufferLength, numberOfBuffers, Thread.CurrentThread.ManagedThreadId, true);
         }
 
         public virtual void Start(CancellationToken token = default)
@@ -69,7 +68,7 @@ namespace MinecraftProtocol.IO
             if (_usePool)
                 _internalToken.Token.Register(() => SAEAPool.Return(eventArgs));
 
-            _internalToken.Token.Register(() => EventUtils.InvokeCancelEvent(StartListen, this, new ListenEventArgs(true)));
+            _internalToken.Token.Register(() => EventUtils.InvokeCancelEvent(StopListen, this, new ListenEventArgs(true)));
             eventArgs.RemoteEndPoint = _socket.RemoteEndPoint;
             eventArgs.SetBuffer(_buffer);
             eventArgs.Completed -= OnReceiveCompleted;
@@ -108,7 +107,7 @@ namespace MinecraftProtocol.IO
                 return;
 
              
-            _buffer = AllocateByteArray();
+            AllocateBuffer();
             try
             {
                 e.SetBuffer(_buffer);
@@ -150,62 +149,9 @@ namespace MinecraftProtocol.IO
             return eventArgs.Handled;
         }
 
-        private byte[] AllocateByteArray()
+        private void AllocateBuffer()
         {
-            if (!_usePool)
-                return new byte[8192];
-
-            try
-            {
-                _bufferGCHandle = _dataPool.Rent();
-                return (byte[])_bufferGCHandle.Target;
-            }
-            catch (InvalidOperationException)
-            {
-                _bufferGCHandle = GCHandle.Alloc(new byte[8192]);
-                return (byte[])_bufferGCHandle.Target;
-            }
-        }
-
-        ~NetworkListener()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            bool disposed = _disposed;
-            _disposed = true;
-            if (_usePool && _buffer != null && _bufferGCHandle != default)
-                _dataPool?.Return(_bufferGCHandle);
-
-            if (_bufferGCHandle != default && _bufferGCHandle.IsAllocated)
-                _bufferGCHandle.Free();
-
-            if (!disposed && disposing)
-            {
-                _buffer = null;
-                _socket = null;
-                GC.SuppressFinalize(this);
-            }
-        }
-
-        protected T ThrowIfDisposed<T>(T value)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-            return value;
-        }
-        protected void ThrowIfDisposed(Action action)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-            action?.Invoke();
+            _buffer = _usePool ? _bufferPool.Rent() : new byte[8192];
         }
     }
 }
