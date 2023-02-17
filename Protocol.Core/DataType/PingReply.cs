@@ -99,7 +99,7 @@ namespace MinecraftProtocol.DataType
             public int Online { get; set; }
 
             /// <summary> 玩家列表的样品, spigot的默认最大数量是12 (玩家数超出12时会随机取) </summary>
-            [JsonPropertyName("sample")]
+            [JsonPropertyName("sample"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
             public List<PlayerSample> Samples { get; set; }
 
             public PlayerPayload()
@@ -206,7 +206,34 @@ namespace MinecraftProtocol.DataType
             }
             public override void Write(Utf8JsonWriter writer, PingReply value, JsonSerializerOptions options)
             {
-                JsonSerializer.Serialize(writer, value, options);
+                writer.WriteStartObject();
+
+                if (value.Motd != null)
+                {
+                    writer.WritePropertyName("description");
+                    JsonSerializer.Serialize(writer, value.Motd, options);
+                }
+                if (value.Version != null)
+                {
+                    writer.WritePropertyName("version");
+                    JsonSerializer.Serialize(writer, value.Version, options);
+                    Console.WriteLine(value.Version.Name);
+                }
+                if (value.Player != null)
+                {
+                    writer.WritePropertyName("players");
+                    JsonSerializer.Serialize(writer, value.Player, options);
+                }
+                if (value.Forge != null)
+                {
+                    writer.WritePropertyName("modinfo");
+                    JsonSerializer.Serialize(writer, value.Forge, options);
+                }
+                if (!string.IsNullOrWhiteSpace(value.Icon))
+                {
+                    writer.WriteString("favicon", value.Icon);
+                }
+                writer.WriteEndObject();
             }
         }
     }
