@@ -107,20 +107,17 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
 
             string ReadCotrBody = $@"        {{
             Id = GetPacketId(ProtocolVersion);
-            {info.ReadInit}
-            Read(ref reader);
+{info.ReadInit}            Read(ref reader);
         }}";
 
             string RefReadCotrBody = $@"        {{
             Id = GetPacketId(ProtocolVersion);
-            {info.ReadInit}
-            CompatibleByteReader reader = new CompatibleByteReader(packet.AsSpan(), ProtocolVersion);
+{info.ReadInit}            CompatibleByteReader reader = new CompatibleByteReader(packet.AsSpan(), ProtocolVersion);
             Read(ref reader);
         }}";
             string CompatibleRefReadCotrBody = $@"        {{
             Id = GetPacketId(ProtocolVersion);
-            {info.ReadInit}
-            CompatibleByteReader reader = packet.AsCompatibleByteReader();
+{info.ReadInit}            CompatibleByteReader reader = packet.AsCompatibleByteReader();
             Read(ref reader);
         }}";
 
@@ -168,7 +165,7 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             tryRead.Append($@"
 
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, out _);
-        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, out {classSymbol.Name} packet) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, readPacket.ProtocolVersion, out packet);
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, out {classSymbol.Name} packet) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, out packet);
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out _);
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible, out {classSymbol.Name} packet) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out packet);
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, int protocolVersion) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, protocolVersion, out _);
