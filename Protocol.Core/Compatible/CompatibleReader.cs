@@ -11,11 +11,18 @@ namespace MinecraftProtocol.Compatible
 {
     public static class CompatibleReader
     {
-        public static bool TryReadClientChatMessage<TPacket>(ref TPacket packet, out string message) where TPacket : ICompatiblePacket => TryReadClientChatMessage(ref packet, out message, out _);
+        public static bool TryReadClientChatMessage<TPacket>(TPacket packet, out string message) where TPacket : ICompatiblePacket => TryReadClientChatMessage(ref packet, out message);
+        public static bool TryReadClientChatMessage<TPacket>(TPacket packet, out string message, out DefinedPacket definedPacket) where TPacket : ICompatiblePacket => TryReadClientChatMessage(ref packet, out message, out definedPacket);
+        public static bool TryReadClientChatMessage<TPacket>(ref TPacket packet, out string message) where TPacket : ICompatiblePacket
+        {
+            bool result = TryReadClientChatMessage(ref packet, out message, out DefinedPacket definedPacket);
+            definedPacket?.Dispose();
+            return result;
+        }
         public static bool TryReadClientChatMessage<TPacket>(ref TPacket packet, out string message, out DefinedPacket definedPacket) where TPacket: ICompatiblePacket
         {
             definedPacket = null; message = null;
-            if(packet.ProtocolVersion >= ProtocolVersions.V1_19&&ChatCommandPacket.TryRead(ref packet, out ChatCommandPacket ccp))
+            if (packet.ProtocolVersion >= ProtocolVersions.V1_19 && ChatCommandPacket.TryRead(ref packet, out ChatCommandPacket ccp))
             {
                 message = ccp.Command;
                 definedPacket = ccp;
@@ -28,6 +35,11 @@ namespace MinecraftProtocol.Compatible
 
             return message != null;
         }
+
+        public static bool TryReadServerChatMessage<TPacket>(TPacket packet, out ChatComponent message) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, Array.Empty<ChatType>(), out message);
+        public static bool TryReadServerChatMessage<TPacket>(TPacket packet, out ChatComponent message, out DefinedPacket definedPacket) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, Array.Empty<ChatType>(), out message, out definedPacket);
+        public static bool TryReadServerChatMessage<TPacket>(TPacket packet, ChatType[] chatTypes, out ChatComponent message) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, chatTypes, out message);
+        public static bool TryReadServerChatMessage<TPacket>(TPacket packet, ChatType[] chatTypes, out ChatComponent message, out DefinedPacket definedPacket) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, chatTypes, out message, out definedPacket);
         public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, out ChatComponent message) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, Array.Empty<ChatType>(), out message);
         public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, out ChatComponent message, out DefinedPacket definedPacket) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, Array.Empty<ChatType>(), out message, out definedPacket);
         public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, ChatType[] chatTypes, out ChatComponent message) where TPacket : ICompatiblePacket
