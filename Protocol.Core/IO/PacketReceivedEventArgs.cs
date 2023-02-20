@@ -156,16 +156,16 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    _CPPool.Return(Packet);
+                    _CPPool.Return(Packet); Packet = null;
                     for (int i = 0; i < _bufferBlockLength; i++)
                     {
                         NetworkListener._bufferPool.Return(_bufferBlock[i]);
                     }
                     //虽然一般buffer会从上面返回数组池，但有极少部分不会回去，因此为了防止那极少数的buffer被block长期占着导致无法被GC回收，所以这边需要每次都清空block
-                    PacketListener._dataBlockPool.Return(_dataBlock, true); 
+                    PacketListener._dataBlockPool.Return(_dataBlock, true);
                     PacketListener._bufferBlockPool.Return(_bufferBlock, true);
-                    PacketListener.PREAPool.Return(this);
-                    _bufferBlock = null; _dataBlock = null; RawData = null; Packet = null; 
+                    _bufferBlock = null; _dataBlock = null; RawData = null;
+                    PacketListener.PREAPool.Return(this); //这个必须在最后，只有当所有资源回收完成才能送回池内，否则在极端情况下会存在线程安全问题
                 }
             }
 #if !DEBUG //防止因为非数组池的数组返回池内导致的异常

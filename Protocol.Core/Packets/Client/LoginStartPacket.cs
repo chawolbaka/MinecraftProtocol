@@ -37,16 +37,13 @@ namespace MinecraftProtocol.Packets.Client
             }
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _playerName = Reader.ReadString();
-            if (ProtocolVersion > ProtocolVersions.V1_19 && Reader.ReadBoolean())
-                _playerUUID = Reader.ReadUUID();
+            _playerName = reader.ReadString();
+            if (ProtocolVersion > ProtocolVersions.V1_19 && reader.ReadBoolean())
+                _playerUUID = reader.ReadUUID();
         }
 
-
-        /// <summary>从一个LoginStart包中读取玩家名,如果传入其它包会抛出异常.</summary>
-        public static string GetPlayerName(ReadOnlyPacket packet) => packet.ReadString();
         public static int GetPacketId(int protocolVersion)
         {
             /*

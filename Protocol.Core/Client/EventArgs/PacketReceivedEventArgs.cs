@@ -8,20 +8,21 @@ namespace MinecraftProtocol.Client
         /// <summary>
         /// 用于读取的 <see cref="ReadOnlyCompatiblePacket">ReadOnlyCompatiblePacket</see> (如果有异步或存储的需求请调用Clone)
         /// </summary>
-        public virtual ReadOnlyCompatiblePacket Packet { get; }
+        public virtual ReadOnlyCompatiblePacket Packet => (ReadOnlyCompatiblePacket)_packet.AsCompatibleReadOnly();
 
-        public virtual IO.PacketReceivedEventArgs RawEventArgs { get; }
+        private CompatiblePacket _packet;
 
-        public PacketReceivedEventArgs(ReadOnlyCompatiblePacket packet) : this(packet, DateTime.Now) { }
-        public PacketReceivedEventArgs(ReadOnlyCompatiblePacket packet, DateTime time) : base(time)
+        internal readonly IO.PacketReceivedEventArgs RawEventArgs;
+
+        public PacketReceivedEventArgs(CompatiblePacket packet) : this(packet, DateTime.Now) { }
+        public PacketReceivedEventArgs(CompatiblePacket packet, DateTime time) : base(time)
         {
-            this.Packet = packet;
+            _packet = packet;
         }
 
-        public PacketReceivedEventArgs(IO.PacketReceivedEventArgs prea):base(prea.ReceivedTime)
+        public PacketReceivedEventArgs(IO.PacketReceivedEventArgs prea) : base(prea.ReceivedTime)
         {
-            Packet = prea.Packet;
-            RawEventArgs = prea;
+            _packet = prea.Packet;
         }
     }
 }

@@ -11,37 +11,37 @@ namespace MinecraftProtocol.Compatible
 {
     public static class CompatibleReader
     {
-        public static bool TryReadClientChatMessage(ReadOnlyCompatiblePacket packet, out string message) => TryReadClientChatMessage(packet, out message, out _);
-        public static bool TryReadClientChatMessage(ReadOnlyCompatiblePacket packet, out string message, out DefinedPacket definedPacket)
+        public static bool TryReadClientChatMessage<TPacket>(ref TPacket packet, out string message) where TPacket : ICompatiblePacket => TryReadClientChatMessage(ref packet, out message, out _);
+        public static bool TryReadClientChatMessage<TPacket>(ref TPacket packet, out string message, out DefinedPacket definedPacket) where TPacket: ICompatiblePacket
         {
             definedPacket = null; message = null;
-            if(packet.ProtocolVersion >= ProtocolVersions.V1_19&&ChatCommandPacket.TryRead(packet,out ChatCommandPacket ccp))
+            if(packet.ProtocolVersion >= ProtocolVersions.V1_19&&ChatCommandPacket.TryRead(ref packet, out ChatCommandPacket ccp))
             {
                 message = ccp.Command;
                 definedPacket = ccp;
             }
-            else if(ClientChatMessagePacket.TryRead(packet,out ClientChatMessagePacket ccmp))
+            else if(ClientChatMessagePacket.TryRead(ref packet, out ClientChatMessagePacket ccmp))
             {
                 message = ccmp.Message;
                 definedPacket = ccmp;
             }
 
-            return message == null;
+            return message != null;
         }
-        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message) => TryReadServerChatMessage(packet, Array.Empty<ChatType>(), out message);
-        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, out ChatComponent message, out DefinedPacket definedPacket) => TryReadServerChatMessage(packet, Array.Empty<ChatType>(), out message, out definedPacket);
-        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message)
+        public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, out ChatComponent message) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, Array.Empty<ChatType>(), out message);
+        public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, out ChatComponent message, out DefinedPacket definedPacket) where TPacket : ICompatiblePacket => TryReadServerChatMessage(ref packet, Array.Empty<ChatType>(), out message, out definedPacket);
+        public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, ChatType[] chatTypes, out ChatComponent message) where TPacket : ICompatiblePacket
         {
-            TryReadServerChatMessage(packet, chatTypes, out message, out DefinedPacket definedPacket);
+            bool result = TryReadServerChatMessage(ref packet, chatTypes, out message, out DefinedPacket definedPacket);
             definedPacket?.Dispose();
-            return message == null;
+            return result;
         }
-        public static bool TryReadServerChatMessage(ReadOnlyCompatiblePacket packet, ChatType[] chatTypes, out ChatComponent message, out DefinedPacket definedPacket)
+        public static bool TryReadServerChatMessage<TPacket>(ref TPacket packet, ChatType[] chatTypes, out ChatComponent message, out DefinedPacket definedPacket) where TPacket : ICompatiblePacket
         {
             definedPacket = null; message = null;
             if (packet.ProtocolVersion >= ProtocolVersions.V1_19)
             {
-                if (PlayerChatMessagePacket.TryRead(packet, out PlayerChatMessagePacket pcmp))
+                if (PlayerChatMessagePacket.TryRead(ref packet, out PlayerChatMessagePacket pcmp))
                 {
                     if (chatTypes is null)
                         throw new ArgumentNullException(nameof(chatTypes));
@@ -59,7 +59,7 @@ namespace MinecraftProtocol.Compatible
                             message.AddTranslateParameter(ChatComponent.Deserialize(pcmp.Message));
                     }
                 }
-                else if (DisguisedChatMessagePacket.TryRead(packet, out DisguisedChatMessagePacket dcmp))
+                else if (DisguisedChatMessagePacket.TryRead(ref packet, out DisguisedChatMessagePacket dcmp))
                 {
                     if (chatTypes is null)
                         throw new ArgumentNullException(nameof(chatTypes));
@@ -74,18 +74,18 @@ namespace MinecraftProtocol.Compatible
                             message.AddTranslateParameter(ChatComponent.Deserialize(dcmp.Message));
                     }
                 }
-                else if (SystemChatMessagePacket.TryRead(packet, out SystemChatMessagePacket scmp))
+                else if (SystemChatMessagePacket.TryRead(ref packet, out SystemChatMessagePacket scmp))
                 {
                     definedPacket = scmp;
                     message = scmp.Message;
                 }
             }
-            else if(ServerChatMessagePacket.TryRead(packet, out ServerChatMessagePacket scmp))
+            else if(ServerChatMessagePacket.TryRead(ref packet, out ServerChatMessagePacket scmp))
             {
                 definedPacket = scmp;
                 message = scmp.Message;
             }
-            return message is not null;
+            return message != null;
         }
 
         private static ChatComponent CrateChatComponentFromChatType(int chatType, ChatType[] chatTypeTable)

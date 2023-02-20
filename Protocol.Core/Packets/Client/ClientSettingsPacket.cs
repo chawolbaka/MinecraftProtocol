@@ -74,28 +74,28 @@ namespace MinecraftProtocol.Packets.Client
             }
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _locale = Reader.ReadString();
-            _viewDistance = Reader.ReadByte();
-            _chatMode = (ClientChatMode)Reader.ReadVarInt();
-            _chatColors = Reader.ReadBoolean();
+            _locale = reader.ReadString();
+            _viewDistance = reader.ReadByte();
+            _chatMode = (ClientChatMode)reader.ReadVarInt();
+            _chatColors = reader.ReadBoolean();
             _displayedSkinParts = DisplayedSkinParts.None;
 
             //14w03a(6): Client Settings 'show cape' type changed from boolean to unsigned byte
             if (ProtocolVersion > ProtocolVersions.V14w03a)
-                _displayedSkinParts = (DisplayedSkinParts)Reader.ReadUnsignedByte();
+                _displayedSkinParts = (DisplayedSkinParts)reader.ReadUnsignedByte();
             //15w31a(49): Added VarInt enum main hand to Client Settings
             if (ProtocolVersion > ProtocolVersions.V15w31a)
-                _mainHandDefine = (MainHand)Reader.ReadVarInt();
+                _mainHandDefine = (MainHand)reader.ReadVarInt();
             else
             {
                 //14w02a(5): Removed Client Settings' 'Difficulty'
                 if (ProtocolVersion <= ProtocolVersions.V14w02a)
-                    Reader.ReadByte();
+                    reader.ReadByte();
                 //14w03a(6): Client Settings 'show cape' type changed from boolean to unsigned byte
                 if (ProtocolVersion <= ProtocolVersions.V14w03a)
-                    _displayedSkinParts = Reader.ReadBoolean() ? DisplayedSkinParts.Cape : DisplayedSkinParts.None;
+                    _displayedSkinParts = reader.ReadBoolean() ? DisplayedSkinParts.Cape : DisplayedSkinParts.None;
             }
         }
 

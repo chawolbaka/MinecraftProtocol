@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.DataType;
 using MinecraftProtocol.IO;
@@ -12,7 +13,7 @@ namespace MinecraftProtocol.Packets
     public class CompatiblePacket : Packet, ICompatiblePacket
     {
         public int CompressionThreshold  { get => ThrowIfDisposed(_compressionThreshold); set => _compressionThreshold = ThrowIfDisposed(value); }
-        public int ProtocolVersion       { get => ThrowIfDisposed(_protocolVersion); set => _protocolVersion = ThrowIfDisposed(value); }
+        public int ProtocolVersion       { get => ThrowIfDisposed(_protocolVersion);      set => _protocolVersion = ThrowIfDisposed(value); }
 
         private int _compressionThreshold;
         private int _protocolVersion;
@@ -61,30 +62,31 @@ namespace MinecraftProtocol.Packets
         public virtual ByteWriter WriteOptionalByteArray(ReadOnlySpan<byte> bytes) => WriteOptionalByteArray(bytes, ProtocolVersion);
 
 
-        public override byte[] Pack()
-        {
-            return base.Pack(CompressionThreshold);
-        }
-
+        public override byte[] Pack() => Pack(CompressionThreshold);
 
         public override Packet Clone() => base.Clone().AsCompatible(this);
-        public override ReadOnlyPacket AsReadOnly() => AsCompatibleReadOnly();
 
+        public override IPacket AsReadOnly() => AsCompatibleReadOnly();
 
         /// <summary>
         /// 从CompatiblePacket转换到ReadOnlyCompatiblePacket（浅拷贝）
         /// </summary>
-        public virtual ReadOnlyCompatiblePacket AsCompatibleReadOnly() => new ReadOnlyCompatiblePacket(this);
+        public virtual ICompatiblePacket AsCompatibleReadOnly() => new ReadOnlyCompatiblePacket(this);
 
         /// <summary>
         /// 从CompatiblePacket转换回CompatiblePacket（浅拷贝）
         /// </summary>
         public virtual Packet AsPacket() => new Packet(this);
         
-        public static implicit operator ReadOnlyPacket(CompatiblePacket packet) => packet.AsCompatibleReadOnly();
-        public static implicit operator ReadOnlyCompatiblePacket(CompatiblePacket packet) => packet.AsCompatibleReadOnly();
+        public virtual CompatibleByteReader AsCompatibleByteReader()
+        {
+            ThrowIfDisposed();
+            ReadOnlySpan<byte> span = _data.AsSpan(0, _size);
+            return new CompatibleByteReader(ref span, ProtocolVersion);
+        }
 
         public static new Packet Depack(ReadOnlySpan<byte> data) => throw new NotSupportedException();
+
         public static new Task<CompatiblePacket> DepackAsync(ReadOnlyMemory<byte> data) => throw new NotSupportedException();
 
 

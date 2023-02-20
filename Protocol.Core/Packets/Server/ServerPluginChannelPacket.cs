@@ -30,9 +30,9 @@ namespace MinecraftProtocol.Packets.Server
                 throw new ArgumentNullException(nameof(_channel));
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            ReadOnlySpan<byte> buffer = Reader.ReadAll();
+            ReadOnlySpan<byte> buffer = reader.ReadAll();
             _data = buffer.ToArray();
             _channel = buffer.AsString(out buffer);
 

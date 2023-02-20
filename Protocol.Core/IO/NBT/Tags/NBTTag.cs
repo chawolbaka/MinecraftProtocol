@@ -7,7 +7,7 @@ namespace MinecraftProtocol.IO.NBT.Tags
         public abstract NBTTagType Type { get; }
         public virtual string Name { get; set; }
         public abstract NBTTag Write(NBTWriter writer);
-        public abstract NBTTag Read(NBTReader reader);
+        public abstract NBTTag Read(ref NBTReader reader);
 
         public virtual bool IsListItem { get; set; }
 

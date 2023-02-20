@@ -31,9 +31,9 @@ namespace MinecraftProtocol.Packets.Server
             WriteString(_json);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _json = Reader.ReadString();
+            _json = reader.ReadString();
         }
 
 

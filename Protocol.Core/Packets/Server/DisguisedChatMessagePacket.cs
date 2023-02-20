@@ -34,12 +34,12 @@ namespace MinecraftProtocol.Packets.Server
                 throw new ArgumentNullException(nameof(ChatTypeName));
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _message = Reader.ReadString();
-            _chatType= Reader.ReadVarInt();
-            _chatTypeName = Reader.ReadString();
-            _targetName = Reader.ReadOptionalField(Reader.ReadString);
+            _message = reader.ReadString();
+            _chatType= reader.ReadVarInt();
+            _chatTypeName = reader.ReadString();
+            _targetName = reader.ReadOptionalString();
         }
 
         protected override void Write()

@@ -14,7 +14,6 @@ namespace Protocol.Generator
         private static readonly string ReadOnlyCompatiblePacket = "ReadOnlyCompatiblePacket";
         private static readonly string ICompatible = "ICompatible";
         private static readonly string CompatiblePacket = "CompatiblePacket";
-        private static readonly string ReadOnlyPacket = "ReadOnlyPacket";
         private static readonly string Packet = "Packet";
 
         //SourceGenerator是通过解析源码来获取信息的，所以这边不赋值也一样能正常使用
@@ -103,37 +102,34 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
         }}");
             }
 
-            string ReadFormalParameters = info.ReadPropertyList.Count > 0 ? string.Join(", ", info.ReadPropertyList) : "";
-            string ReadArguments = info.ReadPropertyNameList.Count > 0 ? string.Join(", ", info.ReadPropertyNameList) : "";
-            if (info.ReadPropertyList.Count > 0)
-            {
-                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet, {ReadFormalParameters}) : this(packet, {ReadArguments}, packet.ProtocolVersion) {{ }}");
-                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ReadFormalParameters}, {ICompatible} compatible) : this(packet, {ReadArguments}, compatible.ProtocolVersion) {{ }}");
-                cotr.AppendLine($@"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ReadFormalParameters}, int protocolVersion) : base(packet, protocolVersion)")
-                    .AppendLine("        {")
-                    .AppendLine($@"            Id = GetPacketId(protocolVersion);")
-                    .Append(info.ReadInit)
-                    .AppendLine("            Read();")
-                    .AppendLine("        }");
+            string ReadFormalParameters = info.ReadPropertyList.Count > 0 ? ", " + string.Join(", ", info.ReadPropertyList) : "";
+            string ReadArguments = info.ReadPropertyNameList.Count > 0 ? ", " + string.Join(", ", info.ReadPropertyNameList) : "";
 
-                cotr.AppendLine($@"        public {classSymbol.Name}(ref {CompatiblePacket} packet, {ReadFormalParameters}) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion)")
-                    .AppendLine("        {")
-                    .AppendLine($@"            Id = GetPacketId(packet.ProtocolVersion);")
-                    .Append(info.ReadInit)
-                    .AppendLine("            Read();")
-                    .AppendLine("        }"); ;
+            string ReadCotrBody = $@"        {{
+            Id = GetPacketId(ProtocolVersion);
+            {info.ReadInit}
+            Read(ref reader);
+        }}";
 
-            }
-            else
-            {
-                cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyCompatiblePacket} packet) : this(packet, packet.ProtocolVersion) {{ }}");
-                cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, {ICompatible} compatible) : this(packet, compatible.ProtocolVersion) {{ }}");
-                cotr.AppendLine($"        public {classSymbol.Name}({ReadOnlyPacket} packet, int protocolVersion) : base(packet, protocolVersion) {{ Id = GetPacketId(protocolVersion); Read(); }}");
-                cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion) {{ Id = GetPacketId(packet.ProtocolVersion); Read(); }}");
-                cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, {ICompatible} compatible) : base(packet.Id, ref packet._size, ref packet._data, compatible.ProtocolVersion) {{ Id = GetPacketId(compatible.ProtocolVersion); Read(); }}");
-                cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet, int protocolVersion) : base(packet.Id, ref packet._size, ref packet._data, protocolVersion) {{ Id = GetPacketId(protocolVersion); Read(); }}");
+            string RefReadCotrBody = $@"        {{
+            Id = GetPacketId(ProtocolVersion);
+            {info.ReadInit}
+            CompatibleByteReader reader = new CompatibleByteReader(packet.AsSpan(), ProtocolVersion);
+            Read(ref reader);
+        }}";
+            string CompatibleRefReadCotrBody = $@"        {{
+            Id = GetPacketId(ProtocolVersion);
+            {info.ReadInit}
+            CompatibleByteReader reader = packet.AsCompatibleByteReader();
+            Read(ref reader);
+        }}";
 
-            }
+            cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet{ReadFormalParameters}) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion)").AppendLine(CompatibleRefReadCotrBody);
+            cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet{ReadFormalParameters}, {ICompatible} compatible) : base(packet.Id, ref packet._size, ref packet._data, compatible.ProtocolVersion)").AppendLine(RefReadCotrBody);
+            cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet{ReadFormalParameters}, int protocolVersion) : base(packet.Id, ref packet._size, ref packet._data, protocolVersion)").AppendLine(RefReadCotrBody);
+
+            cotr.AppendLine($@"        public {classSymbol.Name}(CompatibleByteReader reader{ReadFormalParameters}) : base(ref reader)").AppendLine(ReadCotrBody);
+            cotr.AppendLine($@"        public {classSymbol.Name}(ref CompatibleByteReader reader{ReadFormalParameters}) : base(ref reader)").AppendLine(ReadCotrBody);
 
 
 
@@ -169,53 +165,48 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
                 cotr.Append("        }");
             }
 
-
-            if(info.ReadPropertyList.Count>0&& info.ReadPropertyNameList.Count == info.ReadPropertyList.Count)
-            {
-                tryRead.Append($@"
-        public static bool TryRead({CompatiblePacket} readPacket, {ReadFormalParameters}) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out _);
-        public static bool TryRead({CompatiblePacket} readPacket, {ReadFormalParameters}, out {classSymbol.Name} packet) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out packet);
-        public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, {ReadFormalParameters}) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out _);
-        public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, {ReadFormalParameters}, out {classSymbol.Name} packet) => TryRead(readPacket, {ReadArguments}, readPacket.ProtocolVersion, out packet);
-        public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, {ICompatible} compatible) => TryRead(readPacket, {ReadArguments}, compatible.ProtocolVersion, out _);        
-        public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, int protocolVersion) => TryRead(readPacket, {ReadArguments}, protocolVersion, out _);
-        public static bool TryRead({ReadOnlyPacket} readPacket, {ReadFormalParameters}, int protocolVersion, out {classSymbol.Name} packet)");
-            }
-            else
-            {
-                tryRead.Append($@"
-
-
-
-        public static bool TryRead({ReadOnlyCompatiblePacket} readPacket) => TryRead(readPacket, readPacket.ProtocolVersion, out _);
-        public static bool TryRead({ReadOnlyCompatiblePacket} readPacket, out {classSymbol.Name} packet) => TryRead(readPacket, readPacket.ProtocolVersion, out packet);
-        public static bool TryRead({ReadOnlyPacket} readPacket, {ICompatible} compatible) => TryRead(readPacket, compatible.ProtocolVersion, out _);
-        public static bool TryRead({ReadOnlyPacket} readPacket, int protocolVersion) => TryRead(readPacket, protocolVersion, out _);
-        public static bool TryRead({CompatiblePacket} readPacket) => TryRead(readPacket, out _);
-        public static bool TryRead({CompatiblePacket} readPacket, out {classSymbol.Name} packet) 
-        {{ 
-            packet = null;
-            if (readPacket is null || readPacket.Id != GetPacketId(readPacket.ProtocolVersion))
-                return false;
-            else 
-                return TryRead(readPacket.AsReadOnly(), readPacket.ProtocolVersion, out packet);
-        }}
-        public static bool TryRead({ReadOnlyPacket} readPacket, {ICompatible} compatible, out {classSymbol.Name} packet) => TryRead(readPacket, compatible.ProtocolVersion, out packet);
-        public static bool TryRead({ReadOnlyPacket} readPacket, int protocolVersion, out {classSymbol.Name} packet)");
-            }
             tryRead.Append($@"
+
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, out _);
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, out {classSymbol.Name} packet) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, readPacket.ProtocolVersion, out packet);
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out _);
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible, out {classSymbol.Name} packet) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out packet);
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, int protocolVersion) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, protocolVersion, out _);
+        public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, int protocolVersion, out {classSymbol.Name} packet) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, protocolVersion, out packet);
+ 
+        public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, out _);
+        public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}, out {classSymbol.Name} packet) where TPacket: ICompatiblePacket
         {{
             packet = null;
-            if (readPacket is null || readPacket.Id != GetPacketId(protocolVersion))
+            if (readPacket == null || readPacket.Id != GetPacketId(readPacket.ProtocolVersion))
                 return false;
             try
             {{
-                  packet = new {classSymbol.Name}(readPacket");
-            if (info.ReadPropertyList.Count > 0 && info.ReadPropertyNameList.Count == info.ReadPropertyList.Count)
-                tryRead.Append(", ").Append(ReadArguments);
-            tryRead.AppendLine(", protocolVersion);");
-            tryRead.Append(
-$@"                  return packet.Reader.IsReadToEnd;
+                  CompatibleByteReader reader = readPacket.AsCompatibleByteReader();
+                  packet = new {classSymbol.Name}(ref reader{ReadArguments});
+                  return reader.IsReadToEnd;
+            }}
+            catch (PacketNotFoundException) {{ return false; }}
+            catch (InvalidPacketException) {{ return false; }}
+            catch (ArgumentOutOfRangeException) {{ return false; }}
+            catch (IndexOutOfRangeException) {{ return false; }}
+            catch (InvalidCastException) {{ return false; }}
+            catch (OverflowException) {{ return false; }}
+        }}
+        public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out _);
+        public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible, out {classSymbol.Name} packet) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out packet);
+        public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}, int protocolVersion) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, protocolVersion, out _);
+        public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}, int protocolVersion, out {classSymbol.Name} packet) where TPacket: IPacket
+        {{
+            packet = null;
+            if (readPacket == null || readPacket.Id != GetPacketId(protocolVersion))
+                return false;
+            try
+            {{
+                  ReadOnlySpan<byte> span = readPacket.AsByteReader().AsSpan();
+                  CompatibleByteReader reader = new CompatibleByteReader(ref span, protocolVersion);
+                  packet = new {classSymbol.Name}(ref reader{ReadArguments});
+                  return reader.IsReadToEnd;
             }}
             catch (PacketNotFoundException) {{ return false; }}
             catch (InvalidPacketException) {{ return false; }}
@@ -230,8 +221,8 @@ $@"                  return packet.Reader.IsReadToEnd;
             source.Append(cotr);
             source.Append(tryRead);
             source.AppendLine($"        public static int GetPacketId({ICompatible} compatible) => GetPacketId(compatible.ProtocolVersion);");
-            source.AppendLine("    }");
-            source.Append("}");
+            source.AppendLine(@"    }
+}");
 
             return source.ToString();
         }

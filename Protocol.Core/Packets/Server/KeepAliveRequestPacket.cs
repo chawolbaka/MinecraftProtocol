@@ -22,14 +22,14 @@ namespace MinecraftProtocol.Packets.Server
                 WriteInt((int)_code);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
             if (ProtocolVersion >= ProtocolVersions.V1_12_2_pre1)
-                _code = Reader.ReadLong();
+                _code = reader.ReadLong();
             else if (ProtocolVersion >= ProtocolVersions.V14w31a)
-                _code = Reader.ReadVarInt();
+                _code = reader.ReadVarInt();
             else
-                _code = Reader.ReadInt();
+                _code = reader.ReadInt();
         }
 
         public static int GetPacketId(int protocolVersion)

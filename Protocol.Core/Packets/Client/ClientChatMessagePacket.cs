@@ -82,28 +82,28 @@ namespace MinecraftProtocol.Packets.Client
             }
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _message = Reader.ReadString();
+            _message = reader.ReadString();
             if (ProtocolVersion >= ProtocolVersions.V1_19)
             {
-                _timestamp =Reader.ReadLong();
+                _timestamp = reader.ReadLong();
 
-                _salt = Reader.ReadLong();
+                _salt = reader.ReadLong();
                 WriteLong(_timestamp);
                 WriteLong(_salt);
                 if (ProtocolVersion >= ProtocolVersions.V1_19_3)
-                    _signature = Reader.ReadOptionalByteArray();
+                    _signature = reader.ReadOptionalByteArray();
                 else if (ProtocolVersion <= ProtocolVersions.V1_19_2)
-                    _signature = Reader.ReadByteArray();
+                    _signature = reader.ReadByteArray();
 
 
                 if (ProtocolVersion >= ProtocolVersions.V1_19_3)
-                    _messageCount = Reader.ReadVarInt();
+                    _messageCount = reader.ReadVarInt();
                 else if (ProtocolVersion <= ProtocolVersions.V1_19_2)
-                    _signedPreview = Reader.ReadBoolean();
+                    _signedPreview = reader.ReadBoolean();
 
-                Reader.SetToEnd();
+                reader.SetToEnd();
             }
             
         }

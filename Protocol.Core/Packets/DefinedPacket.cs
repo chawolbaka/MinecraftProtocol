@@ -14,9 +14,6 @@ namespace MinecraftProtocol.Packets
 
         public virtual int ProtocolVersion { get; protected set; }
 
-        protected virtual CompatibleByteReader Reader => reader ??= new CompatibleByteReader(AsMemory(), ProtocolVersion);
-        private CompatibleByteReader reader;
-
         protected DefinedPacket(int id, int protocolVersion) : this(id, null, protocolVersion) { }
         protected DefinedPacket(int id, byte[] data, int protocolVersion) : base(id, data)
         {
@@ -33,14 +30,11 @@ namespace MinecraftProtocol.Packets
             ProtocolVersion = protcolVersion;
         }
 
-        protected DefinedPacket(ReadOnlyPacket packet, int protcolVersion)
+        protected DefinedPacket(ref CompatibleByteReader reader)
         {
             //id由自动生成的代码设置
-            _size = packet.Count;
-            RerentData(packet.Count);
-            packet.AsSpan().CopyTo(_data);
-            reader = new CompatibleByteReader(packet.AsMemory(), protcolVersion);
-            ProtocolVersion = protcolVersion;
+            WriteBytes(reader.AsSpan());
+            ProtocolVersion = reader.ProtocolVersion;
         }
 
         public virtual ByteWriter WritePosition(Position position) => WritePosition(position, ProtocolVersion);
@@ -59,7 +53,7 @@ namespace MinecraftProtocol.Packets
             Write();
         }
         protected abstract void Write();
-        protected abstract void Read();
+        protected abstract void Read(ref CompatibleByteReader reader);
 
 
         public new static Packet Depack(ReadOnlySpan<byte> data, int compress = -1)

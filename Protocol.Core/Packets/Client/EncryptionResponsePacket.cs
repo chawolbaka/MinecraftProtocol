@@ -26,10 +26,10 @@ namespace MinecraftProtocol.Packets.Client
             WriteByteArray(_verifyToken);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _sharedSecret = Reader.ReadByteArray();
-            _verifyToken = Reader.ReadByteArray();
+            _sharedSecret = reader.ReadByteArray();
+            _verifyToken = reader.ReadByteArray();
         }
 
         public static int GetPacketId(int protocolVersion)

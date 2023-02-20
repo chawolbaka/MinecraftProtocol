@@ -89,13 +89,6 @@ namespace MinecraftProtocol.Packets.Server
             WriteUnsignedByte(_rawGamemode);
             if (ProtocolVersion >= ProtocolVersions.V1_16)
             {
-                _reviousGamemode = Reader.ReadUnsignedByte();
-                _worldNames = Reader.ReadIdentifierArray();
-                if (ProtocolVersion >= ProtocolVersions.V1_19)
-                    _registryCodec = Reader.ReadNBT();
-                else
-                    _dimensionCodec = Reader.ReadNBT();
-
                 WriteUnsignedByte(_reviousGamemode);
                 WriteIdentifierArray(new ReadOnlySpan<Identifier>(_worldNames));
                 if (ProtocolVersion >= ProtocolVersions.V1_19)
@@ -155,65 +148,65 @@ namespace MinecraftProtocol.Packets.Server
             }
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _entityId = Reader.ReadInt();
+            _entityId = reader.ReadInt();
             if (ProtocolVersion >= ProtocolVersions.V1_16_2)
-                _hardCore = Reader.ReadBoolean();
-            _rawGamemode = Reader.ReadUnsignedByte();
+                _hardCore = reader.ReadBoolean();
+            _rawGamemode = reader.ReadUnsignedByte();
             if (ProtocolVersion >= ProtocolVersions.V1_16)
             {
-                _reviousGamemode = Reader.ReadUnsignedByte();
-                _worldNames = Reader.ReadIdentifierArray();
+                _reviousGamemode = reader.ReadUnsignedByte();
+                _worldNames = reader.ReadIdentifierArray();
                 if (ProtocolVersion >= ProtocolVersions.V1_19)
-                    _registryCodec = Reader.ReadNBT();
+                    _registryCodec = reader.ReadNBT();
                 else
-                    _dimensionCodec = Reader.ReadNBT();
+                    _dimensionCodec = reader.ReadNBT();
             }
 
             if (ProtocolVersion >= ProtocolVersions.V1_19)
-                _dimension = Reader.ReadString();
+                _dimension = reader.ReadString();
             else if (ProtocolVersion >= ProtocolVersions.V1_16_2)
-                _dimension = Reader.ReadNBT();
+                _dimension = reader.ReadNBT();
             else if (ProtocolVersion >= ProtocolVersions.V1_16)
-                _dimension = Reader.ReadIdentifier();
+                _dimension = reader.ReadIdentifier();
             else if (ProtocolVersion >= ProtocolVersions.V1_9_1_pre1)
-                _dimension = Reader.ReadInt();
+                _dimension = reader.ReadInt();
             else
-                _dimension = Reader.ReadByte();
+                _dimension = reader.ReadByte();
 
-            _difficulty = ProtocolVersion <= ProtocolVersions.V1_13_2 ? new Difficulty(Reader.ReadUnsignedByte()) : Difficulty.Unknown;
+            _difficulty = ProtocolVersion <= ProtocolVersions.V1_13_2 ? new Difficulty(reader.ReadUnsignedByte()) : Difficulty.Unknown;
             if (ProtocolVersion >= ProtocolVersions.V1_16)
-                _worldName = Reader.ReadIdentifier();            
+                _worldName = reader.ReadIdentifier();            
             if (ProtocolVersion >= ProtocolVersions.V1_15)
-                _hashedSeed = Reader.ReadLong();
+                _hashedSeed = reader.ReadLong();
             if (ProtocolVersion >= ProtocolVersions.V1_16_2)
-                _maxPlayers = Reader.ReadVarInt();
+                _maxPlayers = reader.ReadVarInt();
             else
-                _maxPlayers = Reader.ReadUnsignedByte();
+                _maxPlayers = reader.ReadUnsignedByte();
 
             if (ProtocolVersion < ProtocolVersions.V1_16)
-                _levelType = Reader.ReadString();
+                _levelType = reader.ReadString();
             if (ProtocolVersion >= ProtocolVersions.V1_14)
-                _viewDistance = Reader.ReadVarInt();
+                _viewDistance = reader.ReadVarInt();
             if (ProtocolVersion >= ProtocolVersions.V1_18_1)
-                _simulationDistance = Reader.ReadVarInt();
+                _simulationDistance = reader.ReadVarInt();
             if (ProtocolVersion >= ProtocolVersions.V1_8)
-                _reducedDebugInfo = Reader.ReadBoolean();
+                _reducedDebugInfo = reader.ReadBoolean();
             if (ProtocolVersion >= ProtocolVersions.V1_15)
-                _enableRespawnScreen = Reader.ReadBoolean();
+                _enableRespawnScreen = reader.ReadBoolean();
             if (ProtocolVersion >= ProtocolVersions.V1_16)
             {
-                _isDebug = Reader.ReadBoolean();
-                _isFlat = Reader.ReadBoolean();
+                _isDebug = reader.ReadBoolean();
+                _isFlat = reader.ReadBoolean();
             }
             if(ProtocolVersion >= ProtocolVersions.V1_19)
             {
-                _hasDeathLocation = Reader.ReadBoolean();
+                _hasDeathLocation = reader.ReadBoolean();
                 if (_hasDeathLocation)
                 {
-                    _deathDimensionName = Reader.ReadIdentifier();
-                    _deathLocation = Reader.ReadPosition();
+                    _deathDimensionName = reader.ReadIdentifier();
+                    _deathLocation = reader.ReadPosition();
                 }
             }
 

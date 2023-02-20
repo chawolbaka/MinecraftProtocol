@@ -41,7 +41,8 @@ namespace MinecraftProtocol.IO.Extensions
 
             try
             {{
-                return new {ResultType}(packet{(pair.Value.ReadPropertyList.Count > 0 ? $", {ReadArguments}" : "")});
+                
+                return new {ResultType}(packet.AsCompatibleByteReader(){(pair.Value.ReadPropertyList.Count > 0 ? $", {ReadArguments}" : "")});
             }}
             catch (Exception e)
             {{

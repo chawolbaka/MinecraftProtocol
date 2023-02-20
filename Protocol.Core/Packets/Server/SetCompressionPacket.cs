@@ -15,11 +15,11 @@ namespace MinecraftProtocol.Packets.Server
             WriteVarInt(_threshold);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
             if (ProtocolVersion < ProtocolVersions.V14w28a)
                 throw new PacketNotFoundException($"协议版本\"{ProtocolVersion}\"中不存在数据包压缩包(至少需要14w28a以上版本)", this);
-            _threshold = Reader.ReadVarInt();
+            _threshold = reader.ReadVarInt();
         }
 
         public static int GetPacketId(int protocolVersion)

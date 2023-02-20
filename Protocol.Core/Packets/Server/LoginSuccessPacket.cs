@@ -31,23 +31,23 @@ namespace MinecraftProtocol.Packets.Server
             WriteString(_playerName);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
             if (ProtocolVersion >= ProtocolVersions.V1_16)
-                _playerUUID = Reader.ReadUUID();
+                _playerUUID = reader.ReadUUID();
             else
-                _playerUUID = UUID.Parse(Reader.ReadString());
-            _playerName = Reader.ReadString();
+                _playerUUID = UUID.Parse(reader.ReadString());
+            _playerName = reader.ReadString();
 
             if(ProtocolVersion >= ProtocolVersions.V1_19)
             {
-                LoginSuccessProperty[] properties = new LoginSuccessProperty[Reader.ReadVarInt()];
+                LoginSuccessProperty[] properties = new LoginSuccessProperty[reader.ReadVarInt()];
                 for (int i = 0; i < properties.Length; i++)
                 {
                     LoginSuccessProperty property = new LoginSuccessProperty();
-                    property.Name = Reader.ReadString();
-                    property.Value = Reader.ReadString();
-                    property.Signature = Reader.ReadOptionalByteArray();
+                    property.Name = reader.ReadString();
+                    property.Value = reader.ReadString();
+                    property.Signature = reader.ReadOptionalByteArray();
                     properties[i] = property;
                 }
             }

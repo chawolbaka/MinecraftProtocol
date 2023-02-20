@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.Compatible;
+using System;
 using System.Collections.Generic;
 
 namespace MinecraftProtocol.Packets.Client
@@ -81,12 +82,12 @@ namespace MinecraftProtocol.Packets.Client
             WriteVarInt((int)_nextState);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            ProtocolVersion = Reader.ReadVarInt();
-            _serverAddress = Reader.ReadString();
-            _serverPort = Reader.ReadUnsignedShort();
-            _nextState = (State)Reader.ReadVarInt();
+            ProtocolVersion = reader.ReadVarInt();
+            _serverAddress = reader.ReadString();
+            _serverPort = reader.ReadUnsignedShort();
+            _nextState = (State)reader.ReadVarInt();
         }
 
         public static int GetPacketId(int protocolVersion) => id;

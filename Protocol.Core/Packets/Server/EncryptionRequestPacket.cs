@@ -31,11 +31,11 @@ namespace MinecraftProtocol.Packets.Server
             WriteByteArray(VerifyToken);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _serverID = Reader.ReadString();
-            _publicKey = Reader.ReadByteArray();
-            _verifyToken = Reader.ReadByteArray();
+            _serverID = reader.ReadString();
+            _publicKey = reader.ReadByteArray();
+            _verifyToken = reader.ReadByteArray();
         }
 
         public static int GetPacketId(int protocolVersion)

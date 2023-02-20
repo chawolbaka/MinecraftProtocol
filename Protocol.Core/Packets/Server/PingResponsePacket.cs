@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.Compatible;
+using System;
 
 namespace MinecraftProtocol.Packets.Server
 {
@@ -10,7 +11,6 @@ namespace MinecraftProtocol.Packets.Server
         [PacketProperty]
         internal string _content;
 
-        public PingResponsePacket(ReadOnlyPacket packet) : this(packet,-1) { }
         public PingResponsePacket(string content) : this(content, -1) { }
 
         protected override void CheckProperty()
@@ -24,9 +24,9 @@ namespace MinecraftProtocol.Packets.Server
             WriteString(_content);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _content = Reader.ReadString();
+            _content = reader.ReadString();
         }
 
         private const int id = 0x00;

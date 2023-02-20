@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.Compatible;
+using System;
 
 namespace MinecraftProtocol.Packets.Client
 {
@@ -21,9 +22,9 @@ namespace MinecraftProtocol.Packets.Client
             WriteLong(_code);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _code = Reader.ReadLong();
+            _code = reader.ReadLong();
         }
 
         public static int GetPacketId(int protocolVersion) => _id;

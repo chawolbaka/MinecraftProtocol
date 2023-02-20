@@ -43,22 +43,23 @@ namespace MinecraftProtocol.Packets.Client
                 throw new ArgumentOutOfRangeException(nameof(Command));
             
         }
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
             if (ProtocolVersion <= ProtocolVersions.V1_19_3)
                 throw new NotSupportedException($"{nameof(ChatCommandPacket)}需要至少1.19.3(包含)以上的版本才可被创建。");
 
-            _command = Reader.ReadString();
-            _timestamp = Reader.ReadLong();
-            _salt = Reader.ReadLong();
-            _signatures = new SignaturedContent<string>[Reader.ReadVarInt()];
+            
+            _command = reader.ReadString();
+            _timestamp = reader.ReadLong();
+            _salt = reader.ReadLong();
+            _signatures = new SignaturedContent<string>[reader.ReadVarInt()];
             for (int i = 0; i < _signatures.Length; i++)
             {
-                _signatures[i].Content = Reader.ReadString();
-                _signatures[i].Signature = Reader.ReadByteArray();
+                _signatures[i].Content = reader.ReadString();
+                _signatures[i].Signature = reader.ReadByteArray();
             }
-            _messageCount = Reader.ReadVarInt();
-            Reader.SetToEnd();
+            _messageCount = reader.ReadVarInt();
+            reader.SetToEnd();
         }
 
         protected override void Write()

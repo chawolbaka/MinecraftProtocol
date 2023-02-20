@@ -1,4 +1,5 @@
-﻿using MinecraftProtocol.IO.NBT.Tags;
+﻿using MinecraftProtocol.Compatible;
+using MinecraftProtocol.IO.NBT.Tags;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,24 +8,29 @@ using System.Threading.Tasks;
 
 namespace MinecraftProtocol.IO.NBT
 {
-    public class NBTReader
+    public ref struct NBTReader
     {
-        protected virtual ByteReader Reader { get; set; }
-        
-        public NBTReader(ByteReader reader)
+        private ByteReader Reader;
+
+        public NBTReader(ref CompatibleByteReader reader)
         {
-            Reader = reader ?? throw new ArgumentNullException(nameof(reader));
+            Reader = new ByteReader(reader.AsSpan());
         }
 
-        public virtual NBTTagType ReadType() => (NBTTagType)Reader.ReadUnsignedByte();
-        public virtual byte   ReadByte()     => Reader.ReadUnsignedByte();
-        public virtual short  ReadShort()    => Reader.ReadShort();
-        public virtual int    ReadInt()      => Reader.ReadInt();
-        public virtual long   ReadLong()     => Reader.ReadLong();
-        public virtual float  ReadFloat()    => Reader.ReadFloat();
-        public virtual double ReadDouble()   => Reader.ReadDouble();
-        public virtual byte[] ReadBytes(int length) => Reader.ReadBytes(length);
-        public virtual string ReadString()
+        public NBTReader(ref ByteReader reader)
+        {
+            Reader = reader;
+        }
+
+        public NBTTagType ReadType() => (NBTTagType)Reader.ReadUnsignedByte();
+        public byte   ReadByte()     => Reader.ReadUnsignedByte();
+        public short  ReadShort()    => Reader.ReadShort();
+        public int    ReadInt()      => Reader.ReadInt();
+        public long   ReadLong()     => Reader.ReadLong();
+        public float  ReadFloat()    => Reader.ReadFloat();
+        public double ReadDouble()   => Reader.ReadDouble();
+        public byte[] ReadBytes(int length) => Reader.ReadBytes(length);
+        public string ReadString()
         {
             int length = Reader.ReadUnsignedShort();
             if (length > 0)

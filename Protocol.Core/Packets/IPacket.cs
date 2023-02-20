@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.IO;
+using System;
 using System.Collections;
 using System.Linq;
 
@@ -38,5 +39,7 @@ namespace MinecraftProtocol.Packets
         /// 获取数据包的Data
         /// </summary>
         byte[] ToArray();
+
+        ByteReader AsByteReader();
     }
 }

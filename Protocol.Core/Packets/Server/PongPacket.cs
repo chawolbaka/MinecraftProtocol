@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MinecraftProtocol.Compatible;
+using System;
 
 namespace MinecraftProtocol.Packets.Server
 {
@@ -12,7 +13,6 @@ namespace MinecraftProtocol.Packets.Server
         [PacketProperty]
         internal long _code;
 
-        public PongPacket(ReadOnlyPacket packet) : this(packet, -1) { }
         public PongPacket(long code) : this(code, -1) { }
 
         protected override void CheckProperty() { }
@@ -22,9 +22,9 @@ namespace MinecraftProtocol.Packets.Server
             WriteLong(_code);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _code = Reader.ReadLong();
+            _code = reader.ReadLong();
         }
 
         public static int GetPacketId(int protocolVersion) => _id;

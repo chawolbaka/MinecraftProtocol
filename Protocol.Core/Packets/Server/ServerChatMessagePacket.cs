@@ -43,13 +43,13 @@ namespace MinecraftProtocol.Packets.Server
                 throw new ArgumentOutOfRangeException(nameof(Context));
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _context = Reader.ReadString();
-            if (ProtocolVersion >= ProtocolVersions.V14w02a && !Reader.IsReadToEnd)
-                _position = Reader.ReadUnsignedByte();
+            _context = reader.ReadString();
+            if (ProtocolVersion >= ProtocolVersions.V14w02a && !reader.IsReadToEnd)
+                _position = reader.ReadUnsignedByte();
             if (ProtocolVersion >= ProtocolVersions.V1_16)
-                _sender = Reader.ReadUUID();
+                _sender = reader.ReadUUID();
         }
 
         public static int GetPacketId(int protocolVersion)

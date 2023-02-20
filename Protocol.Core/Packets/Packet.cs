@@ -162,14 +162,20 @@ namespace MinecraftProtocol.Packets
         /// <summary>
         /// 浅拷贝一个受保护的只读Packet
         /// </summary>
-        public virtual ReadOnlyPacket AsReadOnly() => ThrowIfDisposed(new ReadOnlyPacket(this));
+        public virtual IPacket AsReadOnly() => ThrowIfDisposed(new ReadOnlyPacket(this));
 
         /// <summary>
         /// 从一个<see cref="ICompatiblePacket"/>中取出信息后使用当前对象的data和id创建一个<see cref="CompatiblePacket"/>
         /// </summary>
         public virtual CompatiblePacket AsCompatible(ICompatiblePacket compatible) => new CompatiblePacket(this, compatible.ProtocolVersion, compatible.CompressionThreshold);
         public virtual CompatiblePacket AsCompatible(int protocolVersion, int compressionThreshold) => new CompatiblePacket(this, protocolVersion, compressionThreshold);
-        public static implicit operator ReadOnlyPacket(Packet packet) => packet.AsReadOnly();
+
+        public virtual ByteReader AsByteReader()
+        {
+            ThrowIfDisposed();
+            ReadOnlySpan<byte> span = _data.AsSpan(0, _size);
+            return new ByteReader(ref span);
+        }
 
         public virtual Packet Clone() => ThrowIfDisposed(new Packet(Id, AsSpan()));
         object ICloneable.Clone() => ThrowIfDisposed(Clone());

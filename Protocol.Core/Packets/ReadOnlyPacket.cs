@@ -7,28 +7,38 @@ namespace MinecraftProtocol.Packets
     /// <summary>
     /// 一个Packet的包装器，用于防止ID和Data被修改
     /// </summary>
-    public class ReadOnlyPacket : ByteReader, IPacket
+    public struct ReadOnlyPacket : IPacket
     {
         public int Id => _packet.Id;
-        public virtual bool IsReadOnly => true;
-        internal Packet _packet;
+
+        public int Count => _packet.Count;
+                
+        public bool IsReadOnly => true;
 
         byte IPacket.this[int index] { get => _packet[index]; set => throw new NotSupportedException("Read only"); }
-        public override byte this[int index] => _packet[index];
+        public byte this[int index] => _packet[index];
 
-        public ReadOnlyPacket(Packet packet) : base(new ReadOnlyMemory<byte>(packet._data).Slice(0, packet._size))
+        internal Packet _packet;
+
+
+        public ReadOnlyPacket(Packet packet)
         {
             _packet = packet;
         }
 
-        public virtual byte[] Pack() => _packet.Pack();
-        public virtual byte[] Pack(int compressionThreshold) => _packet.Pack(compressionThreshold);
-        object ICloneable.Clone() => new ReadOnlyPacket(_packet) { offset = base.offset };
+        public byte[] Pack() => _packet.Pack();
+      
+        public byte[] Pack(int compressionThreshold) => _packet.Pack(compressionThreshold);
+        
+        public ByteReader AsByteReader() => _packet.AsByteReader();
+        
+        object ICloneable.Clone() => new ReadOnlyPacket(_packet);
+
 
         public override bool Equals(object obj)
         {
             if (obj is ReadOnlyPacket rop)
-                return offset == rop.offset && _packet.Equals(rop._packet);
+                return _packet.Equals(rop._packet);
 
             else if (obj is Packet p)
                 return _packet.Equals(p);

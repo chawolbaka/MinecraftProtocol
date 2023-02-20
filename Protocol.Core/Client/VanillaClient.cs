@@ -135,7 +135,7 @@ namespace MinecraftProtocol.Client
                     DisconnectAsync(reason?.ToString());
                 }
                 else if (_autoKeepAlive && e.Packet == PacketType.Play.Server.KeepAlive)
-                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsCompatibleReadOnly()));
+                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsCompatibleByteReader()));
                 else
                     ReceiveQueue.TryAdd(new PacketReceivedEventArgs(e));
             };
@@ -356,7 +356,7 @@ namespace MinecraftProtocol.Client
                     {
                         if (ReceiveQueue.TryTake(out eventArgs, Timeout.Infinite, ReceivePacketCancellationToken.Token) && eventArgs != null)
                         {
-                            EventUtils.InvokeCancelEvent(_packetReceived, this, eventArgs, (sender, e) => e.Packet.Reset());
+                            EventUtils.InvokeCancelEvent(_packetReceived, this, eventArgs);
                             eventArgs?.RawEventArgs?.Dispose();
                         }
                     }

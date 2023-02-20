@@ -8,7 +8,7 @@ namespace MinecraftProtocol.IO.NBT.Tags
 
         public NBTTag[] Payload { get; set; }
 
-        public override NBTTag Read(NBTReader reader)
+        public override NBTTag Read(ref NBTReader reader)
         {
             if (!IsListItem)
                 Name = reader.ReadString();
@@ -21,18 +21,18 @@ namespace MinecraftProtocol.IO.NBT.Tags
             {
                 Payload[i] = type switch
                 {
-                    NBTTagType.Byte      => new ByteTag()      { IsListItem = true }.Read(reader),
-                    NBTTagType.Short     => new ByteTag()      { IsListItem = true }.Read(reader),
-                    NBTTagType.Int       => new IntTag()       { IsListItem = true }.Read(reader),
-                    NBTTagType.Long      => new LongTag()      { IsListItem = true }.Read(reader),
-                    NBTTagType.Float     => new FloatTag()     { IsListItem = true }.Read(reader),
-                    NBTTagType.Double    => new DoubleTag()    { IsListItem = true }.Read(reader),
-                    NBTTagType.ByteArray => new ByteArrayTag() { IsListItem = true }.Read(reader),
-                    NBTTagType.String    => new StringTag()    { IsListItem = true }.Read(reader),
-                    NBTTagType.List      => new ListTag()      { IsListItem = true }.Read(reader),
-                    NBTTagType.Compound  => new CompoundTag()  { IsListItem = true }.Read(reader),
-                    NBTTagType.IntArray  => new IntArrayTag()  { IsListItem = true }.Read(reader),
-                    NBTTagType.LongArray => new LongArrayTag() { IsListItem = true }.Read(reader),
+                    NBTTagType.Byte      => new ByteTag()      { IsListItem = true }.Read(ref reader),
+                    NBTTagType.Short     => new ByteTag()      { IsListItem = true }.Read(ref reader),
+                    NBTTagType.Int       => new IntTag()       { IsListItem = true }.Read(ref reader),
+                    NBTTagType.Long      => new LongTag()      { IsListItem = true }.Read(ref reader),
+                    NBTTagType.Float     => new FloatTag()     { IsListItem = true }.Read(ref reader),
+                    NBTTagType.Double    => new DoubleTag()    { IsListItem = true }.Read(ref reader),
+                    NBTTagType.ByteArray => new ByteArrayTag() { IsListItem = true }.Read(ref reader),
+                    NBTTagType.String    => new StringTag()    { IsListItem = true }.Read(ref reader),
+                    NBTTagType.List      => new ListTag()      { IsListItem = true }.Read(ref reader),
+                    NBTTagType.Compound  => new CompoundTag()  { IsListItem = true }.Read(ref reader),
+                    NBTTagType.IntArray  => new IntArrayTag()  { IsListItem = true }.Read(ref reader),
+                    NBTTagType.LongArray => new LongArrayTag() { IsListItem = true }.Read(ref reader),
                     _ => throw new InvalidCastException($"Unknow type id {type}")
                 };
             

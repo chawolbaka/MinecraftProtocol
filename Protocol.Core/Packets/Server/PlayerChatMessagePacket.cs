@@ -13,6 +13,7 @@ namespace MinecraftProtocol.Packets.Server
     public partial class PlayerChatMessagePacket : DefinedPacket
     {
 
+
         /*Header*/
         [PacketProperty]
         private UUID _sender;
@@ -57,35 +58,35 @@ namespace MinecraftProtocol.Packets.Server
         [PacketProperty]
         private string _networkTargetName;
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _sender = Reader.ReadUUID();
-            _index = Reader.ReadVarInt();
-            _messageSignature = Reader.ReadOptionalBytes(256);
+            _sender = reader.ReadUUID();
+            _index = reader.ReadVarInt();
+            _messageSignature = reader.ReadOptionalBytes(256);
 
-            _message = Reader.ReadString();
-            _timestamp = Reader.ReadLong();
-            _salt = Reader.ReadLong();
+            _message = reader.ReadString();
+            _timestamp = reader.ReadLong();
+            _salt = reader.ReadLong();
 
-            _previousMessages = new SignaturedContent<int>[Reader.ReadVarInt()]; 
+            _previousMessages = new SignaturedContent<int>[reader.ReadVarInt()]; 
             for (int i = 0; i < _previousMessages.Length; i++)
             {
                 SignaturedContent<int> previousMessage =  new SignaturedContent<int>();
-                previousMessage.Content = Reader.ReadVarInt() - 1;
+                previousMessage.Content = reader.ReadVarInt() - 1;
                 if (previousMessage.Content != -1)
-                    previousMessage.Signature = Reader.ReadBytes(256);
+                    previousMessage.Signature = reader.ReadBytes(256);
                 _previousMessages[i] = previousMessage;
             }
 
 
-            _unsignedContent = Reader.ReadString();
-            _filterType = Reader.ReadByte();
+            _unsignedContent = reader.ReadString();
+            _filterType = reader.ReadByte();
             if (_filterType == 2)
-                Reader.ReadBytes(Reader.ReadVarInt() * sizeof(long));
+                reader.ReadBytes(reader.ReadVarInt() * sizeof(long));
 
-            _chatType = Reader.ReadVarInt();
-            _networkName = Reader.ReadString();
-            _networkTargetName = Reader.ReadOptionalField(Reader.ReadString);
+            _chatType = reader.ReadVarInt();
+            _networkName = reader.ReadString();
+            _networkTargetName = reader.ReadOptionalString();
         }
 
         protected override void Write()
@@ -126,4 +127,5 @@ namespace MinecraftProtocol.Packets.Server
 
         }
     }
+
 }

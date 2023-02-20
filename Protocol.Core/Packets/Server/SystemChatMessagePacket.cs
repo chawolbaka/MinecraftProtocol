@@ -32,10 +32,10 @@ namespace MinecraftProtocol.Packets.Server
                 throw new ArgumentNullException(nameof(Content));
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _content = Reader.ReadString();
-            _overlay = Reader.ReadBoolean();
+            _content = reader.ReadString();
+            _overlay = reader.ReadBoolean();
         }
 
         protected override void Write()

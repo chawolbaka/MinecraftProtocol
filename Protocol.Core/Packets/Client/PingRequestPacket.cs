@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MinecraftProtocol.Compatible;
+using MinecraftProtocol.IO;
+using System;
 
 namespace MinecraftProtocol.Packets.Client
 {
@@ -18,7 +20,7 @@ namespace MinecraftProtocol.Packets.Client
 
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
             throw new NotImplementedException();
         }

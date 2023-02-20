@@ -1,4 +1,5 @@
-﻿using MinecraftProtocol.DataType;
+﻿using MinecraftProtocol.Compatible;
+using MinecraftProtocol.DataType;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,11 +21,11 @@ namespace MinecraftProtocol.Packets.Server
 
         protected override void CheckProperty() { }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _messageId = Reader.ReadVarInt();
-            _channel = Reader.ReadIdentifier();
-            _messageData = Reader.ReadByteArray();
+            _messageId = reader.ReadVarInt();
+            _channel = reader.ReadIdentifier();
+            _messageData = reader.ReadByteArray();
         }
 
         protected override void Write()

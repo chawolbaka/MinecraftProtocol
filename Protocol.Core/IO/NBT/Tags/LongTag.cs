@@ -8,7 +8,7 @@ namespace MinecraftProtocol.IO.NBT.Tags
 
         public long Payload { get; set; }
 
-        public override NBTTag Read(NBTReader reader)
+        public override NBTTag Read(ref NBTReader reader)
         {
             if (!IsListItem)
                 Name = reader.ReadString();

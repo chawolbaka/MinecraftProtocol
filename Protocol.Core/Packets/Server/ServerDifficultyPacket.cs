@@ -32,10 +32,10 @@ namespace MinecraftProtocol.Packets.Server
                 WriteBoolean(Locked);
         }
 
-        protected override void Read()
+        protected override void Read(ref CompatibleByteReader reader)
         {
-            _difficulty = new Difficulty(Reader.ReadUnsignedByte());
-            _locked = ProtocolVersion >= ProtocolVersions.V1_14 && ProtocolVersion < ProtocolVersions.V1_19_1 ? Reader.ReadBoolean() : false;
+            _difficulty = new Difficulty(reader.ReadUnsignedByte());
+            _locked = ProtocolVersion >= ProtocolVersions.V1_14 && ProtocolVersion < ProtocolVersions.V1_19_1 ? reader.ReadBoolean() : false;
         }
 
         public static int GetPacketId(int protocolVersion)
