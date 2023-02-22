@@ -14,7 +14,7 @@ IPAddress ip;      //服务器IP地址
 ushort port;       //服务器端口号
 string playerName; //玩家名（如果需要正版登录请替换为SessionToken）
 
-MinecraftClient client = await ClientCreator.FromServerListPingAsync(ip, port);
+MinecraftClient client = await ClientBuilder.FromServerListPingAsync(ip, port);
 ChatType[] chatTypes = null;
 
 //监听收到的数据包

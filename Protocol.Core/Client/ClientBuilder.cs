@@ -11,7 +11,7 @@ using System.Net;
 
 namespace MinecraftProtocol.Client
 {
-    public static class ClientCreator
+    public static class ClientBuilder
     {
         public static Task<MinecraftClient> FromServerListPingAsync(IPEndPoint endPoint) => FromServerListPingAsync(string.Empty, endPoint.Address, (ushort)endPoint.Port);
         public static Task<MinecraftClient> FromServerListPingAsync(IPAddress serverIP, ushort serverPort) => FromServerListPingAsync(string.Empty, serverIP, serverPort);
