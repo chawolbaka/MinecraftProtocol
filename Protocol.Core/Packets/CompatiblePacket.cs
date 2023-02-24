@@ -17,25 +17,22 @@ namespace MinecraftProtocol.Packets
 
         private int _compressionThreshold;
         private int _protocolVersion;
+        private Packet _packet;
 
 
         internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.Id, ref packet._size, ref packet._data)
         {
+            _packet = packet;
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;
         }
-
+        public CompatiblePacket(int packetId, int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : this(packetId, ref size, ref packetData, protocolVersion, compressionThreshold) { }
         internal CompatiblePacket(int packetId, ref int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref size, ref packetData)
         {
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;
         }
 
-        public CompatiblePacket(int packetId, int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref size, ref packetData)
-        {
-            _protocolVersion = protocolVersion;
-            _compressionThreshold = compressionThreshold;
-        }
 
         public CompatiblePacket(int packetId, ReadOnlySpan<byte> packetData, int protocolVersion, int compressionThreshold) : base(packetId, packetData)
         {
@@ -116,5 +113,28 @@ namespace MinecraftProtocol.Packets
             }
             return new CompatiblePacket(VarInt.Read(data.Span, out int IdOffset), data.Span.Slice(IdOffset), protocolVersion, compressionThreshold);
         }
+
+        protected override void ThrowIfDisposed()
+        {
+            if (_packet != null && _packet._disposed)
+                throw new ObjectDisposedException(GetType().FullName);
+            else
+                base.ThrowIfDisposed();
+        }
+        protected override T ThrowIfDisposed<T>(T value)
+        {
+            if (_packet != null)
+            {
+                if (_packet._disposed)
+                    throw new ObjectDisposedException(GetType().FullName);
+                else
+                    return value;
+            }
+            else
+            {
+                return base.ThrowIfDisposed(value);
+            }
+        }
+
     }
 }
