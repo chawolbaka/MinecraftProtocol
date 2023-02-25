@@ -11,6 +11,7 @@ namespace Protocol.Generator
         {
             StringBuilder source = new StringBuilder(@"
 using System;
+using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Packets;
 using MinecraftProtocol.Packets.Client;
 using MinecraftProtocol.Packets.Server;
@@ -30,9 +31,9 @@ namespace MinecraftProtocol.IO.Extensions
 
                 source.AppendLine($@"        /// <summary>将当前包转换至{ClassName}</summary>");
                 if (pair.Value.ReadPropertyList.Count > 0)
-                    source.Append($"        public static {ResultType} To{ClassName}(this {ReadOnlyCompatiblePacket} packet, {ReadFormalParameters})");
+                    source.Append($"        public static {ResultType} To{ClassName}<TPacket>(this TPacket packet, {ReadFormalParameters}) where TPacket : ICompatiblePacket");
                 else
-                    source.Append($"        public static {ResultType} To{ClassName}(this {ReadOnlyCompatiblePacket} packet)");
+                    source.Append($"        public static {ResultType} To{ClassName}<TPacket>(this TPacket packet) where TPacket : ICompatiblePacket");
                 
                 source.AppendLine($@"
         {{
@@ -41,8 +42,8 @@ namespace MinecraftProtocol.IO.Extensions
 
             try
             {{
-                
-                return new {ResultType}(packet.AsCompatibleByteReader(){(pair.Value.ReadPropertyList.Count > 0 ? $", {ReadArguments}" : "")});
+                CompatibleByteReader reader = packet.AsCompatibleByteReader();
+                return new {ResultType}(ref reader{(pair.Value.ReadPropertyList.Count > 0 ? $", {ReadArguments}" : "")});
             }}
             catch (Exception e)
             {{
