@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Threading;
+using System.Text.RegularExpressions;
 
 namespace MinecraftProtocol.Utils
 {
@@ -90,18 +91,22 @@ namespace MinecraftProtocol.Utils
         }
 
         /// <summary>
-        /// 从域名或IP地址获取到IPAddress
+        /// 从域名或IP地址获取到<see cref="IPEndPoint"/>(如果端口号不存在会使用25565)
         /// </summary>
-        public static async Task<IPAddress> GetAddressAsync(string host)
+        public static async ValueTask<IPEndPoint> GetIPEndPointAsync(string host)
         {
-            IPAddress address = null;
-            if (!string.IsNullOrWhiteSpace(host) && !IPAddress.TryParse(host, out address))
-            {
-                IPAddress[] IPList = await Dns.GetHostAddressesAsync(host);
-                if (IPList.Length > 0)
-                    address = IPList[0];
-            }
-            return address;
+            if (string.IsNullOrWhiteSpace(host))
+                throw new ArgumentNullException(nameof(host));
+
+            if (IPEndPoint.TryParse(host, out var endPoint))
+                return endPoint;
+
+            int lastColonPos = host.LastIndexOf(':');
+            IPAddress[] IPList = await Dns.GetHostAddressesAsync(lastColonPos > 0 ? host.Substring(0, lastColonPos) : host);
+            if (IPList.Length > 0)
+                return new IPEndPoint(IPList[0], lastColonPos > 0 ? int.Parse(host.AsSpan().Slice(lastColonPos + 1)) : 25565);
+            else
+                throw new ArgumentException("无法解析dns");
         }
 
         /// <summary>
