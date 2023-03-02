@@ -69,7 +69,7 @@ namespace MinecraftProtocol.IO
         //mc大部分都是小包所以使用这种形状的数组池可能更适合？
         internal static SawtoothArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
         protected const int DEFUALT_CAPACITY = 16;
-        protected bool _returnToPool;
+        internal protected bool _returnToPool;
 
         internal bool _needDisable = true; //提供给对象池使用的选项
         internal protected byte[] _data;
@@ -396,7 +396,7 @@ namespace MinecraftProtocol.IO
         {
             if (_size > 0)
             {
-                if (_data != default)
+                if (_data != default && _returnToPool)
                     _dataPool.Return(_data);
                 _version = 0;
                 _size = 0;
