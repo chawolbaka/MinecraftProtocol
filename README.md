@@ -71,7 +71,7 @@ SessionToken session = await (await XboxLive.MinecraftAuthenticate(xsts)).AsSess
   
   
   
-# 参考资料  
+# 抄袭列表  
 https://wiki.vg/Protocol  
 https://github.com/bangbang93/minecraft-protocol  
 https://github.com/yushijinhun/authlib-injector/wiki
@@ -79,8 +79,7 @@ https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197.pdf
 https://blessing.studio/minecraft-yggdrasil-api-third-party-implementation/  
 https://software.intel.com/sites/landingpage/IntrinsicsGuide/#=undefined&cats=Cryptography  
 https://www.intel.com/content/dam/doc/white-paper/advanced-encryption-standard-new-instructions-set-paper.pdf  
-  
-### 抄袭列表  
+    
 https://github.com/Naamloos/Obsidian  
 https://github.com/Nsiso/MinecraftOutClient  
 https://github.com/ORelio/Minecraft-Console-Client  
