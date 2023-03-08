@@ -20,5 +20,14 @@ namespace MinecraftProtocol.IO.NBT.Tags
             }
             return this;
         }
+
+        public static explicit operator byte  (NBTTag tag) => ((ByteTag)tag).Payload;
+        public static explicit operator short (NBTTag tag) => ((ShortTag)tag).Payload;
+        public static explicit operator int   (NBTTag tag) => ((IntTag)tag).Payload;
+        public static explicit operator long  (NBTTag tag) => ((LongTag)tag).Payload;
+        public static explicit operator float (NBTTag tag) => ((FloatTag)tag).Payload;
+        public static explicit operator double(NBTTag tag) => ((DoubleTag)tag).Payload;
+        public static explicit operator string(NBTTag tag) => ((StringTag)tag).Payload;
+
     }
 }
