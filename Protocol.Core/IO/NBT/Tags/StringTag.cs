@@ -23,6 +23,9 @@ namespace MinecraftProtocol.IO.NBT.Tags
             return this;
         }
 
+
+        public static implicit operator string(StringTag tag) => tag.Payload;
+
         public override string ToString() => Payload.ToString();
     }
 }

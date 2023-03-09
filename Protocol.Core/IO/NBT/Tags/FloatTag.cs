@@ -22,6 +22,9 @@ namespace MinecraftProtocol.IO.NBT.Tags
             writer.WriteFloat(Payload);
             return this;
         }
+
+        public static implicit operator float(FloatTag tag) => tag.Payload;
+
         public override string ToString() => Payload.ToString();
     }
 }

@@ -22,6 +22,9 @@ namespace MinecraftProtocol.IO.NBT.Tags
             writer.WriteShort(Payload);
             return this;
         }
+
+        public static implicit operator short(ShortTag tag) => tag.Payload;
+
         public override string ToString() => Payload.ToString();
     }
 }

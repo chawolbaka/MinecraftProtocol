@@ -22,6 +22,9 @@ namespace MinecraftProtocol.IO.NBT.Tags
             writer.WriteLong(Payload);
             return this;
         }
+
+        public static implicit operator long(LongTag tag) => tag.Payload;
+
         public override string ToString() => Payload.ToString();
     }
 }

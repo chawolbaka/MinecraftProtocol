@@ -24,6 +24,9 @@ namespace MinecraftProtocol.IO.NBT.Tags
             writer.WriteByte(Payload);
             return this;
         }
+
+        public static implicit operator byte(ByteTag tag) => tag.Payload;
+
         public override string ToString() => Payload.ToString();
     }
 }

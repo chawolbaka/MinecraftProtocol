@@ -22,6 +22,9 @@ namespace MinecraftProtocol.IO.NBT.Tags
             writer.WriteDouble(Payload);
             return this;
         }
+        
+        public static implicit operator double(DoubleTag tag) => tag.Payload;
+
         public override string ToString() => Payload.ToString();
     }
 }
