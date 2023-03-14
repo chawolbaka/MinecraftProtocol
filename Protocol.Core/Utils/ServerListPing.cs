@@ -171,7 +171,7 @@ namespace MinecraftProtocol.Utils
                 socket.ReceiveTimeout = ReceiveTimeout;
 
             //Send Ping Packet
-            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, ServerPort, HandshakePacket.State.GetStatus, -1);
+            Packet Handshake = new HandshakePacket(string.IsNullOrWhiteSpace(Host) ? ServerIP.ToString() : Host, ServerPort, HandshakeState.GetStatus, -1);
             socket.Send(Handshake.Pack());
             Packet PingRequest = new PingRequestPacket();
             socket.Send(PingRequest.Pack());

@@ -190,7 +190,7 @@ namespace MinecraftProtocol.Client
             LoginToken = token;
 
             //开始握手
-            SendPacket(new HandshakePacket(ServerHost, ServerPort, HandshakePacket.State.Login, ProtocolVersion));
+            SendPacket(new HandshakePacket(ServerHost, ServerPort, HandshakeState.Login, ProtocolVersion));
             VanillaLoginState = VanillaLoginStatus.Handshake;
 
             //申请加入服务器

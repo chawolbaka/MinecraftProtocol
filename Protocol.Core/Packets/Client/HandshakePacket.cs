@@ -12,20 +12,15 @@ namespace MinecraftProtocol.Packets.Client
     {
         //握手包永远不会变ID(大概)
         private const int id = 0x00;
-        public enum State : int
-        {
-            GetStatus = 1,
-            Login = 2
-        }
 
         [PacketProperty]
-        internal string _serverAddress;
+        private string _serverAddress;
         
         [PacketProperty]
-        internal ushort _serverPort;
+        private ushort _serverPort;
 
         [PacketProperty]
-        internal State _nextState;
+        private HandshakeState _nextState;
 
         private int start = 0;
         private int offset = 0;
@@ -87,7 +82,7 @@ namespace MinecraftProtocol.Packets.Client
             ProtocolVersion = reader.ReadVarInt();
             _serverAddress = reader.ReadString();
             _serverPort = reader.ReadUnsignedShort();
-            _nextState = (State)reader.ReadVarInt();
+            _nextState = (HandshakeState)reader.ReadVarInt();
         }
 
         public static int GetPacketId(int protocolVersion) => id;
