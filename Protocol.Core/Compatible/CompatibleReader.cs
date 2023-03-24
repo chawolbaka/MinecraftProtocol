@@ -59,7 +59,7 @@ namespace MinecraftProtocol.Compatible
                         throw new ArgumentNullException(nameof(chatTypes));
 
                     definedPacket = pcmp;
-                    message = CrateChatComponentFromChatType(pcmp.ChatType, chatTypes);
+                    message = CreateChatComponentFromChatType(pcmp.ChatType, chatTypes);
                     ChatComponent sender = ChatComponent.Deserialize(pcmp.NetworkTargetName ?? pcmp.NetworkName);
                     foreach (var parameter in chatTypes[pcmp.ChatType].TranslationParameters)
                     {
@@ -77,7 +77,7 @@ namespace MinecraftProtocol.Compatible
                         throw new ArgumentNullException(nameof(chatTypes));
 
                     definedPacket = dcmp;
-                    message = CrateChatComponentFromChatType(dcmp.ChatType, chatTypes);
+                    message = CreateChatComponentFromChatType(dcmp.ChatType, chatTypes);
                     foreach (var parameter in chatTypes[dcmp.ChatType].TranslationParameters)
                     {
                         if (parameter == "sender")
@@ -100,7 +100,7 @@ namespace MinecraftProtocol.Compatible
             return message != null;
         }
 
-        private static ChatComponent CrateChatComponentFromChatType(int chatType, ChatType[] chatTypeTable)
+        private static ChatComponent CreateChatComponentFromChatType(int chatType, ChatType[] chatTypeTable)
         {
             if (chatType >= chatTypeTable.Length)
                 throw new ArgumentOutOfRangeException(nameof(chatTypeTable), $"Unknow chat type {chatType}");
