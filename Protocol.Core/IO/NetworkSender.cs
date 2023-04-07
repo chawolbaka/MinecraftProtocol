@@ -12,72 +12,74 @@ namespace MinecraftProtocol.IO
     /// </summary>
     public class NetworkSender
     {
-        private static ObjectPool<SendEventArgs> SendEventArgsPool = new();
-
-        private BlockingCollection<SendEventArgs> SendQueue = new();
-        private ManualResetEvent SendSignal = new (false);
-
-        public virtual void Enqueue(Socket socket, Memory<byte> data)
-        {
-            SendQueue.Add(SendEventArgsPool.Rent().Setup(socket, data, null));
-        }
-        public virtual void Enqueue(Socket socket, Memory<byte> data, Action callback)
-        {
-            SendQueue.Add(SendEventArgsPool.Rent().Setup(socket, data, callback));
-        }
-        public virtual void Enqueue(Socket socket, Memory<byte> data, IDisposable disposable) 
-        {
-            SendQueue.Add(SendEventArgsPool.Rent().Setup(socket, data, disposable != null ? disposable.Dispose : null));
-        }
+        private static ObjectPool<SendEventArgs> _sendEventArgsPool = new();
+        private BlockingCollection<SendEventArgs> _sendQueue = new();
+        private CancellationToken _token;
+        private SendEventArgs _sea;
+        private int _sendLength;
+        private int _sendOffset;
 
         public virtual void Start(CancellationToken token)
         {
+            _token = token;
             SocketAsyncEventArgs e = new SocketAsyncEventArgs();
-            e.Completed += (sender, e) => SendSignal.Set();
-            token.Register(() => SendSignal.Set());
+            e.Completed += (sender, e) => _sendOffset += e.BytesTransferred;
+            e.Completed += OnSendCompleted;
+            TakeNext();
+            OnSendCompleted(this, e);
+        }
 
-            while (!token.IsCancellationRequested)
+        private void OnSendCompleted(object sender, SocketAsyncEventArgs e)
+        {
+            while (!_token.IsCancellationRequested)
             {
-                SendEventArgs sea = SendQueue.Take(token);
-                int dataLength = sea.Data.Length;
-                int send = 0;
                 try
                 {
-                    do
-                    {
-                        if (send > 0)
-                            e.SetBuffer(sea.Data.Slice(send));
-                        else
-                            e.SetBuffer(sea.Data);
+                    if (_sendOffset >= _sendLength)
+                        TakeNext();
 
-                        if (sea.Socket.SendAsync(e))
-                        {
-                            SendSignal.WaitOne();
-                            SendSignal.Reset();
-                            if (token.IsCancellationRequested)
-                            {
-                                SendSignal?.Dispose();
-                                return;
-                            }
-                        }
+                    if (_sendOffset > 0)
+                        e.SetBuffer(_sea.Data.Slice(_sendOffset));
+                    else
+                        e.SetBuffer(_sea.Data);
 
-                        if (e.SocketError != SocketError.Success || (e.BytesTransferred <= 0 && !NetworkUtils.CheckConnect(sea.Socket)))
-                            break;
-                        else
-                            send += e.BytesTransferred;
+                    if (_sea.Socket.SendAsync(e))
+                        return;
+                    else
+                        _sendOffset += e.BytesTransferred;
 
-                    } while (send < dataLength);
-
+                    if (_sendOffset >= _sendLength)
+                        TakeNext();
                 }
                 catch (OperationCanceledException) { }
                 catch (ObjectDisposedException) { }
                 catch (SocketException) { }
-                finally
-                {
-                    sea?.Callback?.Invoke();
-                    SendEventArgsPool.Return(sea);
-                }
+
             }
+        }
+
+        private void TakeNext()
+        {
+            _sea?.Callback?.Invoke();
+            _sea?.Disposable?.Dispose();
+            _sendEventArgsPool.Return(_sea);
+            _sea = _sendQueue.Take();
+            _sendLength = _sea.Data.Length;
+            _sendOffset = 0;
+        }
+
+
+        public virtual void Enqueue(Socket socket, Memory<byte> data)
+        {
+            _sendQueue.Add(_sendEventArgsPool.Rent().Setup(socket, data));
+        }
+        public virtual void Enqueue(Socket socket, Memory<byte> data, Action callback)
+        {
+            _sendQueue.Add(_sendEventArgsPool.Rent().Setup(socket, data, callback));
+        }
+        public virtual void Enqueue(Socket socket, Memory<byte> data, IDisposable disposable)
+        {
+            _sendQueue.Add(_sendEventArgsPool.Rent().Setup(socket, data, disposable));
         }
 
         private class SendEventArgs
@@ -85,8 +87,22 @@ namespace MinecraftProtocol.IO
             public Socket Socket;
             public Memory<byte> Data;
             public Action Callback;
+            public IDisposable Disposable;
 
             public SendEventArgs() { }
+            public SendEventArgs Setup(Socket socket, Memory<byte> data)
+            {
+                Socket = socket;
+                Data = data;
+                return this;
+            }
+            public SendEventArgs Setup(Socket socket, Memory<byte> data, IDisposable disposable)
+            {
+                Socket = socket;
+                Data = data;
+                Disposable = disposable;
+                return this;
+            }
             public SendEventArgs Setup(Socket socket, Memory<byte> data, Action callback)
             {
                 Socket = socket;
