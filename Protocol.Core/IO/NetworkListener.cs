@@ -3,6 +3,8 @@ using MinecraftProtocol.Utils;
 using System;
 using System.Buffers;
 using System.Diagnostics.Tracing;
+using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -24,7 +26,7 @@ namespace MinecraftProtocol.IO
         protected Socket _socket;
         protected int _bufferOffset;
         protected byte[] _buffer;
-        protected bool _usePool;
+        internal protected bool _usePool;
 
         protected bool _disposed = false;
         private int _syncCount;
@@ -50,7 +52,6 @@ namespace MinecraftProtocol.IO
 
             _bufferPool = new Bucket<byte>(bufferLength, numberOfBuffers, Thread.CurrentThread.ManagedThreadId, true);
         }
-
         public virtual void Start(CancellationToken token = default)
         {
             if (_internalToken != default)
@@ -77,7 +78,7 @@ namespace MinecraftProtocol.IO
         }
 
         protected abstract void ReceiveCompleted(object sender, SocketAsyncEventArgs e);
-
+        
         private void OnReceiveCompleted(object sender, SocketAsyncEventArgs e)
         {
             //检查连接状态
@@ -114,8 +115,8 @@ namespace MinecraftProtocol.IO
 
                 if (!_socket.ReceiveAsync(e))
                 {
-                    //超过128层递归就强制异步结束掉递归
-                    if (++_syncCount > 128)
+                    //超过96层递归就强制异步结束掉递归
+                    if (++_syncCount > 96)
                     {
                         _syncCount = 0;
                         Task task = new Task(() => OnReceiveCompleted(this, e));
@@ -152,6 +153,9 @@ namespace MinecraftProtocol.IO
         private void AllocateBuffer()
         {
             _buffer = _usePool ? _bufferPool.Rent() : new byte[8192];
+            if(_buffer == null)
+                _buffer = new byte[8192];
+            
         }
     }
 }

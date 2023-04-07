@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using MinecraftProtocol.Compression;
@@ -33,68 +34,52 @@ namespace MinecraftProtocol.IO
         private ushort _bufferBlockLength;
 
         private static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
-
-        internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, ushort dataBlockLength, byte[][] bufferBlock, ushort bufferBlockLength, byte headLength, int bodyLength, int protocolVersion, int compressionThreshold, bool usePool)
+        internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, ushort dataBlockLength, byte[][] bufferBlock, ushort bufferBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
         {
             RawData = new Memory<Memory<byte>>(dataBlock, 0, dataBlockLength);
             ReceivedTime = DateTime.Now;
 
             CompatiblePacket _packet;
-            _usePool = usePool;
+            _usePool = listener._usePool;
             _disposed = false;
             _isCancelled = false;
             _dataBlock = dataBlock;
             _bufferBlock = bufferBlock;
             _bufferBlockLength = bufferBlockLength;
 
-            int blockIndex = 0, blockOffset = 0, IdOffset;
-
-
-            if (dataBlock[0].Length > headLength)
-            {
-                blockOffset = headLength;
-            }
-            else
-            {
-                for (int i = 0; i < headLength + 1; i++)
-                {
-                    CheckBounds();
-                    blockOffset++;
-                }
-            }
-
-
-            if (usePool)
+            int blockIndex = packetDataStartBlockIndex, blockOffset = packetDataStartIndex, IdOffset;
+            CheckBounds();
+            if (_usePool)
             {
                 _packet = _CPPool.Rent();
-                _packet.ProtocolVersion = protocolVersion;
-                _packet.CompressionThreshold = compressionThreshold;
+                _packet.ProtocolVersion = listener.ProtocolVersion;
+                _packet.CompressionThreshold = listener.CompressionThreshold;
             }
             else
             {
-                _packet = new CompatiblePacket(-1, protocolVersion, compressionThreshold);
+                _packet = new CompatiblePacket(-1, listener.ProtocolVersion, listener.CompressionThreshold);
             }
 
             //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
-            if (compressionThreshold > 0)
+            if (listener.CompressionThreshold > 0)
             {
                 int size = VarInt.Read(ReadByte, out int sizeCount);
                 if (size != 0)
                 {
                     //组合data块
-                    byte[] buffer = new byte[bodyLength - sizeCount];
+                    byte[] buffer = new byte[packetLength - sizeCount];
                     int count = 0;
                     for (; blockIndex < dataBlockLength; blockIndex++)
                     {
                         if (blockOffset > 0)
                         {
-                            _dataBlock[blockIndex].Span.Slice(blockOffset).CopyTo(buffer.AsSpan().Slice(count));
+                            _dataBlock[blockIndex].Span.Slice(blockOffset).CopyTo(buffer);
                             count -= blockOffset;
                             blockOffset = 0;
                         }
                         else
                         {
-                            _dataBlock[blockIndex].Span.CopyTo(buffer.AsSpan().Slice(count));
+                            _dataBlock[blockIndex].Span.CopyTo(buffer.AsSpan(count));
                         }
                         count += _dataBlock[blockIndex].Length;
                     }
@@ -108,8 +93,9 @@ namespace MinecraftProtocol.IO
                     return this;
                 }
             }
+
             _packet.Id = VarInt.Read(ReadByte, out IdOffset);
-            _packet.Capacity = bodyLength - IdOffset;
+            _packet.Capacity = packetLength - IdOffset;
 
             CheckBounds();
             for (int i = blockIndex; i < dataBlockLength - blockIndex; i++)

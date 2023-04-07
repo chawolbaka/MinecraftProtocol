@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Buffers;
+using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -17,7 +19,6 @@ namespace MinecraftProtocol.IO
     /// </summary>
     public partial class PacketListener : NetworkListener, IPacketListener, ICompatible
     {
-
         public int ProtocolVersion { get; set; }
 
         public int CompressionThreshold { get; set; }
@@ -35,7 +36,9 @@ namespace MinecraftProtocol.IO
         private ushort _dataBlockIndex, _bufferBlockIndex;
 
         private int _packetLength;
-        private byte _packetLengthOffset;
+        private int _packetLengthOffset;
+        private int _packetLengthCount;
+        private int _packetDataBlockIndex;
         private int _packetDataOffset;
 
         private ReadState _state;
@@ -86,22 +89,21 @@ namespace MinecraftProtocol.IO
             }
             _dataBlock[_dataBlockIndex++] = data;
         }
-
+        
         private void TransferBuffer()
         {
             if (_bufferBlockIndex + 1 > _bufferBlock.Length)
             {
-                byte[][] newGCHandleBlock = _usePool ? _bufferBlockPool.Rent(_dataBlock.Length * 2) : new byte[_dataBlock.Length * 2][];
-                byte[][] oldGCHandleBlock = _bufferBlock;
-                oldGCHandleBlock.CopyTo(newGCHandleBlock.AsSpan());
-                _bufferBlock = newGCHandleBlock;
-                _bufferBlockPool.Return(oldGCHandleBlock, true);
+                byte[][] newBufferBlock = _usePool ? _bufferBlockPool.Rent(_dataBlock.Length * 2) : new byte[_dataBlock.Length * 2][];
+                byte[][] oldBufferBlock = _bufferBlock;
+                oldBufferBlock.CopyTo(newBufferBlock.AsSpan());
+                _bufferBlock = newBufferBlock;
+                _bufferBlockPool.Return(oldBufferBlock, true);
             }
 
             _bufferBlock[_bufferBlockIndex++] = _buffer;
             _buffer = null;
         }
-
 
         protected override void ReceiveCompleted(object sender, SocketAsyncEventArgs e)
         {
@@ -112,64 +114,85 @@ namespace MinecraftProtocol.IO
 
             while (!_disposed && !_internalToken.IsCancellationRequested)
             {
+   
                 //读取Packet的长度
                 if (_state == ReadState.PacketLength)
                 {
-                    if (_packetLengthOffset == 0)
-                        _packetLength = 0;
-
-                    for (; _packetLengthOffset < 5;)
+                    for (; _packetLengthCount < 5;)
                     {
                         //如果当前buffer不足以读取一个完整的varint就等待缓存区刷新后继续向_readLength写入
                         if (_disposed)
                             return;
-                        else if (_bufferOffset + 1 > bytesTransferred)
+
+                        byte b = _buffer[_bufferOffset++];
+                        _packetLength |= (b & 0b0111_1111) << _packetLengthCount++ * 7;
+                        _packetLengthOffset++;
+                        if ((b & 0b1000_0000) == 0) //varint结束符
+                            _state = ReadState.PacketData; //Packet长度读取完成，开始读取数据部分
+
+                        if (_bufferOffset >= bytesTransferred)
                         {
-                            if(_packetLengthOffset > 0)
+                            if (_packetLengthOffset > 0)
                             {
-                                AddData(new Memory<byte>(_buffer, _packetLengthOffset - _packetLengthOffset, _packetLengthOffset));
+                                AddData(new Memory<byte>(_buffer, _bufferOffset - _packetLengthOffset, _packetLengthOffset));
+                                
                                 TransferBuffer();
+                                _packetLengthOffset = 0;
+                                _packetDataBlockIndex = _dataBlockIndex;
                             }
                             ReceiveNextBuffer(e);
                             return;
                         }
 
-                        byte b = _buffer[_bufferOffset++];
-                        _packetLength |= (b & 0b0111_1111) << _packetLengthOffset++ * 7;
-                        if ((b & 0b1000_0000) == 0) //varint结束符
+                        if (_state == ReadState.PacketData)
                         {
-                            _state = ReadState.PacketData; //Packet长度读取完成，开始读取数据部分
+                            _packetDataBlockIndex = _dataBlockIndex;
                             break;
                         }
+                            
                     }
-                    if (_packetLengthOffset > 5)
+                    if (_packetLengthCount > 5)
                         throw new OverflowException("varint too big");
                 }
+                if (_disposed)
+                    return;
 
-                if(!_disposed && bytesTransferred - _bufferOffset >= _packetLength - _packetDataOffset)
+                if (bytesTransferred - _bufferOffset >= _packetLength - _packetDataOffset)
                 {
-                    int start = _bufferOffset - _packetLengthOffset;
+                    int start = _packetDataOffset > 0 ? _bufferOffset : _bufferOffset - _packetLengthOffset;
+                    int length = _packetDataOffset > 0 ? _packetLength - _packetDataOffset : _packetLengthOffset + _packetLength;
                     if (start < 0)
-                        start = 0;
-                    if (_dataBlockIndex > 0)
-                        AddData(new Memory<byte>(_buffer, _bufferOffset, _packetLength - _packetDataOffset));
-                    else
-                        AddData(new Memory<byte>(_buffer, start, _packetLengthOffset + _packetLength - _packetDataOffset));
+                        throw new OverflowException();
+
+
+
+                    AddData(new Memory<byte>(_buffer, start, length));
                     _bufferOffset += _packetLength - _packetDataOffset;
                     _packetDataOffset = 0;
 
-                    if (_bufferOffset + 1 > bytesTransferred)
+                    if (_bufferOffset >= bytesTransferred)
+                    {
                         TransferBuffer();
-                    InvokeReceived();
+                        InvokeReceived();
+                        ReceiveNextBuffer(e);
+                        return;
+                    }
+                    else
+                    {
+                        InvokeReceived();
+                        continue;
+                    }
                 }
                 else
                 {
-                    if (_packetDataOffset == 0 && _dataBlockIndex == 0)
+                    if (_packetDataOffset == 0)
                     {
                         int start = _bufferOffset - _packetLengthOffset;
-                        if (_packetDataOffset == 0 && start < 0)
-                            start = 0;
-                        AddData(new Memory<byte>(_buffer, start, bytesTransferred - start));
+                        int length = bytesTransferred - start;
+                        if (start < 0)
+                            throw new OverflowException();
+
+                        AddData(new Memory<byte>(_buffer, start, length));
                     }
                     else
                     {
@@ -180,6 +203,7 @@ namespace MinecraftProtocol.IO
                     ReceiveNextBuffer(e);
                     return;
                 }
+
             }
         }
 
@@ -188,20 +212,19 @@ namespace MinecraftProtocol.IO
         /// </summary>
         protected virtual void InvokeReceived()
         {
-            int dataLength = 0;
+            int dataLength = 0;    
             for (int i = 0; i < _dataBlockIndex; i++)
             {
                 dataLength += _dataBlock[i].Length;
             }
 
-
             //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
-            if (dataLength >= _packetLengthOffset + _packetLength && _packetLength >= (CompressionThreshold > 0 ? 3 : 1))
+            if (dataLength >= _packetLengthCount + _packetLength && _packetLength >= (CompressionThreshold > 0 ? 3 : 1))
             {
                 try
                 {
                     PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
-                    prea.Setup(_dataBlock, _dataBlockIndex, _bufferBlock, _bufferBlockIndex, _packetLengthOffset, _packetLength, ProtocolVersion, CompressionThreshold, _usePool);
+                    prea.Setup(_dataBlock, _dataBlockIndex, _bufferBlock, _bufferBlockIndex, _packetDataBlockIndex, _packetLengthOffset, _packetLength, this);
 
                     EventUtils.InvokeCancelEvent(PacketReceived, this, prea);
                 }
@@ -211,10 +234,11 @@ namespace MinecraftProtocol.IO
                         throw;
                 }
             }
-                
-            _state = ReadState.PacketLength;
 
+            _state = ReadState.PacketLength;
             _packetLengthOffset = 0;
+            _packetLength = 0;
+            _packetLengthCount = 0;
             if (_usePool)
                 ResetBlock();
         }
