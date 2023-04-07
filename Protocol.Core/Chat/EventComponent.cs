@@ -11,9 +11,6 @@ namespace MinecraftProtocol.Chat
         [JsonPropertyName("value")]
         public List<ChatComponent> Value;
 
-        [JsonPropertyName("contents")]
-        public List<ChatComponent> Contents;
-
         public EventComponent() { }
         public EventComponent(EventAction action, List<ChatComponent> value)
         {

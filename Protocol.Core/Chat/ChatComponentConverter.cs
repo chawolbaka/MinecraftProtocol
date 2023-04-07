@@ -76,14 +76,6 @@ namespace MinecraftProtocol.Chat
                     else
                         WriteChatComponentObject(writer, chatComponent.HoverEvent.Value[0]);
                 }
-                if (chatComponent.HoverEvent.Contents != null)
-                {
-                    writer.WritePropertyName("contents");
-                    if (chatComponent.HoverEvent.Contents.Count > 1)
-                        WriteArrayObject(writer, chatComponent.HoverEvent.Contents, false);
-                    else
-                        WriteChatComponentObject(writer, chatComponent.HoverEvent.Contents[0]);
-                }
                 writer.WriteEndObject();
             }
 
@@ -217,10 +209,24 @@ namespace MinecraftProtocol.Chat
                     }
                     else if (reader.TokenType is JsonTokenType.StartObject && propertyName == "contents")
                     {
-                        eventComponent.Contents = new List<ChatComponent>
+                        int objectCount = 0, arrayCount = 0;
+                        while (reader.Read())
                         {
-                            ReadChatComponentObject(ref reader, new ChatComponent())
-                        };
+                            if (reader.TokenType == JsonTokenType.StartArray)
+                                arrayCount++;
+                            else if (reader.TokenType == JsonTokenType.EndArray)
+                                arrayCount--;
+                            else if (reader.TokenType is JsonTokenType.StartObject)
+                                objectCount++;
+                            else if (reader.TokenType is JsonTokenType.EndObject)
+                                objectCount--;
+                            if (objectCount < 0 && arrayCount <= 0)
+                                break;
+                        }
+                        //    eventComponent.Contents = new List<ChatComponent>
+                        //{
+                        //    ReadChatComponentObject(ref reader, new ChatComponent())
+                        //};
                         propertyName = null;
                     }
                     if (reader.TokenType is JsonTokenType.StartArray && propertyName == "value")
@@ -230,7 +236,20 @@ namespace MinecraftProtocol.Chat
                     }
                     else if (reader.TokenType is JsonTokenType.StartArray && propertyName == "contents")
                     {
-                        eventComponent.Contents = ReadChatComponentArray(ref reader);
+                        int objectCount = 0, arrayCount = 0;
+                        while (reader.Read())
+                        {
+                            if (reader.TokenType == JsonTokenType.StartArray)
+                                arrayCount++;
+                            else if (reader.TokenType == JsonTokenType.EndArray)
+                                arrayCount--;
+                            else if (reader.TokenType is JsonTokenType.StartObject)
+                                objectCount++;
+                            else if (reader.TokenType is JsonTokenType.EndObject)
+                                objectCount--;
+                            if (objectCount <= 0 && arrayCount < 0)
+                                break;
+                        }
                         propertyName = null;
                     }
                     else if (reader.TokenType is JsonTokenType.String)
