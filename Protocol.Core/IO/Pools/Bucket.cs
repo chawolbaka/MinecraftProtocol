@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace MinecraftProtocol.IO.Pools
 {
-    internal sealed class Bucket<T>
+    public sealed class Bucket<T>
     {
         internal readonly int _bufferLength;
         private readonly T[]?[] _buffers;
@@ -13,7 +13,7 @@ namespace MinecraftProtocol.IO.Pools
         private SpinLock _lock; // do not make this readonly; it's a mutable struct
         private int _index;
 
-        internal Bucket(int bufferLength, int numberOfBuffers, int poolId, bool preAlloc)
+        public Bucket(int bufferLength, int numberOfBuffers, int poolId, bool preAlloc)
         {
             _lock = new SpinLock(Debugger.IsAttached); // only enable thread tracking if debugger is attached; it adds non-trivial overheads to Enter/Exit
             _buffers = new T[numberOfBuffers][];
@@ -30,7 +30,7 @@ namespace MinecraftProtocol.IO.Pools
 
         internal int Id => GetHashCode();
 
-        internal T[]? Rent()
+        public T[]? Rent()
         {
             T[]?[] buffers = _buffers;
             T[]? buffer = null;
@@ -67,7 +67,7 @@ namespace MinecraftProtocol.IO.Pools
             return buffer;
         }
 
-        internal void Return(T[] array)
+        public void Return(T[] array)
         {
             // Check to see if the buffer is the correct size for this bucket
             if (array.Length != _bufferLength)
@@ -87,6 +87,10 @@ namespace MinecraftProtocol.IO.Pools
                 _lock.Enter(ref lockTaken);
 
                 returned = _index != 0;
+#if DEBUG
+                //在调试时清空数组可以看的更清晰，不至于与之前的数据混淆，但非调试环境下没必要清空数组。
+                Array.Clear(array);
+#endif
                 if (returned)
                 {
                     _buffers[--_index] = array;
