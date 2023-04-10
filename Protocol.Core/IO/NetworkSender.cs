@@ -40,6 +40,8 @@ namespace MinecraftProtocol.IO
                 if(_useBlockingQueue)
                 {
                     sea = _sendBlockingQueue.Take();
+                    if (sea == null)
+                        continue;
                 }
                 else
                 {
@@ -127,6 +129,8 @@ namespace MinecraftProtocol.IO
             {
                 Socket = socket;
                 Data = data;
+                Disposable = null;
+                Callback = null;
                 return this;
             }
             public SendEventArgs Setup(Socket socket, Memory<byte> data, IDisposable disposable)
@@ -134,12 +138,14 @@ namespace MinecraftProtocol.IO
                 Socket = socket;
                 Data = data;
                 Disposable = disposable;
+                Callback = null; 
                 return this;
             }
             public SendEventArgs Setup(Socket socket, Memory<byte> data, Action callback)
             {
                 Socket = socket;
                 Data = data;
+                Disposable = null;
                 Callback = callback;
                 return this;
             }
