@@ -31,8 +31,7 @@ namespace MinecraftProtocol.Packets.Client
 
         protected override void Read(ref CompatibleByteReader reader)
         {
-            ReadOnlySpan<byte> buffer = reader.ReadAll();
-            _data = buffer.ToArray();
+            ReadOnlySpan<byte> buffer = reader.AsSpan();
             _channel = buffer.AsString(out buffer);
 
             if (ProtocolVersion <= ProtocolVersions.V14w31a && _isForge)
@@ -41,6 +40,7 @@ namespace MinecraftProtocol.Packets.Client
                 _messageData = buffer[2..].ToArray();
             else
                 _messageData = buffer.ToArray();
+            reader.SetToEnd();
         }
 
         protected override void Write()

@@ -78,7 +78,7 @@ namespace MinecraftProtocol.Packets
         public virtual CompatibleByteReader AsCompatibleByteReader()
         {
             ThrowIfDisposed();
-            ReadOnlySpan<byte> span = _data.AsSpan(0, _size);
+            ReadOnlySpan<byte> span = AsSpan();
             return new CompatibleByteReader(ref span, ProtocolVersion);
         }
 
@@ -86,32 +86,18 @@ namespace MinecraftProtocol.Packets
 
         public static new Task<CompatiblePacket> DepackAsync(ReadOnlyMemory<byte> data) => throw new NotSupportedException();
 
-
         public static new CompatiblePacket Depack(ReadOnlySpan<byte> data, int protocolVersion) => Depack(data, protocolVersion, -1);
         public static CompatiblePacket Depack(ReadOnlySpan<byte> data, int protocolVersion, int compressionThreshold)
         {
-            if (compressionThreshold > 0)
-            {
-                int size = VarInt.Read(data, out int SizeOffset);
-                data = data.Slice(SizeOffset);
-                if (size != 0) //如果是0的话就代表这个数据包没有被压缩
-                    data = ZlibUtils.Decompress(data.ToArray(), 0, size);
-            }
-            return new CompatiblePacket(VarInt.Read(data, out int IdOffset), data.Slice(IdOffset), protocolVersion, compressionThreshold);
+            Packet packet = Packet.Depack(data);
+            return packet.AsCompatible(protocolVersion, compressionThreshold);
         }
-
 
         public static new Task<CompatiblePacket> DepackAsync(ReadOnlyMemory<byte> data, int protocolVersion) => DepackAsync(data, protocolVersion, -1);
         public static async Task<CompatiblePacket> DepackAsync(ReadOnlyMemory<byte> data, int protocolVersion, int compressionThreshold)
         {
-            if (compressionThreshold > 0)
-            {
-                int size = VarInt.Read(data.Span, out int SizeOffset);
-                data = data.Slice(SizeOffset);
-                if (size != 0) //如果是0的话就代表这个数据包没有被压缩
-                    data = await ZlibUtils.DecompressAsync(data, size);
-            }
-            return new CompatiblePacket(VarInt.Read(data.Span, out int IdOffset), data.Span.Slice(IdOffset), protocolVersion, compressionThreshold);
+            Packet packet = await Packet.DepackAsync(data);
+            return packet.AsCompatible(protocolVersion, compressionThreshold);
         }
 
         protected override void ThrowIfDisposed()

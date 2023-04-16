@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Ionic.Zlib;
+using System.IO.Compression;
+using System.Drawing;
+using MinecraftProtocol.IO.Extensions;
 
 namespace MinecraftProtocol.Compression
 {
@@ -15,83 +17,94 @@ namespace MinecraftProtocol.Compression
     /// </summary>
     public static class ZlibUtils
     {
-        /// <summary>
-        /// Compress a byte array into another bytes array using Zlib compression
-        /// </summary>
-        /// <param name="to_compress">Data to compress</param>
-        /// <returns>Compressed data as a byte array</returns>
-        public static byte[] Compress(byte[] to_compress, int offset, int length)
+        public static uint Adler32(ReadOnlySpan<byte> data)
         {
-            byte[] data;
+            const uint MOD_ADLER = 65521;
+            uint a = 1, b = 0;
+
+            for (int i = 0; i < data.Length; i++)
+            {
+                a = (a + data[i]) % MOD_ADLER;
+                b = (b + a) % MOD_ADLER;
+            }
+
+            return (b << 16) | a;
+        }
+        public static uint Adler32(ReadOnlyMemory<byte> data)
+        {
+            return Adler32(data.Span);
+        }
+
+        public static byte[] Compress(ReadOnlySpan<byte> to_compress)
+        {
             using (MemoryStream memstream = new MemoryStream())
             {
-                using (ZlibStream stream = new ZlibStream(memstream, CompressionMode.Compress))
+                memstream.WriteByte(0x78);
+                memstream.WriteByte(0x9C);
+                using (DeflateStream stream = new DeflateStream(memstream, CompressionMode.Compress, true))
                 {
-                    stream.Write(to_compress, offset, length);
+                    stream.Write(to_compress);
                 }
-                data = memstream.ToArray();
+                uint adler32 = Adler32(to_compress);
+                memstream.WriteByte((byte)(adler32 >> 24));
+                memstream.WriteByte((byte)(adler32 >> 16));
+                memstream.WriteByte((byte)(adler32 >> 8));
+                memstream.WriteByte((byte)adler32);
+                return memstream.ToArray();
             }
-            return data;
         }
 
-        /// <summary>
-        /// Decompress a byte array into another byte array of the specified size
-        /// </summary>
-        /// <param name="to_decompress">Data to decompress</param>
-        /// <param name="size_uncompressed">Size of the data once decompressed</param>
-        /// <returns>Decompressed data as a byte array</returns>
-        public static byte[] Decompress(byte[] to_decompress, int offset, int size_uncompressed)
+        public static int Decompress(ReadOnlySpan<byte> input, Span<byte> output)
         {
-            using (MemoryStream ms = new MemoryStream(to_decompress, false))
+            using MemoryStream ms = new MemoryStream(input.Slice(2, input.Length - 6).ToArray());
+            using DeflateStream stream = new DeflateStream(ms, CompressionMode.Decompress);
+            int read = stream.Read(output);
+            while (read < output.Length)
             {
-                using (ZlibStream stream = new ZlibStream(ms, CompressionMode.Decompress))
+                read += stream.Read(output.Slice(read));
+            }
+
+#if DEBUG
+            if (Adler32(output) != (uint)input.Slice(input.Length - 4).AsInt())
+                throw new InvalidDataException("adler32 verify failed");
+#endif       
+            return read;
+        }
+
+        public static async Task<byte[]> CompressAsync(ReadOnlyMemory<byte> to_compress, CancellationToken cancellationToken = default)
+        {
+            using (MemoryStream memstream = new MemoryStream())
+            {
+                memstream.WriteByte(0x78);
+                memstream.WriteByte(0x9C);
+                using (DeflateStream stream = new DeflateStream(memstream, CompressionMode.Compress, true))
                 {
-                    byte[] packetData_decompressed = new byte[size_uncompressed];
-                    stream.Read(packetData_decompressed, offset, size_uncompressed);
-                    return packetData_decompressed;
+                    await stream.WriteAsync(to_compress, cancellationToken);
                 }
+                uint adler32 = Adler32(to_compress);
+                memstream.WriteByte((byte)(adler32 >> 24));
+                memstream.WriteByte((byte)(adler32 >> 16));
+                memstream.WriteByte((byte)(adler32 >> 8));
+                memstream.WriteByte((byte)adler32);
+                return memstream.ToArray();
             }
         }
 
-        /// <summary>
-        /// Decompress a byte array into another byte array of a potentially unlimited size (!)
-        /// </summary>
-        /// <param name="to_decompress">Data to decompress</param>
-        /// <returns>Decompressed data as byte array</returns>
-        public static byte[] Decompress(byte[] to_decompress)
+        public static async ValueTask<int> DecompressAsync(ReadOnlyMemory<byte> input, Memory<byte> output, CancellationToken cancellationToken = default)
         {
-            byte[] buffer = new byte[16 * 1024];
-            int read;
-            
-            using MemoryStream ms = new MemoryStream(to_decompress, false);
-            using ZlibStream stream = new ZlibStream(ms, CompressionMode.Decompress);   
-            using MemoryStream decompressedBuffer = new MemoryStream();
-            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+            using MemoryStream ms = new MemoryStream(input.Slice(2).ToArray());
+            using DeflateStream stream = new DeflateStream(ms, CompressionMode.Decompress);
+            int read = await stream.ReadAsync(output, cancellationToken);
+            while (read < output.Length)
             {
-                decompressedBuffer.Write(buffer, 0, read);
+                read += await stream.ReadAsync(output.Slice(read), cancellationToken);
             }
-            return decompressedBuffer.ToArray();
 
-
-        }
-
-        public static async Task<byte[]> CompressAsync(Memory<byte> to_compress, CancellationToken cancellationToken = default)
-        {
-            byte[] data;
-            using MemoryStream ms = new MemoryStream();
-            using ZlibStream stream = new ZlibStream(ms, CompressionMode.Compress);
-            await stream.WriteAsync(to_compress, cancellationToken).ConfigureAwait(false);
-            data = ms.ToArray();
-            return data;
-        }
-
-        public static async Task<byte[]> DecompressAsync(ReadOnlyMemory<byte> to_decompress, int size_uncompressed)
-        {
-            byte[] packetData_decompressed = new byte[size_uncompressed];
-            using MemoryStream ms = new MemoryStream(to_decompress.Span.ToArray(), false);
-            using ZlibStream stream = new ZlibStream(ms, CompressionMode.Decompress);
-            await stream.ReadAsync(packetData_decompressed, 0, size_uncompressed).ConfigureAwait(false);
-            return packetData_decompressed;
+#if DEBUG
+            if (Adler32(output) != (uint)input.Span.Slice(input.Length - 4).AsInt())
+                throw new InvalidDataException("adler32 verify failed");
+#endif       
+            return read;
         }
     }
 }

@@ -25,7 +25,7 @@ namespace MinecraftProtocol.IO
                 if (index > _size)
                     throw new IndexOutOfRangeException("Index was outside the bounds of the data array.");
                 else
-                    return _data[index];
+                    return _data[_start + index];
             }
             set
             {
@@ -33,7 +33,7 @@ namespace MinecraftProtocol.IO
                 if (index > _size)
                     throw new IndexOutOfRangeException("Index was outside the bounds of the data array.");
                 _version++;
-                _data[index] = value;
+                _data[_start + index] = value;
             }
         }
 
@@ -55,7 +55,7 @@ namespace MinecraftProtocol.IO
                 byte[] newData = _dataPool.Rent(newSize);
                 if (_data != null)
                 {
-                    Array.Copy(_data, newData, _size);
+                    Array.Copy(_data, newData, _start + _size);
                     if (_returnToPool)
                         _dataPool.Return(_data);
                 }
@@ -63,8 +63,8 @@ namespace MinecraftProtocol.IO
                 _data = newData;
             }
         }
-        public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(0, _size); }
-        public virtual Memory<byte> AsMemory() { ThrowIfDisposed(); return _data.AsMemory(0, _size); }
+        public virtual Span<byte> AsSpan() { ThrowIfDisposed(); return _data.AsSpan(_start, _size); }
+        public virtual Memory<byte> AsMemory() { ThrowIfDisposed(); return _data.AsMemory(_start, _size); }
 
         //mc大部分都是小包所以使用这种形状的数组池可能更适合？
         internal static SawtoothArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
@@ -73,6 +73,7 @@ namespace MinecraftProtocol.IO
 
         internal bool _needDisable = true; //提供给对象池使用的选项
         internal protected byte[] _data;
+        internal protected int _start = 0;
         internal protected int _size = 0;
         protected int _version;
 
@@ -117,14 +118,14 @@ namespace MinecraftProtocol.IO
         {
             _version++;
             TryGrow(sizeof(sbyte));
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteUnsignedByte(byte value)
         {
             _version++;
             TryGrow(sizeof(byte));
-            _data[_size++] = value;
+            _data[_start+_size++] = value;
             return this;
         }
         public virtual ByteWriter WriteString(string value)
@@ -139,72 +140,72 @@ namespace MinecraftProtocol.IO
         {
             _version++;
             TryGrow(2);
-            _data[_size++] = (byte)(value >> 8);
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)(value >> 8);
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteUnsignedShort(ushort value)
         {
             _version++;
             TryGrow(2);
-            _data[_size++] = (byte)(value >> 8);
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)(value >> 8);
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteInt(int value)
         {
             _version++;
             TryGrow(4);
-            _data[_size++] = (byte)(value >> 24);
-            _data[_size++] = (byte)(value >> 16);
-            _data[_size++] = (byte)(value >> 8);
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)(value >> 24);
+            _data[_start+_size++] = (byte)(value >> 16);
+            _data[_start+_size++] = (byte)(value >> 8);
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteUnsignedInt(uint value)
         {
             _version++;
             TryGrow(4);
-            _data[_size++] = (byte)(value >> 24);
-            _data[_size++] = (byte)(value >> 16);
-            _data[_size++] = (byte)(value >> 8);
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)(value >> 24);
+            _data[_start+_size++] = (byte)(value >> 16);
+            _data[_start+_size++] = (byte)(value >> 8);
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteLong(long value)
         {
             _version++;
             TryGrow(8);
-            _data[_size++] = (byte)(value >> 54);
-            _data[_size++] = (byte)(value >> 48);
-            _data[_size++] = (byte)(value >> 40);
-            _data[_size++] = (byte)(value >> 32);
-            _data[_size++] = (byte)(value >> 24);
-            _data[_size++] = (byte)(value >> 16);
-            _data[_size++] = (byte)(value >> 8);
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)(value >> 54);
+            _data[_start+_size++] = (byte)(value >> 48);
+            _data[_start+_size++] = (byte)(value >> 40);
+            _data[_start+_size++] = (byte)(value >> 32);
+            _data[_start+_size++] = (byte)(value >> 24);
+            _data[_start+_size++] = (byte)(value >> 16);
+            _data[_start+_size++] = (byte)(value >> 8);
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteUnsignedLong(ulong value)
         {
             _version++;
             TryGrow(8);
-            _data[_size++] = (byte)(value >> 54);
-            _data[_size++] = (byte)(value >> 48);
-            _data[_size++] = (byte)(value >> 40);
-            _data[_size++] = (byte)(value >> 32);
-            _data[_size++] = (byte)(value >> 24);
-            _data[_size++] = (byte)(value >> 16);
-            _data[_size++] = (byte)(value >> 8);
-            _data[_size++] = (byte)value;
+            _data[_start+_size++] = (byte)(value >> 54);
+            _data[_start+_size++] = (byte)(value >> 48);
+            _data[_start+_size++] = (byte)(value >> 40);
+            _data[_start+_size++] = (byte)(value >> 32);
+            _data[_start+_size++] = (byte)(value >> 24);
+            _data[_start+_size++] = (byte)(value >> 16);
+            _data[_start+_size++] = (byte)(value >> 8);
+            _data[_start+_size++] = (byte)value;
             return this;
         }
         public virtual ByteWriter WriteFloat(float value)
         {
             _version++;
             TryGrow(sizeof(float));
-            BitConverter.GetBytes(value).CopyTo(_data, _size);
-            _data.AsSpan().Slice(_size, sizeof(float)).Reverse();
+            BitConverter.GetBytes(value).CopyTo(_data, _start + _size);
+            _data.AsSpan(_start + _size, sizeof(float)).Reverse();
             _size += sizeof(float);
             return this;
         }
@@ -212,8 +213,8 @@ namespace MinecraftProtocol.IO
         {
             _version++;
             TryGrow(sizeof(double));
-            BitConverter.GetBytes(value).CopyTo(_data, _size);
-            _data.AsSpan().Slice(_size, sizeof(double)).Reverse();
+            BitConverter.GetBytes(value).CopyTo(_data, _start + _size);
+            _data.AsSpan(_start + _size, sizeof(double)).Reverse();
             _size += sizeof(double);
             return this;
         }
@@ -268,7 +269,7 @@ namespace MinecraftProtocol.IO
 
             foreach (var collection in collections)
             {
-                collection.CopyTo(_data, _size);
+                collection.CopyTo(_data, _start + _size);
                 _size += collection.Count;
             }
             return this;
@@ -279,7 +280,7 @@ namespace MinecraftProtocol.IO
                 return this;
             _version++;
             TryGrow(value.Length);
-            Array.Copy(value, 0, _data, _size, value.Length);
+            Array.Copy(value, 0, _data, _start + _size, value.Length);
             _size += value.Length;
             return this;
         }
@@ -290,7 +291,7 @@ namespace MinecraftProtocol.IO
                 return this;
             _version++;
             TryGrow(value.Length);
-            value.CopyTo(_data.AsSpan(_size));
+            value.CopyTo(AsSpan());
             _size += value.Length;
             return this;
         }
@@ -396,9 +397,10 @@ namespace MinecraftProtocol.IO
         {
             if (_size > 0)
             {
-                if (_data != default && _returnToPool)
+                if (_data != null && _returnToPool)
                     _dataPool.Return(_data);
                 _version = 0;
+                _start = 0;
                 _size = 0;
                 _data = null;
             }
@@ -408,6 +410,7 @@ namespace MinecraftProtocol.IO
         {
             if (_size > 0)
             {
+                _start = 0;
                 _size = 0;
                 RerentData(DEFUALT_CAPACITY);
             }
@@ -416,7 +419,7 @@ namespace MinecraftProtocol.IO
         protected virtual void TryGrow(int writeLength)
         {
             ThrowIfDisposed();
-            if (writeLength + _size > Capacity)
+            if (writeLength + _start + _size > Capacity)
             {
                 Capacity += (int)(writeLength * 1.5);
             }
@@ -426,7 +429,7 @@ namespace MinecraftProtocol.IO
         {
             bool returnToPool = _returnToPool;
             byte[] old = _data;
-            _data = _dataPool.Rent(size);
+            _data = _dataPool.Rent(_start + size);
             _returnToPool = true;
             if (returnToPool)
                 _dataPool.Return(old);
@@ -443,7 +446,7 @@ namespace MinecraftProtocol.IO
             {
                 if (_version != version)
                     throw new InvalidOperationException("data was modified, enumeration operation may not execute");
-                yield return _data[i];
+                yield return _data[_start + i];
             }
         }
 
@@ -458,7 +461,7 @@ namespace MinecraftProtocol.IO
             {
                 if (_version != version)
                     throw new InvalidOperationException("data was modified, enumeration operation may not execute");
-                yield return _data[i];
+                yield return _data[_start + i];
             }
         }
 

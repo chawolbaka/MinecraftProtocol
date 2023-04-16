@@ -84,12 +84,12 @@ namespace MinecraftProtocol.IO
                         count += _dataBlock[blockIndex].Length;
                     }
 
-
-                    Span<byte> decompressed = ZlibUtils.Decompress(buffer, 0, size);
-                    _packet.Id = VarInt.Read(decompressed, out IdOffset);
-                    _packet.Capacity = decompressed.Length - IdOffset;
-                    _packet.WriteBytes(decompressed.Slice(IdOffset));
-                    Packet = _packet; //提前赋值到全局变量是线程不安全的，因为有可能正在写入的时候就被回收了
+                    _packet.Capacity = size;
+                    ZlibUtils.Decompress(buffer, _packet._data.AsSpan(0, size));
+                    _packet.Id = VarInt.Read(_packet._data, out IdOffset);
+                    _packet._start = IdOffset;
+                    _packet._size = size - IdOffset;
+                    Packet = _packet;
                     return this;
                 }
             }
@@ -142,16 +142,16 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    _CPPool.Return(Packet); Packet = null;
-                    for (int i = 0; i < _bufferBlockLength; i++)
-                    {
-                        NetworkListener._bufferPool.Return(_bufferBlock[i]);
-                    }
-                    //虽然一般buffer会从上面返回数组池，但有极少部分不会回去，因此为了防止那极少数的buffer被block长期占着导致无法被GC回收，所以这边需要每次都清空block
-                    PacketListener._dataBlockPool.Return(_dataBlock, true);
-                    PacketListener._bufferBlockPool.Return(_bufferBlock, true);
-                    _bufferBlock = null; _dataBlock = null; RawData = null;
-                    PacketListener.PREAPool.Return(this); //这个必须在最后，只有当所有资源回收完成才能送回池内，否则在极端情况下会存在线程安全问题
+                    //_CPPool.Return(Packet); Packet = null;
+                    //for (int i = 0; i < _bufferBlockLength; i++)
+                    //{
+                    //    NetworkListener._bufferPool.Return(_bufferBlock[i]);
+                    //}
+                    ////虽然一般buffer会从上面返回数组池，但有极少部分不会回去，因此为了防止那极少数的buffer被block长期占着导致无法被GC回收，所以这边需要每次都清空block
+                    //PacketListener._dataBlockPool.Return(_dataBlock, true);
+                    //PacketListener._bufferBlockPool.Return(_bufferBlock, true);
+                    //_bufferBlock = null; _dataBlock = null; RawData = null;
+                    //PacketListener.PREAPool.Return(this); //这个必须在最后，只有当所有资源回收完成才能送回池内，否则在极端情况下会存在线程安全问题
                 }
             }
 #if !DEBUG //防止因为非数组池的数组返回池内导致的异常
