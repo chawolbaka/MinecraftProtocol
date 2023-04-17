@@ -84,8 +84,9 @@ namespace MinecraftProtocol.IO
         }
 
         //这边的ref是因为我比较病态，想减少几次值类型的复制，但仅限内部使用，外部容易引起误会
-        internal ByteWriter(ref int size, ref byte[] data)
+        internal ByteWriter(ref int start, ref int size, ref byte[] data)
         {
+            _start = start;
             _size = size;
             _data = data;
             _returnToPool = false;
@@ -97,8 +98,9 @@ namespace MinecraftProtocol.IO
         /// </summary>
         /// <param name="size">data的有效范围</param>
         /// <param name="data">该参数会直接赋值给ByteWriter内部的data，不产生复制。</param>
-        public ByteWriter(int size, ref byte[] data)
+        public ByteWriter(int start, int size, ref byte[] data)
         {
+            _start = start;
             _size = size;
             _data = data;
             _returnToPool = false;
@@ -399,21 +401,20 @@ namespace MinecraftProtocol.IO
             {
                 if (_data != null && _returnToPool)
                     _dataPool.Return(_data);
-                _version = 0;
-                _start = 0;
-                _size = 0;
                 _data = null;
             }
+            _version = 0;
+            _start = 0;
+            _size = 0;
         }
 
         public virtual void Clear()
         {
             if (_size > 0)
-            {
-                _start = 0;
-                _size = 0;
                 RerentData(DEFUALT_CAPACITY);
-            }
+            
+            _start = 0;
+            _size = 0;
         }
 
         protected virtual void TryGrow(int writeLength)
@@ -471,7 +472,6 @@ namespace MinecraftProtocol.IO
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         private void Dispose(bool disposing)
@@ -490,6 +490,8 @@ namespace MinecraftProtocol.IO
                 finally
                 {
                     _data = null;
+                    if(disposing)
+                        GC.SuppressFinalize(this);
                 }
             }
         }

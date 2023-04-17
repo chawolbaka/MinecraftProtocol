@@ -121,9 +121,9 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
             Read(ref reader);
         }}";
 
-            cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet{ReadFormalParameters}) : base(packet.Id, ref packet._size, ref packet._data, packet.ProtocolVersion)").AppendLine(CompatibleRefReadCotrBody);
-            cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet{ReadFormalParameters}, {ICompatible} compatible) : base(packet.Id, ref packet._size, ref packet._data, compatible.ProtocolVersion)").AppendLine(RefReadCotrBody);
-            cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet{ReadFormalParameters}, int protocolVersion) : base(packet.Id, ref packet._size, ref packet._data, protocolVersion)").AppendLine(RefReadCotrBody);
+            cotr.AppendLine($"        public {classSymbol.Name}(ref {CompatiblePacket} packet{ReadFormalParameters}) : base(packet.Id, ref packet._start, ref packet._size, ref packet._data, packet.ProtocolVersion)").AppendLine(CompatibleRefReadCotrBody);
+            cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet{ReadFormalParameters}, {ICompatible} compatible) : base(packet.Id, ref packet._start, ref packet._size, ref packet._data, compatible.ProtocolVersion)").AppendLine(RefReadCotrBody);
+            cotr.AppendLine($"        public {classSymbol.Name}(ref {Packet} packet{ReadFormalParameters}, int protocolVersion) : base(packet.Id, ref packet._start, ref packet._size, ref packet._data, protocolVersion)").AppendLine(RefReadCotrBody);
 
             cotr.AppendLine($@"        public {classSymbol.Name}(CompatibleByteReader reader{ReadFormalParameters}) : base(ref reader)").AppendLine(ReadCotrBody);
             cotr.AppendLine($@"        public {classSymbol.Name}(ref CompatibleByteReader reader{ReadFormalParameters}) : base(ref reader)").AppendLine(ReadCotrBody);

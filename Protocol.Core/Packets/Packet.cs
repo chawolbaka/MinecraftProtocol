@@ -18,11 +18,11 @@ namespace MinecraftProtocol.Packets
 
         public Packet() : this(-1) { }
         public Packet(int packetId) : this(packetId, DEFUALT_CAPACITY) { }
-        internal Packet(int packetId, ref int size, ref byte[] packetData) : base(ref size, ref packetData)
+        internal Packet(int packetId, ref int start, ref int size, ref byte[] packetData) : base(ref start, ref size, ref packetData)
         {
             Id = packetId;
         }
-        public Packet(int packetId, int size, ref byte[] packetData) : base(ref size, ref packetData)
+        public Packet(int packetId, int start, int size, ref byte[] packetData) : base(ref start, ref size, ref packetData)
         {
             Id = packetId;
         }

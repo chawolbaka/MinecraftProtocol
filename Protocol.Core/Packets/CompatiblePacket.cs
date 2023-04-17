@@ -20,14 +20,14 @@ namespace MinecraftProtocol.Packets
         private Packet _packet;
 
 
-        internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.Id, ref packet._size, ref packet._data)
+        internal CompatiblePacket(Packet packet, int protocolVersion, int compressionThreshold) : base(packet.Id, ref packet._start, ref packet._size, ref packet._data)
         {
             _packet = packet;
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;
         }
-        public CompatiblePacket(int packetId, int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : this(packetId, ref size, ref packetData, protocolVersion, compressionThreshold) { }
-        internal CompatiblePacket(int packetId, ref int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref size, ref packetData)
+        public CompatiblePacket(int packetId, int start, int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : this(packetId, ref start, ref size, ref packetData, protocolVersion, compressionThreshold) { }
+        internal CompatiblePacket(int packetId, ref int start, ref int size, ref byte[] packetData, int protocolVersion, int compressionThreshold) : base(packetId, ref start, ref size, ref packetData)
         {
             _protocolVersion = protocolVersion;
             _compressionThreshold = compressionThreshold;

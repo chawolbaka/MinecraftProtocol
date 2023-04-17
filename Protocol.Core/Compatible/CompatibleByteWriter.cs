@@ -21,11 +21,11 @@ namespace MinecraftProtocol.Compatible
         {
             _protocolVersion = protocolVersion;
         }
-        public CompatibleByteWriter(int size, ref byte[] data, int protocolVersion) : base(size, ref data)
+        public CompatibleByteWriter(int start, int size, ref byte[] data, int protocolVersion) : base(start, size, ref data)
         {
             _protocolVersion = protocolVersion;
         }
-        internal CompatibleByteWriter(ref int size, ref byte[] data, int protocolVersion) : base(ref size, ref data)
+        internal CompatibleByteWriter(ref int start, ref int size, ref byte[] data, int protocolVersion) : base(ref start, ref size, ref data)
         {
             _protocolVersion = protocolVersion;
         }

@@ -29,7 +29,7 @@ namespace MinecraftProtocol.IO.Pools
             else
             {
                 byte[] empty = null;
-                CompatiblePacket packet = new CompatiblePacket(-1, 0, ref empty, -1, -1);
+                CompatiblePacket packet = new CompatiblePacket(-1, 0, 0, ref empty, -1, -1);
                 packet._needDisable = false;
                 return packet;
             }
@@ -39,7 +39,7 @@ namespace MinecraftProtocol.IO.Pools
         {
             if (packet == null)
                 return;
-            
+
             if (AutoClear)
                 packet.ClearToNullable();
             _packets.Add(packet);
