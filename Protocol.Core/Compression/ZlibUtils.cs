@@ -30,6 +30,7 @@ namespace MinecraftProtocol.Compression
 
             return (b << 16) | a;
         }
+
         public static uint Adler32(ReadOnlyMemory<byte> data)
         {
             return Adler32(data.Span);
@@ -57,7 +58,7 @@ namespace MinecraftProtocol.Compression
         public static int Decompress(ReadOnlySpan<byte> input, Span<byte> output)
         {
             using MemoryStream ms = new MemoryStream(input.Slice(2, input.Length - 6).ToArray());
-            using DeflateStream stream = new DeflateStream(ms, CompressionMode.Decompress);
+            using DeflateStream stream = new DeflateStream(ms, CompressionMode.Decompress, true);
             int read = stream.Read(output);
             while (read < output.Length)
             {
@@ -93,7 +94,7 @@ namespace MinecraftProtocol.Compression
         public static async ValueTask<int> DecompressAsync(ReadOnlyMemory<byte> input, Memory<byte> output, CancellationToken cancellationToken = default)
         {
             using MemoryStream ms = new MemoryStream(input.Slice(2).ToArray());
-            using DeflateStream stream = new DeflateStream(ms, CompressionMode.Decompress);
+            using DeflateStream stream = new DeflateStream(ms, CompressionMode.Decompress, true);
             int read = await stream.ReadAsync(output, cancellationToken);
             while (read < output.Length)
             {
