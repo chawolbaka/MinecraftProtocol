@@ -9,7 +9,6 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MinecraftProtocol.IO
@@ -43,7 +42,7 @@ namespace MinecraftProtocol.IO
             set
             {
                 ThrowIfDisposed();
-                int newSize = value;
+                int newSize = value + _start;
                 if (newSize < _size)
                     throw new ArgumentOutOfRangeException(nameof(Capacity), "Capacity was less than the current size.");
                 if (newSize == _size)
@@ -293,7 +292,7 @@ namespace MinecraftProtocol.IO
                 return this;
             _version++;
             TryGrow(value.Length);
-            value.CopyTo(AsSpan());
+            value.CopyTo(_data.AsSpan(_start + _size));
             _size += value.Length;
             return this;
         }
