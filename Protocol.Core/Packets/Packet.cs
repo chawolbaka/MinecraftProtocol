@@ -4,6 +4,7 @@ using MinecraftProtocol.IO;
 using MinecraftProtocol.Compression;
 using System.Text;
 
+
 namespace MinecraftProtocol.Packets
 {
     public class Packet : ByteWriter, IPacket, IEquatable<Packet>
@@ -12,7 +13,7 @@ namespace MinecraftProtocol.Packets
 
         public virtual bool IsReadOnly => false;
 
-        public virtual int Id { get => _id; set { _id = value; _version++; } }
+        public virtual int Id { get => _id; set { _version++; _id = value; } }
 
         private int _id;
 
@@ -55,6 +56,9 @@ namespace MinecraftProtocol.Packets
                 _data = rcp._cpacket._data;
             else
                 _data = compatiblePacket.ToArray();
+            _returnToPool = false;
+            
+            _size = compatiblePacket.Count;
 
         }
         public Packet(IPacket packet) : this(packet.Id, packet.ToArray()) { }
@@ -73,9 +77,10 @@ namespace MinecraftProtocol.Packets
         {
             if (IsEmpty)
                 throw new PacketException("Packet is empty");
+
             ThrowIfDisposed();
 
-            byte[] PackedData;
+            byte[] packedData;
             int uncompressLength = VarInt.GetLength(Id) + _size;
             int offset;
             if (compressionThreshold > 0 && _size >= compressionThreshold)
@@ -97,36 +102,36 @@ namespace MinecraftProtocol.Packets
                 byte[] compressed = ZlibUtils.Compress(uncompressed.AsSpan(0, uncompressLength));
                 _dataPool.Return(uncompressed);
 
-                PackedData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressLength) + compressed.Length) + VarInt.GetLength(uncompressLength) + compressed.Length];
+                packedData = new byte[VarInt.GetLength(VarInt.GetLength(uncompressLength) + compressed.Length) + VarInt.GetLength(uncompressLength) + compressed.Length];
                 //写入第一个VarInt(解压长度+压缩后的长度）
-                offset = VarInt.WriteTo(VarInt.GetLength(uncompressLength) + compressed.Length, PackedData);
+                offset = VarInt.WriteTo(VarInt.GetLength(uncompressLength) + compressed.Length, packedData);
                 //写入第二个VarInt(未压缩长度)
-                offset += VarInt.WriteTo(uncompressLength, PackedData.AsSpan().Slice(offset));
+                offset += VarInt.WriteTo(uncompressLength, packedData.AsSpan(offset));
                 //写入被压缩的数据
-                compressed.CopyTo(PackedData, offset);
+                compressed.CopyTo(packedData, offset);
                 
-                return PackedData;
+                return packedData;
             }
             else
             {
                 if (compressionThreshold > 0)
                 {
                     //写入数据包长度和解压后的长度(0=未压缩)
-                    PackedData = new byte[VarInt.GetLength(uncompressLength + 1) + uncompressLength + 1];
-                    offset = VarInt.WriteTo(uncompressLength + 1, PackedData);
-                    PackedData[offset++] = 0;
+                    packedData = new byte[VarInt.GetLength(uncompressLength + 1) + uncompressLength + 1];
+                    offset = VarInt.WriteTo(uncompressLength + 1, packedData);
+                    packedData[offset++] = 0;
                 }
                 else
                 {
                     //写入数据包长度
-                    PackedData = new byte[VarInt.GetLength(uncompressLength) + uncompressLength];
-                    offset = VarInt.WriteTo(uncompressLength, PackedData);
+                    packedData = new byte[VarInt.GetLength(uncompressLength) + uncompressLength];
+                    offset = VarInt.WriteTo(uncompressLength, packedData);
                 }
                 //写入ID和Data
-                offset += VarInt.WriteTo(Id, PackedData.AsSpan().Slice(offset));
+                offset += VarInt.WriteTo(Id, packedData.AsSpan(offset));
                 if (_size > 0)
-                    Array.Copy(_data, _start, PackedData, offset, PackedData.Length - offset);
-                return PackedData;
+                    Array.Copy(_data, _start, packedData, offset, packedData.Length - offset);
+                return packedData;
             }
         }
         public virtual byte[] Pack() => Pack(-1);
@@ -188,37 +193,16 @@ namespace MinecraftProtocol.Packets
 
         public virtual ByteReader AsByteReader()
         {
-            ThrowIfDisposed();
-            ReadOnlySpan<byte> span = _data.AsSpan(0, _start + _size);
+            ReadOnlySpan<byte> span = AsSpan();
             return new ByteReader(ref span);
         }
 
         public virtual Packet Clone() => ThrowIfDisposed(new Packet(Id, AsSpan()));
+
         object ICloneable.Clone() => ThrowIfDisposed(Clone());
 
-        public override string ToString()
-        {
-            ThrowIfDisposed();
-            StringBuilder stringBuilder = new StringBuilder(Count * 3);
-            byte[] temp = _data; 
-            stringBuilder.Append($"{_id:X2}: ");
-            for (int i = 0; i < _size; i++)
-            {
-                stringBuilder.Append($"{temp[_start + i]:X2} ");
-            }
-            stringBuilder.Append($"({_size})");
-            return stringBuilder.ToString();
-        }
-
-        public override bool Equals(object obj)
-        {
-            ThrowIfDisposed();
-            if (obj is Packet packet)
-                return Equals(packet);
-            else
-                return false;
-        }
-
+        public override bool Equals(object obj) => ThrowIfDisposed(Equals(obj as Packet));
+        
         public virtual bool Equals(Packet packet)
         {
             ThrowIfDisposed();
@@ -230,6 +214,20 @@ namespace MinecraftProtocol.Packets
                     return false;
             }
             return true;
+        }
+
+        public override string ToString()
+        {
+            ThrowIfDisposed();
+            StringBuilder stringBuilder = new StringBuilder(Count * 3);
+            byte[] temp = _data;
+            stringBuilder.Append($"{_id:X2}: ");
+            for (int i = 0; i < _size; i++)
+            {
+                stringBuilder.Append($"{temp[_start + i]:X2} ");
+            }
+            stringBuilder.Append($"({_size})");
+            return stringBuilder.ToString();
         }
 
         public override int GetHashCode()
@@ -250,10 +248,7 @@ namespace MinecraftProtocol.Packets
         public void CopyTo(byte[] array, int arrayIndex)
         {
             ThrowIfDisposed();
-            if (arrayIndex == 0)
-                AsSpan().CopyTo(array);
-            else
-                AsSpan().CopyTo(array.AsSpan(arrayIndex));
+            AsSpan().CopyTo(array.AsSpan(arrayIndex));
         }
 
         byte[] IPacket.ToArray()
