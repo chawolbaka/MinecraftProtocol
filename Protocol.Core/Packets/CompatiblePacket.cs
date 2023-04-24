@@ -77,7 +77,6 @@ namespace MinecraftProtocol.Packets
         
         public virtual CompatibleByteReader AsCompatibleByteReader()
         {
-            ThrowIfDisposed();
             ReadOnlySpan<byte> span = AsSpan();
             return new CompatibleByteReader(ref span, ProtocolVersion);
         }

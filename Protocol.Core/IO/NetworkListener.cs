@@ -14,7 +14,6 @@ namespace MinecraftProtocol.IO
 {
     public abstract partial class NetworkListener : INetworkListener
     {
-
         public event CommonEventHandler<object, ListenEventArgs> StartListen;
         public event CommonEventHandler<object, ListenEventArgs> StopListen;
         public event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
@@ -26,9 +25,8 @@ namespace MinecraftProtocol.IO
         protected Socket _socket;
         protected int _bufferOffset;
         protected byte[] _buffer;
-        internal protected bool _usePool;
+        internal bool _usePool;
 
-        protected bool _disposed = false;
         private int _syncCount;
 
         public NetworkListener(Socket socket) : this(socket, false) { }
@@ -50,7 +48,7 @@ namespace MinecraftProtocol.IO
             if (_bufferPool != null)
                 throw new InvalidOperationException("数组池已被设置");
 
-            _bufferPool = new Bucket<byte>(bufferLength, numberOfBuffers, Thread.CurrentThread.ManagedThreadId, true);
+            _bufferPool = new Bucket<byte>(bufferLength, numberOfBuffers, 134790, true);
         }
         public virtual void Start(CancellationToken token = default)
         {
@@ -82,7 +80,7 @@ namespace MinecraftProtocol.IO
         private void OnReceiveCompleted(object sender, SocketAsyncEventArgs e)
         {
             //检查连接状态
-            if (e.SocketError != SocketError.Success)
+            if (e.SocketError != SocketError.Success) 
             {
                 InvokeUnhandledException(new SocketException((int)e.SocketError));
                 _internalToken.Cancel();
@@ -104,7 +102,7 @@ namespace MinecraftProtocol.IO
         /// </summary>
         protected virtual void ReceiveNextBuffer(SocketAsyncEventArgs e)
         {
-            if (_disposed)
+            if (_internalToken.IsCancellationRequested)
                 return;
 
              

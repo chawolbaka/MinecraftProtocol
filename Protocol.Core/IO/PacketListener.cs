@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -30,7 +31,7 @@ namespace MinecraftProtocol.IO
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
         internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
         internal static ArrayPool<byte[]> _bufferBlockPool = new SawtoothArrayPool<byte[]>(1024 * 8, 512);
-        
+
         private Memory<byte>[] _dataBlock;
         private byte[][] _bufferBlock;
         private ushort _dataBlockIndex, _bufferBlockIndex;
@@ -68,51 +69,14 @@ namespace MinecraftProtocol.IO
         }
 
 
-        private void ResetBlock()
-        {
-            const int DEFUALT_SIZE = 16;
-            _dataBlockIndex = 0;
-            _bufferBlockIndex = 0;
-            _dataBlock = _usePool ? _dataBlockPool.Rent(DEFUALT_SIZE) : new Memory<byte>[DEFUALT_SIZE];
-            _bufferBlock = _usePool ? _bufferBlockPool.Rent(DEFUALT_SIZE) : new byte[DEFUALT_SIZE][];
-        }
-
-        private void AddData(Memory<byte> data)
-        {
-            if (_dataBlockIndex + 1 > _dataBlock.Length)
-            {
-                Memory<byte>[] newDataBlock = _usePool ? _dataBlockPool.Rent(_dataBlock.Length * 2) : new Memory<byte>[_dataBlock.Length * 2];
-                Memory<byte>[] oldDataBlock = _dataBlock;
-                oldDataBlock.CopyTo(newDataBlock.AsSpan());
-                _dataBlock = newDataBlock;
-                _dataBlockPool.Return(oldDataBlock, true);
-            }
-            _dataBlock[_dataBlockIndex++] = data;
-        }
-        
-        private void TransferBuffer()
-        {
-            if (_bufferBlockIndex + 1 > _bufferBlock.Length)
-            {
-                byte[][] newBufferBlock = _usePool ? _bufferBlockPool.Rent(_dataBlock.Length * 2) : new byte[_dataBlock.Length * 2][];
-                byte[][] oldBufferBlock = _bufferBlock;
-                oldBufferBlock.CopyTo(newBufferBlock.AsSpan());
-                _bufferBlock = newBufferBlock;
-                _bufferBlockPool.Return(oldBufferBlock, true);
-            }
-
-            _bufferBlock[_bufferBlockIndex++] = _buffer;
-            _buffer = null;
-        }
-
         protected override void ReceiveCompleted(object sender, SocketAsyncEventArgs e)
         {
             int bytesTransferred = e.BytesTransferred;
             //如果是加密数据就先将buffer解密再继续处理
-            if (!_disposed && !_internalToken.IsCancellationRequested && CryptoHandler.Enable)
+            if (!_internalToken.IsCancellationRequested && CryptoHandler.Enable)
                 CryptoHandler.Decrypt(_buffer.AsSpan(0, bytesTransferred));
 
-            while (!_disposed && !_internalToken.IsCancellationRequested)
+            while (!_internalToken.IsCancellationRequested)
             {
    
                 //读取Packet的长度
@@ -121,9 +85,9 @@ namespace MinecraftProtocol.IO
                     for (; _packetLengthCount < 5;)
                     {
                         //如果当前buffer不足以读取一个完整的varint就等待缓存区刷新后继续向_readLength写入
-                        if (_disposed)
+                        if (_internalToken.IsCancellationRequested)
                             return;
-
+                        
                         byte b = _buffer[_bufferOffset++];
                         _packetLength |= (b & 0b0111_1111) << _packetLengthCount++ * 7;
                         _packetLengthOffset++;
@@ -135,7 +99,6 @@ namespace MinecraftProtocol.IO
                             if (_packetLengthOffset > 0)
                             {
                                 AddData(new Memory<byte>(_buffer, _bufferOffset - _packetLengthOffset, _packetLengthOffset));
-                                
                                 TransferBuffer();
                                 _packetLengthOffset = 0;
                                 _packetDataBlockIndex = _dataBlockIndex;
@@ -154,7 +117,7 @@ namespace MinecraftProtocol.IO
                     if (_packetLengthCount > 5)
                         throw new OverflowException("varint too big");
                 }
-                if (_disposed)
+                if (_internalToken.IsCancellationRequested)
                     return;
 
                 if (bytesTransferred - _bufferOffset >= _packetLength - _packetDataOffset)
@@ -172,7 +135,7 @@ namespace MinecraftProtocol.IO
 
                     if (_bufferOffset >= bytesTransferred)
                     {
-                        TransferBuffer();
+                        TransferBuffer(); 
                         InvokeReceived();
                         ReceiveNextBuffer(e);
                         return;
@@ -218,6 +181,7 @@ namespace MinecraftProtocol.IO
                 dataLength += _dataBlock[i].Length;
             }
 
+
             //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
             if (dataLength >= _packetLengthCount + _packetLength && _packetLength >= (CompressionThreshold > 0 ? 3 : 1))
             {
@@ -225,6 +189,12 @@ namespace MinecraftProtocol.IO
                 {
                     PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
                     prea.Setup(_dataBlock, _dataBlockIndex, _bufferBlock, _bufferBlockIndex, _packetDataBlockIndex, _packetLengthOffset, _packetLength, this);
+                    _state = ReadState.PacketLength;
+                    _packetLengthOffset = 0;
+                    _packetLength = 0;
+                    _packetLengthCount = 0;
+                    if (_usePool)
+                        ResetBlock();
 
                     EventUtils.InvokeCancelEvent(PacketReceived, this, prea);
                 }
@@ -234,14 +204,42 @@ namespace MinecraftProtocol.IO
                         throw;
                 }
             }
-
-            _state = ReadState.PacketLength;
-            _packetLengthOffset = 0;
-            _packetLength = 0;
-            _packetLengthCount = 0;
-            if (_usePool)
-                ResetBlock();
         }
-    
+
+        private void ResetBlock()
+        {
+            const int DEFUALT_SIZE = 16;
+            _dataBlockIndex = 0;
+            _bufferBlockIndex = 0;
+            _dataBlock = _usePool ? _dataBlockPool.Rent(DEFUALT_SIZE) : new Memory<byte>[DEFUALT_SIZE];
+            _bufferBlock = _usePool ? _bufferBlockPool.Rent(DEFUALT_SIZE) : new byte[DEFUALT_SIZE][];
+        }
+
+        private void AddData(Memory<byte> data)
+        {
+            if (_dataBlockIndex + 1 > _dataBlock.Length)
+            {
+                Memory<byte>[] newDataBlock = _usePool ? _dataBlockPool.Rent(_dataBlock.Length * 2) : new Memory<byte>[_dataBlock.Length * 2];
+                Memory<byte>[] oldDataBlock = _dataBlock;
+                oldDataBlock.CopyTo(newDataBlock.AsSpan());
+                _dataBlock = newDataBlock;
+                _dataBlockPool.Return(oldDataBlock, true);
+            }
+            _dataBlock[_dataBlockIndex++] = data;
+        }
+
+        private void TransferBuffer()
+        {
+            if (_bufferBlockIndex + 1 > _bufferBlock.Length)
+            {
+                byte[][] newBufferBlock = _usePool ? _bufferBlockPool.Rent(_dataBlock.Length * 2) : new byte[_dataBlock.Length * 2][];
+                byte[][] oldBufferBlock = _bufferBlock;
+                oldBufferBlock.CopyTo(newBufferBlock.AsSpan());
+                _bufferBlock = newBufferBlock;
+                _bufferBlockPool.Return(oldBufferBlock, true);
+            }
+            _bufferBlock[_bufferBlockIndex++] = _buffer;
+            _buffer = null;
+        }
     }
 }
