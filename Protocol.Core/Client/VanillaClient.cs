@@ -129,12 +129,12 @@ namespace MinecraftProtocol.Client
             {
                 if (e.Packet == PacketType.Play.Server.Disconnect)
                 {
-                    ChatComponent reason = e.Packet.AsDisconnect()?.Reason;
+                    ChatComponent reason = e.Packet.Get().AsDisconnect()?.Reason;
                     EventUtils.InvokeCancelEvent(_kicked, this, new DisconnectEventArgs(reason, e.ReceivedTime));
                     DisconnectAsync(reason?.ToString());
                 }
                 else if (_autoKeepAlive && e.Packet == PacketType.Play.Server.KeepAlive)
-                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.AsCompatibleByteReader()));
+                    SendPacketAsync(new KeepAliveResponsePacket(e.Packet.Get().AsCompatibleByteReader()));
                 else
                     ReceiveQueue.TryAdd(new PacketReceivedEventArgs(e));
             };

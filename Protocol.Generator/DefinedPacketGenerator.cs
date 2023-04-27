@@ -170,7 +170,25 @@ namespace {classSymbol.ContainingNamespace.ToDisplayString()}
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, {ICompatible} compatible, out {classSymbol.Name} packet) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, compatible.ProtocolVersion, out packet);
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, int protocolVersion) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, protocolVersion, out _);
         public static bool TryRead<TPacket>(TPacket readPacket{ReadFormalParameters}, int protocolVersion, out {classSymbol.Name} packet) where TPacket: IPacket => TryRead(ref readPacket{ReadArguments}, protocolVersion, out packet);
- 
+        public static bool TryRead(LazyCompatiblePacket readPacket{ReadFormalParameters}) => TryRead(readPacket{ReadArguments}, out _);
+        public static bool TryRead(LazyCompatiblePacket readPacket{ReadFormalParameters}, out {classSymbol.Name} packet)
+        {{
+            packet = null;
+            if (readPacket == null || readPacket.Id != GetPacketId(readPacket.ProtocolVersion))
+                return false;
+            try
+            {{
+                  CompatibleByteReader reader = readPacket.Get().AsCompatibleByteReader();
+                  packet = new {classSymbol.Name}(ref reader{ReadArguments});
+                  return reader.IsReadToEnd;
+            }}
+            catch (PacketNotFoundException) {{ return false; }}
+            catch (InvalidPacketException) {{ return false; }}
+            catch (ArgumentOutOfRangeException) {{ return false; }}
+            catch (IndexOutOfRangeException) {{ return false; }}
+            catch (InvalidCastException) {{ return false; }}
+            catch (OverflowException) {{ return false; }}
+        }}
         public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}) where TPacket: ICompatiblePacket => TryRead(ref readPacket{ReadArguments}, out _);
         public static bool TryRead<TPacket>(ref TPacket readPacket{ReadFormalParameters}, out {classSymbol.Name} packet) where TPacket: ICompatiblePacket
         {{

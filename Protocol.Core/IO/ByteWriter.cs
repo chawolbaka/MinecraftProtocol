@@ -74,7 +74,7 @@ namespace MinecraftProtocol.IO
         internal protected byte[] _data;
         internal protected int _start = 0;
         internal protected int _size = 0;
-        protected int _version;
+        internal protected int _version;
 
         public ByteWriter() : this(DEFUALT_CAPACITY) { }
         public ByteWriter(int capacity)

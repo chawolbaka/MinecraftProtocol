@@ -1,4 +1,5 @@
 ﻿using System;
+using MinecraftProtocol.Compatible;
 using MinecraftProtocol.Packets.Client;
 using MinecraftProtocol.Packets.Server;
 
@@ -14,6 +15,12 @@ namespace MinecraftProtocol.Packets
             Name = name ?? throw new ArgumentNullException(nameof(name));
             GetId = getId ?? throw new ArgumentNullException(nameof(getId));
         }
+
+
+        public static bool operator ==(PacketType left, LazyCompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.Id == left.GetId(right.ProtocolVersion);
+        public static bool operator !=(PacketType left, LazyCompatiblePacket right) => !(left == right);
+        public static bool operator ==(LazyCompatiblePacket left, PacketType right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && left.Id == right.GetId(left.ProtocolVersion);
+        public static bool operator !=(LazyCompatiblePacket left, PacketType right) => !(left == right);
 
 
         public static bool operator ==(PacketType left, CompatiblePacket right) => !ReferenceEquals(left, null) && !ReferenceEquals(right, null) && right.Id == left.GetId(right.ProtocolVersion);

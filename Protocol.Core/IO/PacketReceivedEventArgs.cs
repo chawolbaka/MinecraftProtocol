@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.IO.Compression;
+using System.IO;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
@@ -19,7 +18,7 @@ namespace MinecraftProtocol.IO
         /// <summary>
         /// 接收到的Packet
         /// </summary>
-        public CompatiblePacket Packet { get; private set; }
+        public LazyCompatiblePacket Packet { get; private set; }
         
         /// <summary>
         /// 完整的数据包
@@ -36,10 +35,9 @@ namespace MinecraftProtocol.IO
         private static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
         internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, ushort dataBlockLength, byte[][] bufferBlock, ushort bufferBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
         {
+            Packet = new PREAPacket(dataBlock, dataBlockLength, packetDataStartBlockIndex, packetDataStartIndex, packetLength, listener);
             RawData = new Memory<Memory<byte>>(dataBlock, 0, dataBlockLength);
             ReceivedTime = DateTime.Now;
-
-            CompatiblePacket _packet;
             _usePool = listener._usePool;
             _disposed = false;
             _isCancelled = false;
@@ -47,79 +45,7 @@ namespace MinecraftProtocol.IO
             _bufferBlock = bufferBlock;
             _bufferBlockLength = bufferBlockLength;
 
-            int blockIndex = packetDataStartBlockIndex, blockOffset = packetDataStartIndex, IdOffset;
-            CheckBounds();
-            if (_usePool)
-            {
-                _packet = _CPPool.Rent();
-                _packet.ProtocolVersion = listener.ProtocolVersion;
-                _packet.CompressionThreshold = listener.CompressionThreshold;
-            }
-            else
-            {
-                _packet = new CompatiblePacket(-1, listener.ProtocolVersion, listener.CompressionThreshold);
-            }
-
-            //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
-            if (listener.CompressionThreshold > 0)
-            {
-                int size = VarInt.Read(ReadByte, out int sizeCount);
-                if (size != 0)
-                {
-                    //组合data块
-                    byte[] buffer = new byte[packetLength - sizeCount];
-                    int count = 0;
-                    for (; blockIndex < dataBlockLength; blockIndex++)
-                    {
-                        if (blockOffset > 0)
-                        {
-                            _dataBlock[blockIndex].Span.Slice(blockOffset).CopyTo(buffer);
-                            count -= blockOffset;
-                            blockOffset = 0;
-                        }
-                        else
-                        {
-                            _dataBlock[blockIndex].Span.CopyTo(buffer.AsSpan(count));
-                        }
-                        count += _dataBlock[blockIndex].Length;
-                    }
-
-                    _packet.Capacity = size;
-                    ZlibUtils.Decompress(buffer, _packet._data.AsSpan(0, size));
-                    _packet.Id = VarInt.Read(_packet._data, out IdOffset);
-                    _packet._start = IdOffset;
-                    _packet._size = size - IdOffset;
-                    Packet = _packet;
-                    return this;
-                }
-            }
-
-            _packet.Id = VarInt.Read(ReadByte, out IdOffset);
-            _packet.Capacity = packetLength - IdOffset;
-
-            CheckBounds();
-            for (int i = blockIndex; i < dataBlockLength - blockIndex; i++)
-            {
-                _packet.WriteBytes(_dataBlock[i].Span.Slice(blockOffset));
-                if (blockOffset != 0)
-                    blockOffset = 0;
-            }
-            Packet = _packet;
             return this;
-
-            void CheckBounds()
-            {
-                if (blockOffset >= _dataBlock[blockIndex].Length)
-                {
-                    blockIndex++;
-                    blockOffset = 0;
-                }
-            }
-            byte ReadByte()
-            {
-                CheckBounds();
-                return _dataBlock[blockIndex].Span[blockOffset++];
-            }
         }
 
         /// <summary>
@@ -142,7 +68,11 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    _CPPool.Return(Packet); Packet = null;
+                    if (Packet.IsCreated)
+                    {
+                        _CPPool.Return(Packet.Get()); 
+                        Packet = null;
+                    }
                     for (int i = 0; i < _bufferBlockLength; i++)
                     {
                         NetworkListener._bufferPool.Return(_bufferBlock[i]);
@@ -170,6 +100,135 @@ namespace MinecraftProtocol.IO
         ~PacketReceivedEventArgs()
         {
             Dispose(false);
+        }
+
+        private class PREAPacket : LazyCompatiblePacket
+        {
+            private Memory<byte>[] _dataBlock;
+            private ushort _dataBlockLength;
+            private int _packetLength;
+            private int _blockX, _blockY;            
+            private int _idOffset;
+            private PacketListener _listener;
+
+            public PREAPacket(Memory<byte>[] dataBlock, ushort dataBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
+            {
+                _dataBlock = dataBlock;
+                _dataBlockLength = dataBlockLength;
+                _packetLength = packetLength;
+                _listener = listener;
+
+                _blockY = packetDataStartBlockIndex;
+                _blockX = packetDataStartIndex;
+
+
+                ProtocolVersion = _listener.ProtocolVersion;
+                CompressionThreshold = _listener.CompressionThreshold;
+
+                if (listener.CompressionThreshold > 0)
+                {
+                    int size = VarInt.Read(ReadByte, out int sizeCount);
+                    if (size > 0)
+                    {
+                        int headLength = 0;
+                        for (int i = _blockY; i < dataBlockLength; i++)
+                        {
+                            if (i == _blockY)
+                                headLength += dataBlock[i].Length - _blockX;
+                            else
+                                headLength += dataBlock[i].Length;
+                            
+                            if (headLength > 5)
+                                break;
+                        }
+                        byte[] head = new byte[headLength > 5 ? 5 : headLength];
+                        ReadByte();
+                        ReadByte();
+                        for (int i = 0; i < head.Length; i++)
+                        {
+                            head[i] = ReadByte();
+                        }
+
+                        using MemoryStream ms = new MemoryStream(head);
+                        using DeflateStream ds = new DeflateStream(ms, CompressionMode.Decompress);
+                        VarInt.Read(ds, out _id);
+                        return;
+                    }
+                }
+
+                _id = VarInt.Read(ReadByte, out _idOffset);
+            }
+            protected override CompatiblePacket InitializePacket()
+            {
+                CompatiblePacket packet = null;
+                if (_listener._usePool)
+                {
+                    packet = _CPPool.Rent();
+                    packet.ProtocolVersion = ProtocolVersion;
+                    packet.CompressionThreshold = CompressionThreshold;
+                }
+                else
+                {
+                    packet = new CompatiblePacket(-1, ProtocolVersion, CompressionThreshold);
+                }
+
+                //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
+                if (CompressionThreshold > 0)
+                {
+                    int size = VarInt.Read(ReadByte, out int sizeCount);
+                    if (size != 0)
+                    {
+                        //组合data块
+                        byte[] buffer = new byte[_packetLength - sizeCount];
+                        int count = 0;
+                        for (; _blockY < _dataBlockLength; _blockY++)
+                        {
+                            if (_blockX > 0)
+                            {
+                                _dataBlock[_blockY].Span.Slice(_blockX).CopyTo(buffer);
+                                count -= _blockX;
+                                _blockX = 0;
+                            }
+                            else
+                            {
+                                _dataBlock[_blockY].Span.CopyTo(buffer.AsSpan(count));
+                            }
+                            count += _dataBlock[_blockY].Length;
+                        }
+
+                        packet.Capacity = size;
+                        ZlibUtils.Decompress(buffer, _packet._data.AsSpan(0, size));
+                        packet.Id = VarInt.Read(_packet._data, out _idOffset);
+                        packet._start = _idOffset;
+                        packet._size = size - _idOffset;
+                        return packet;
+                    }
+                }
+                packet.Id = _id;
+                packet.Capacity = _packetLength - _idOffset;
+                CheckBounds();
+                for (int i = _blockY; i < _dataBlockLength - _blockY; i++)
+                {
+                    packet.WriteBytes(_dataBlock[i].Span.Slice(_blockX));
+                    if (_blockX != 0)
+                        _blockX = 0;
+                }
+                return packet;
+            }
+
+            void CheckBounds()
+            {
+                if (_blockX >= _dataBlock[_blockY].Length)
+                {
+                    _blockY++;
+                    _blockX = 0;
+                }
+            }
+            byte ReadByte()
+            {
+                CheckBounds();
+                return _dataBlock[_blockY].Span[_blockX++];
+            }
         }
     }
 }

@@ -22,7 +22,7 @@ namespace MinecraftProtocol.Client
 
         public PacketReceivedEventArgs(IO.PacketReceivedEventArgs prea) : base(prea.ReceivedTime)
         {
-            _packet = prea.Packet;
+            _packet = prea.Packet.Get();
         }
     }
 }
