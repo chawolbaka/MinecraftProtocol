@@ -1,18 +1,15 @@
-﻿using MinecraftProtocol.Compatible;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 
 namespace MinecraftProtocol.Packets
 {
     public abstract class LazyPacket<T> : IDisposable where T : Packet
     {
-        public virtual bool IsCreated => _isCreated;
+        public virtual int Id { get => _isCreated ? _packet.Id : _id; set => Get().Id = value; }
+
         public virtual int Version => _isCreated ? _packet._version : -1;
-        public virtual int Id => _id;
-        
+
+        public virtual bool IsCreated => _isCreated;
+
         protected bool _isCreated;
         protected T _packet;
         protected int _id;
