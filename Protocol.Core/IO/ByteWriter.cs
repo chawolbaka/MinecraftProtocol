@@ -55,7 +55,7 @@ namespace MinecraftProtocol.IO
                 if (_data != null)
                 {
                     Array.Copy(_data, newData, _start + _size);
-                    if (_returnToPool)
+                    if (_data != null && _returnToPool)
                         _dataPool.Return(_data);
                 }
                 _returnToPool = true;
@@ -431,7 +431,7 @@ namespace MinecraftProtocol.IO
             byte[] old = _data;
             _data = _dataPool.Rent(_start + size);
             _returnToPool = true;
-            if (returnToPool)
+            if (old != null && returnToPool)
                 _dataPool.Return(old);
         }
 
@@ -479,7 +479,7 @@ namespace MinecraftProtocol.IO
                 return;
             bool disposed = _disposed;
             _disposed = true;
-            if (!disposed && _returnToPool && _data is not null)
+            if (!disposed && _data != null && _returnToPool)
             {
                 try
                 {
