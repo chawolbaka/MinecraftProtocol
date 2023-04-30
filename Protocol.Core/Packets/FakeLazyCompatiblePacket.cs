@@ -9,9 +9,8 @@ namespace MinecraftProtocol.Packets
             _id = packet.Id;
             _packet = packet;
             _isCreated = true;
-
-            ProtocolVersion = packet.ProtocolVersion;
-            CompressionThreshold = packet.CompressionThreshold;
+            //_protocolVersion = packet.ProtocolVersion;
+            //_compressionThreshold = packet.CompressionThreshold;
         }
 
         protected override CompatiblePacket InitializePacket()

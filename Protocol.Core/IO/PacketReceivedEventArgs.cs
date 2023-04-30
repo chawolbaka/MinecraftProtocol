@@ -68,19 +68,18 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    if (Packet.IsCreated)
-                    {
-                        _CPPool.Return(Packet.Get()); 
-                        Packet = null;
-                    }
+                    LazyCompatiblePacket packet = Packet;
+                    Packet = null; RawData = null;
+                    if (packet.IsCreated)
+                        _CPPool.Return(packet.Get()); 
+                    
                     for (int i = 0; i < _bufferBlockLength; i++)
-                    {
                         NetworkListener._bufferPool.Return(_bufferBlock[i]);
-                    }
+                    
                     //虽然一般buffer会从上面返回数组池，但有极少部分不会回去，因此为了防止那极少数的buffer被block长期占着导致无法被GC回收，所以这边需要每次都清空block
                     PacketListener._dataBlockPool.Return(_dataBlock, true);
                     PacketListener._bufferBlockPool.Return(_bufferBlock, true);
-                    _bufferBlock = null; _dataBlock = null; RawData = null;
+                    _bufferBlock = null; _dataBlock = null; 
                     PacketListener.PREAPool.Return(this); //这个必须在最后，只有当所有资源回收完成才能送回池内，否则在极端情况下会存在线程安全问题
                 }
             }
@@ -117,47 +116,53 @@ namespace MinecraftProtocol.IO
                 _dataBlockLength = dataBlockLength;
                 _packetLength = packetLength;
                 _listener = listener;
-
                 _blockY = packetDataStartBlockIndex;
                 _blockX = packetDataStartIndex;
 
+                _protocolVersion = _listener.ProtocolVersion;
+                _compressionThreshold = _listener.CompressionThreshold;
 
-                ProtocolVersion = _listener.ProtocolVersion;
-                CompressionThreshold = _listener.CompressionThreshold;
-
-                if (listener.CompressionThreshold > 0)
+                if (_compressionThreshold > 0)
                 {
                     int size = VarInt.Read(ReadByte, out int sizeCount);
                     if (size > 0)
                     {
-                        int headLength = 0;
+                        int headLength = 0; //取前五个字节（如果不足就有多少取多少）
                         for (int i = _blockY; i < dataBlockLength; i++)
                         {
                             if (i == _blockY)
                                 headLength += dataBlock[i].Length - _blockX;
                             else
                                 headLength += dataBlock[i].Length;
-                            
-                            if (headLength > 5)
+
+                            if (headLength > 32)
                                 break;
                         }
-                        byte[] head = new byte[headLength > 5 ? 5 : headLength];
-                        ReadByte();
-                        ReadByte();
-                        for (int i = 0; i < head.Length; i++)
-                        {
-                            head[i] = ReadByte();
-                        }
+                        byte[] head = new byte[headLength > 128 ? 128 : headLength];
 
+                        //跳过zlib开头的两个的格式字节
+                        SkipByte();
+                        SkipByte();
+                        for (int i = 0; i < head.Length; i++)
+                            head[i] = ReadByte();
+                        
                         using MemoryStream ms = new MemoryStream(head);
                         using DeflateStream ds = new DeflateStream(ms, CompressionMode.Decompress);
-                        VarInt.Read(ds, out _id);
+                        _id = VarInt.Read(ds);
+                        //重置坐标，方便InitializePacket那边可以从头读取而不是继续读取（虽然可以不重置但那样本来就少的可怜的可读性就更低了）
+                        _blockY = packetDataStartBlockIndex;
+                        _blockX = packetDataStartIndex;
                         return;
                     }
                 }
-
+                
+                //如果不是被压缩的数据包就直接读取一个varint（包括开启数据压缩的情况下如果数据没被压缩也是走这边）
                 _id = VarInt.Read(ReadByte, out _idOffset);
+
+                _blockY = packetDataStartBlockIndex;
+                _blockX = packetDataStartIndex;
             }
+
             protected override CompatiblePacket InitializePacket()
             {
                 CompatiblePacket packet = null;
@@ -197,14 +202,14 @@ namespace MinecraftProtocol.IO
                         }
 
                         packet.Capacity = size;
-                        ZlibUtils.Decompress(buffer, _packet._data.AsSpan(0, size));
-                        packet.Id = VarInt.Read(_packet._data, out _idOffset);
+                        ZlibUtils.Decompress(buffer, packet._data.AsSpan(0, size));
+                        packet.Id = VarInt.Read(packet._data, out _idOffset);
                         packet._start = _idOffset;
                         packet._size = size - _idOffset;
                         return packet;
                     }
                 }
-                packet.Id = _id;
+                packet.Id = VarInt.Read(ReadByte, out _idOffset);
                 packet.Capacity = _packetLength - _idOffset;
                 CheckBounds();
                 for (int i = _blockY; i < _dataBlockLength - _blockY; i++)
@@ -223,6 +228,11 @@ namespace MinecraftProtocol.IO
                     _blockY++;
                     _blockX = 0;
                 }
+            }
+            void SkipByte()
+            {
+                CheckBounds();
+                _blockX++;
             }
             byte ReadByte()
             {

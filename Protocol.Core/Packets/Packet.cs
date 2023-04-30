@@ -18,7 +18,10 @@ namespace MinecraftProtocol.Packets
         private int _id;
 
         public Packet() : this(-1) { }
-        public Packet(int packetId) : this(packetId, DEFUALT_CAPACITY) { }
+        public Packet(int packetId) : base(DEFUALT_CAPACITY)
+        {
+            Id = packetId;
+        }
         internal Packet(int packetId, ref int start, ref int size, ref byte[] packetData) : base(ref start, ref size, ref packetData)
         {
             Id = packetId;
@@ -30,7 +33,6 @@ namespace MinecraftProtocol.Packets
         public Packet(int packetId, int capacity) : base(capacity)
         {
             Id = packetId;
-            RerentData(capacity);
         }
 
         //packetData如果传入null会变成空的Span所以不需要null检测

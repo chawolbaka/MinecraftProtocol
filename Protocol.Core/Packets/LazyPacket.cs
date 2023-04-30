@@ -13,18 +13,26 @@ namespace MinecraftProtocol.Packets
         protected bool _isCreated;
         protected T _packet;
         protected int _id;
-        
 
+        private readonly object _getLock = new object();
+        private int d;
         protected abstract T InitializePacket();
         public virtual T Get()
         {
-            if (_packet == null)
+            lock (_getLock)
             {
-                _packet = InitializePacket();
-                _isCreated = true;
-            }
-            return _packet;
+                if (!_isCreated)
+                {
+                    _packet = InitializePacket();
+                    _isCreated = true;
+                    d++;
+                }
 
+                if (d > 1)
+                    Console.WriteLine(d);
+
+                return _packet;
+            }
         }
 
         public virtual void Dispose()
