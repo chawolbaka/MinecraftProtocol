@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO.Compression;
-using System.IO;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
@@ -125,65 +123,11 @@ namespace MinecraftProtocol.IO
                 if (_compressionThreshold > 0)
                 {
                     int size = VarInt.Read(ReadByte, out int sizeCount);
+                    CheckBounds();
                     if (size > 0)
                     {
-                        int headLength = 0; //取前五个字节（如果不足就有多少取多少）
-                        for (int i = _blockY; i < dataBlockLength; i++)
-                        {
-                            if (i == _blockY)
-                                headLength += dataBlock[i].Length - _blockX;
-                            else
-                                headLength += dataBlock[i].Length;
-
-                            if (headLength > 32)
-                                break;
-                        }
-                        byte[] head = new byte[headLength > 128 ? 128 : headLength];
-
-                        //跳过zlib开头的两个的格式字节
-                        SkipByte();
-                        SkipByte();
-                        for (int i = 0; i < head.Length; i++)
-                            head[i] = ReadByte();
-                        
-                        using MemoryStream ms = new MemoryStream(head);
-                        using DeflateStream ds = new DeflateStream(ms, CompressionMode.Decompress);
-                        _id = VarInt.Read(ds);
-                        //重置坐标，方便InitializePacket那边可以从头读取而不是继续读取（虽然可以不重置但那样本来就少的可怜的可读性就更低了）
-                        _blockY = packetDataStartBlockIndex;
-                        _blockX = packetDataStartIndex;
-                        return;
-                    }
-                }
-                
-                //如果不是被压缩的数据包就直接读取一个varint（包括开启数据压缩的情况下如果数据没被压缩也是走这边）
-                _id = VarInt.Read(ReadByte, out _idOffset);
-
-                _blockY = packetDataStartBlockIndex;
-                _blockX = packetDataStartIndex;
-            }
-
-            protected override CompatiblePacket InitializePacket()
-            {
-                CompatiblePacket packet = null;
-                if (_listener._usePool)
-                {
-                    packet = _CPPool.Rent();
-                    packet.ProtocolVersion = ProtocolVersion;
-                    packet.CompressionThreshold = CompressionThreshold;
-                }
-                else
-                {
-                    packet = new CompatiblePacket(-1, ProtocolVersion, CompressionThreshold);
-                }
-
-                //如果要解压那么就先组合data块并解压，如果不需要解压那么就直接从data块中复制到Packet内避免多余的内存复制
-                if (CompressionThreshold > 0)
-                {
-                    int size = VarInt.Read(ReadByte, out int sizeCount);
-                    if (size != 0)
-                    {
-                        //组合data块
+                        //如果数据包是被压缩的那么就立刻序列化，因为我暂时还无法在不完整复制的情况下解压出开头的几个字节
+                        CompatiblePacket packet = CreatePacket();
                         byte[] buffer = new byte[_packetLength - sizeCount];
                         int count = 0;
                         for (; _blockY < _dataBlockLength; _blockY++)
@@ -206,10 +150,18 @@ namespace MinecraftProtocol.IO
                         packet.Id = VarInt.Read(packet._data, out _idOffset);
                         packet._start = _idOffset;
                         packet._size = size - _idOffset;
-                        return packet;
+                        _packet = packet;
+                        _isCreated = true;
+                        return;
                     }
                 }
-                packet.Id = VarInt.Read(ReadByte, out _idOffset);
+                _id = VarInt.Read(ReadByte, out _idOffset);
+            }
+
+            protected override CompatiblePacket InitializePacket()
+            {
+                CompatiblePacket packet = CreatePacket();
+                packet.Id = _id;
                 packet.Capacity = _packetLength - _idOffset;
                 CheckBounds();
                 for (int i = _blockY; i < _dataBlockLength - _blockY; i++)
@@ -217,6 +169,22 @@ namespace MinecraftProtocol.IO
                     packet.WriteBytes(_dataBlock[i].Span.Slice(_blockX));
                     if (_blockX != 0)
                         _blockX = 0;
+                }
+                return packet;
+            }
+
+            private CompatiblePacket CreatePacket()
+            {
+                CompatiblePacket packet = null;
+                if (_listener._usePool)
+                {
+                    packet = _CPPool.Rent();
+                    packet.ProtocolVersion = ProtocolVersion;
+                    packet.CompressionThreshold = CompressionThreshold;
+                }
+                else
+                {
+                    packet = new CompatiblePacket(-1, ProtocolVersion, CompressionThreshold);
                 }
                 return packet;
             }
