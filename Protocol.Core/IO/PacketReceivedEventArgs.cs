@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
 using MinecraftProtocol.Packets;
@@ -8,6 +9,9 @@ namespace MinecraftProtocol.IO
 {
     public class PacketReceivedEventArgs : CancelEventArgs, IDisposable
     {
+        private static IPool<CompatiblePacket> CompatiblePacketPool = new CompatiblePacketPool(true);
+        private static IPool<PREAPacket> PREAPacketPool = new ObjectPool<PREAPacket>();
+
         /// <summary>
         /// 数据被完整的接收到的时间
         /// </summary>
@@ -21,28 +25,31 @@ namespace MinecraftProtocol.IO
         /// <summary>
         /// 完整的数据包
         /// </summary>
-        public Memory<Memory<byte>> RawData;
+        public ReadOnlyMemory<Memory<byte>> RawData { get; private set; }
 
-        private bool _usePool;
-        private bool _disposed = false;
 
+        public int PacketLength { get; private set; }
+        
         private Memory<byte>[] _dataBlock;
         private byte[][] _bufferBlock;
-        private ushort _bufferBlockLength;
+        private byte _bufferBlockLength;
+        
+        private bool _usePool;
+        private bool _disposed;
+        private SpinLock _lock = new SpinLock();
 
-        private static IPool<CompatiblePacket> _CPPool = new CompatiblePacketPool(true);
-        internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, ushort dataBlockLength, byte[][] bufferBlock, ushort bufferBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
+        internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, byte dataBlockLength, byte[][] bufferBlock, byte bufferBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
         {
-            Packet = new PREAPacket(dataBlock, dataBlockLength, packetDataStartBlockIndex, packetDataStartIndex, packetLength, listener);
-            RawData = new Memory<Memory<byte>>(dataBlock, 0, dataBlockLength);
+            Packet = (listener._usePool ? PREAPacketPool.Rent() : new PREAPacket()).Setup(dataBlock, dataBlockLength, packetDataStartBlockIndex, packetDataStartIndex, packetLength, listener);
+            RawData = new ReadOnlyMemory<Memory<byte>>(dataBlock, 0, dataBlockLength);
             ReceivedTime = DateTime.Now;
+            PacketLength = packetLength;
             _usePool = listener._usePool;
             _disposed = false;
             _isCancelled = false;
             _dataBlock = dataBlock;
             _bufferBlock = bufferBlock;
             _bufferBlockLength = bufferBlockLength;
-
             return this;
         }
 
@@ -56,12 +63,22 @@ namespace MinecraftProtocol.IO
 
         private void Dispose(bool disposing)
         {
-            bool disposed = _disposed;
-            if (disposed)
-                return;
-            else
-                _disposed = true;
+            bool lockTaken = false;
+            try
+            {
+                _lock.Enter(ref lockTaken);
+                if (_disposed)
+                    return;
+                else
+                    _disposed = true;
 
+            }
+            finally
+            {
+                if (lockTaken)
+                    _lock.Exit();
+            }
+            
             try
             {
                 if (_usePool)
@@ -69,8 +86,9 @@ namespace MinecraftProtocol.IO
                     LazyCompatiblePacket packet = Packet;
                     Packet = null; RawData = null;
                     if (packet.IsCreated)
-                        _CPPool.Return(packet.Get()); 
-                    
+                        CompatiblePacketPool.Return(packet.Get());
+                    PREAPacketPool.Return(packet as PREAPacket);
+
                     for (int i = 0; i < _bufferBlockLength; i++)
                         NetworkListener._bufferPool.Return(_bufferBlock[i]);
                     
@@ -81,7 +99,7 @@ namespace MinecraftProtocol.IO
                     PacketListener.PREAPool.Return(this); //这个必须在最后，只有当所有资源回收完成才能送回池内，否则在极端情况下会存在线程安全问题
                 }
             }
-#if !DEBUG //防止因为非数组池的数组返回池内导致的异常
+#if DEBUG //防止因为非数组池的数组返回池内导致的异常(DEBUG模式下还是需要显示的)
             catch (ArgumentException)
             {
                 
@@ -102,23 +120,23 @@ namespace MinecraftProtocol.IO
         private class PREAPacket : LazyCompatiblePacket
         {
             private Memory<byte>[] _dataBlock;
-            private ushort _dataBlockLength;
+            private byte _dataBlockLength;
             private int _packetLength;
-            private int _blockX, _blockY;            
+            private int _blockX, _blockY;
             private int _idOffset;
-            private PacketListener _listener;
+            private bool _usePool;
 
-            public PREAPacket(Memory<byte>[] dataBlock, ushort dataBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
+            public PREAPacket Setup(Memory<byte>[] dataBlock, byte dataBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
             {
                 _dataBlock = dataBlock;
                 _dataBlockLength = dataBlockLength;
                 _packetLength = packetLength;
-                _listener = listener;
                 _blockY = packetDataStartBlockIndex;
                 _blockX = packetDataStartIndex;
 
-                _protocolVersion = _listener.ProtocolVersion;
-                _compressionThreshold = _listener.CompressionThreshold;
+                _usePool = listener._usePool;
+                _protocolVersion = listener.ProtocolVersion;
+                _compressionThreshold = listener.CompressionThreshold;
 
                 if (_compressionThreshold > 0)
                 {
@@ -152,10 +170,11 @@ namespace MinecraftProtocol.IO
                         packet._size = size - _idOffset;
                         _packet = packet;
                         _isCreated = true;
-                        return;
+                        return this;
                     }
                 }
                 _id = VarInt.Read(ReadByte, out _idOffset);
+                return this;
             }
 
             protected override CompatiblePacket InitializePacket()
@@ -175,10 +194,10 @@ namespace MinecraftProtocol.IO
 
             private CompatiblePacket CreatePacket()
             {
-                CompatiblePacket packet = null;
-                if (_listener._usePool)
+                CompatiblePacket packet;
+                if (_usePool)
                 {
-                    packet = _CPPool.Rent();
+                    packet = CompatiblePacketPool.Rent();
                     packet.ProtocolVersion = ProtocolVersion;
                     packet.CompressionThreshold = CompressionThreshold;
                 }
@@ -197,11 +216,7 @@ namespace MinecraftProtocol.IO
                     _blockX = 0;
                 }
             }
-            void SkipByte()
-            {
-                CheckBounds();
-                _blockX++;
-            }
+
             byte ReadByte()
             {
                 CheckBounds();

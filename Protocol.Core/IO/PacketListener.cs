@@ -34,7 +34,7 @@ namespace MinecraftProtocol.IO
 
         private Memory<byte>[] _dataBlock;
         private byte[][] _bufferBlock;
-        private ushort _dataBlockIndex, _bufferBlockIndex;
+        private byte _dataBlockIndex, _bufferBlockIndex;
 
         private int _packetLength;
         private int _packetLengthOffset;
@@ -175,15 +175,18 @@ namespace MinecraftProtocol.IO
         /// </summary>
         protected virtual void InvokeReceived()
         {
+#if DEBUG
             int dataLength = 0;    
             for (int i = 0; i < _dataBlockIndex; i++)
             {
                 dataLength += _dataBlock[i].Length;
             }
-
+            if (dataLength != _packetLengthCount + _packetLength)
+                throw new OverflowException("数据块内字节总长度与预计的包长度不匹配");
+#endif
 
             //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
-            if (dataLength >= _packetLengthCount + _packetLength && _packetLength >= (CompressionThreshold > 0 ? 3 : 1))
+            if (_packetLength >= (CompressionThreshold > 0 ? 3 : 1))
             {
                 try
                 {
@@ -204,6 +207,7 @@ namespace MinecraftProtocol.IO
                         throw;
                 }
             }
+
         }
 
         private void ResetBlock()
