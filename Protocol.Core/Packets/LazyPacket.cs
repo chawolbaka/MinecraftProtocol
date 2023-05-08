@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Threading;
 
 namespace MinecraftProtocol.Packets
 {
@@ -14,25 +16,33 @@ namespace MinecraftProtocol.Packets
         protected T _packet;
         protected int _id;
 
-        private readonly object _getLock = new object();
-        private int d;
+#if DEBUG
+        protected SpinLock _getLock = new SpinLock(Debugger.IsAttached);
+#else
+        protected SpinLock _getLock = new SpinLock(false);
+#endif
+
         protected abstract T InitializePacket();
         public virtual T Get()
         {
-            lock (_getLock)
+            bool lockTaken = false;
+            try
             {
-                if (!_isCreated)
-                {
-                    _packet = InitializePacket();
-                    _isCreated = true;
-                    d++;
-                }
+                _getLock.Enter(ref lockTaken);
 
-                if (d > 1)
-                    Console.WriteLine(d);
+                if (_isCreated)
+                    return _packet;
 
-                return _packet;
+                _isCreated = true;
             }
+            finally
+            {
+                if (lockTaken)
+                    _getLock.Exit();
+            }
+
+            _packet = InitializePacket();
+            return _packet;
         }
 
         public virtual void Dispose()
@@ -41,5 +51,4 @@ namespace MinecraftProtocol.Packets
                 _packet.Dispose();
         }
     }
-
 }
