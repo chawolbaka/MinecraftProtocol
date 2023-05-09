@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
@@ -83,11 +84,13 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    LazyCompatiblePacket packet = Packet;
+                    PREAPacket packet = Packet as PREAPacket;
                     Packet = null; RawData = null;
                     if (packet.IsCreated)
                         CompatiblePacketPool.Return(packet.Get());
-                    PREAPacketPool.Return(packet as PREAPacket);
+                   
+                    packet.Reset();
+                    PREAPacketPool.Return(packet);
 
                     for (int i = 0; i < _bufferBlockLength; i++)
                         NetworkListener._bufferPool.Return(_bufferBlock[i]);
@@ -177,6 +180,17 @@ namespace MinecraftProtocol.IO
                 return this;
             }
 
+            public void Reset()
+            {
+                _isCreated = false;
+                _packet = null;
+#if DEBUG
+                _getLock = new SpinLock(Debugger.IsAttached);
+#else
+                _getLock = new SpinLock(false);
+#endif
+            }
+
             protected override CompatiblePacket InitializePacket()
             {
                 CompatiblePacket packet = CreatePacket();
@@ -198,12 +212,12 @@ namespace MinecraftProtocol.IO
                 if (_usePool)
                 {
                     packet = CompatiblePacketPool.Rent();
-                    packet.ProtocolVersion = ProtocolVersion;
-                    packet.CompressionThreshold = CompressionThreshold;
+                    packet.ProtocolVersion = _protocolVersion;
+                    packet.CompressionThreshold = _compressionThreshold;
                 }
                 else
                 {
-                    packet = new CompatiblePacket(-1, ProtocolVersion, CompressionThreshold);
+                    packet = new CompatiblePacket(-1, _protocolVersion, _compressionThreshold);
                 }
                 return packet;
             }
