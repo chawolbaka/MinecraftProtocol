@@ -72,6 +72,7 @@ namespace MinecraftProtocol.IO
         protected override void ReceiveCompleted(object sender, SocketAsyncEventArgs e)
         {
             int bytesTransferred = e.BytesTransferred;
+
             //如果是加密数据就先将buffer解密再继续处理
             if (!_internalToken.IsCancellationRequested && CryptoHandler.Enable)
                 CryptoHandler.Decrypt(_buffer.AsSpan(0, bytesTransferred));
@@ -125,7 +126,7 @@ namespace MinecraftProtocol.IO
                     int start = _packetDataOffset > 0 ? _bufferOffset : _bufferOffset - _packetLengthOffset;
                     int length = _packetDataOffset > 0 ? _packetLength - _packetDataOffset : _packetLengthOffset + _packetLength;
                     if (start < 0)
-                        throw new OverflowException();
+                        throw new OverflowException("start nnegative");
 
 
 
@@ -153,7 +154,7 @@ namespace MinecraftProtocol.IO
                         int start = _bufferOffset - _packetLengthOffset;
                         int length = bytesTransferred - start;
                         if (start < 0)
-                            throw new OverflowException();
+                            throw new OverflowException("start nnegative");
 
                         AddData(new Memory<byte>(_buffer, start, length));
                     }
@@ -185,20 +186,14 @@ namespace MinecraftProtocol.IO
                 throw new OverflowException("数据块内字节总长度与预计的包长度不匹配");
 #endif
 
-            //varint(size)+varint(decompressSize)+varint(id)+data 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
-            if (_packetLength >= (CompressionThreshold > 0 ? 3 : 1))
+            //varint(decompressSize) + varint(id) 这是一个包最小的尺寸，不知道什么mod还是插件竟然会在玩家发送聊天消息后发个比这还小的东西过来...
+            if (_packetLength >= (CompressionThreshold > 0 ? 2 : 1))
             {
                 try
                 {
                     PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
                     prea.Setup(_dataBlock, _dataBlockIndex, _bufferBlock, _bufferBlockIndex, _packetDataBlockIndex, _packetLengthOffset, _packetLength, this);
-                    _state = ReadState.PacketLength;
-                    _packetLengthOffset = 0;
-                    _packetLength = 0;
-                    _packetLengthCount = 0;
-                    if (_usePool)
-                        ResetBlock();
-
+                    ResetToPacketLengthRead();
                     EventUtils.InvokeCancelEvent(PacketReceived, this, prea);
                 }
                 catch (Exception ex)
@@ -207,7 +202,22 @@ namespace MinecraftProtocol.IO
                         throw;
                 }
             }
+            else
+            {
+                //如果读取到的数据包小于理论最小字节数，那么就直接抛弃这段数据
+                ResetToPacketLengthRead();
+            }
 
+        }
+
+        private void ResetToPacketLengthRead()
+        {
+            _state = ReadState.PacketLength;
+            _packetLengthOffset = 0;
+            _packetLength = 0;
+            _packetLengthCount = 0;
+            if (_usePool)
+                ResetBlock();
         }
 
         private void ResetBlock()
