@@ -18,8 +18,6 @@ namespace MinecraftProtocol.IO
         public event CommonEventHandler<object, ListenEventArgs> StopListen;
         public event CommonEventHandler<object, UnhandledIOExceptionEventArgs> UnhandledException;
 
-        protected static IPool<SocketAsyncEventArgs> SAEAPool = new SocketAsyncEventArgsPool();
-
         internal static Bucket<byte> _bufferPool;
         protected CancellationTokenSource _internalToken;
         protected Socket _socket;
@@ -63,14 +61,11 @@ namespace MinecraftProtocol.IO
                 token.Register(_internalToken.Cancel);
 
             EventUtils.InvokeCancelEvent(StartListen, this, new ListenEventArgs(false));
-            SocketAsyncEventArgs eventArgs = _usePool ? SAEAPool.Rent() : new SocketAsyncEventArgs();
-            if (_usePool)
-                _internalToken.Token.Register(() => SAEAPool.Return(eventArgs));
-
+            SocketAsyncEventArgs eventArgs = new SocketAsyncEventArgs();
+          
             _internalToken.Token.Register(() => EventUtils.InvokeCancelEvent(StopListen, this, new ListenEventArgs(true)));
             eventArgs.RemoteEndPoint = _socket.RemoteEndPoint;
             eventArgs.SetBuffer(_buffer);
-            eventArgs.Completed -= OnReceiveCompleted;
             eventArgs.Completed += OnReceiveCompleted;
             ReceiveNextBuffer(eventArgs);
         }
@@ -80,7 +75,7 @@ namespace MinecraftProtocol.IO
         private void OnReceiveCompleted(object sender, SocketAsyncEventArgs e)
         {
             //检查连接状态
-            if (e.SocketError != SocketError.Success) 
+            if (e.SocketError != SocketError.Success)
             {
                 InvokeUnhandledException(new SocketException((int)e.SocketError));
                 _internalToken.Cancel();
