@@ -1,5 +1,7 @@
 # Minecraft Protocol
+[![NuGet version (Chawol.MinecraftProtocol)](https://img.shields.io/nuget/v/Chawol.MinecraftProtocol.svg?style=flat-square)](https://www.nuget.org/packages/Chawol.MinecraftProtocol/)
 ![](https://github.com/chawolbaka/MinecraftProtocol/workflows/build/badge.svg)  
+  
 当前支持的版本：1.7-1.18.2（原版）
 
 这个项目是给我的其它软件使用的, 不会兼容全部版本, 不会有完整的MC协议实现，还会经常因为看着自己以前写的太差直接重写导致没法保证向后兼容。    
