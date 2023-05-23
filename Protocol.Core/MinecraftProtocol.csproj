@@ -28,7 +28,6 @@
 	<PackageId>Chawol.MinecraftProtocol</PackageId>
 	<PackageProjectUrl>https://github.com/chawolbaka/MinecraftProtocol</PackageProjectUrl>
 	<PackageTags>Minecraft Protocol</PackageTags>
-    <PackageLicenseFile>..\LICENSE</PackageLicenseFile>
 	<Description>A Minecraft protocol library</Description>
     <Copyright>Copyright (c) 2023 Chawol</Copyright>  
 
