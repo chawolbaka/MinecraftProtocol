@@ -87,18 +87,10 @@ namespace MinecraftProtocol.IO
                 catch (SocketException) { }
                 finally
                 {
-                    try
-                    {
-                        sea?.Callback?.Invoke();
-                        sea?.Disposable?.Dispose();
-                        _sendEventArgsPool.Return(sea);
-                    }
-                    catch (ArgumentException)
-                    {
-#if DEBUG
-                        throw;
-#endif
-                    }
+                    sea?.Callback?.Invoke();
+                    sea?.Disposable?.Dispose();
+                    _sendEventArgsPool.Return(sea);
+
                 }
             }
         }

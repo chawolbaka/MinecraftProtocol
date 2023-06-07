@@ -70,11 +70,14 @@ namespace MinecraftProtocol.IO.Pools
         public void Return(T[] array)
         {
             // Check to see if the buffer is the correct size for this bucket
+#if DEBUG
             if (array.Length != _bufferLength)
             {
                 throw new ArgumentException("Buffer Not From Pool", nameof(array));
             }
-
+#else
+            return;
+#endif
             bool returned;
 
             // While holding the spin lock, if there's room available in the bucket,
