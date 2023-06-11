@@ -31,7 +31,7 @@ namespace MinecraftProtocol.Packets.Server
 
         private const int id = 0x00;
         public static int GetPacketId(int protocol) => id;
-        public static int GetPacketID() => id;
+        public static int GetPacketId() => id;
 
     }
 }
