@@ -34,6 +34,8 @@ namespace MinecraftProtocol.Utils
                     }
                 }
                 read += await tcp.ReceiveAsync(buffer.AsMemory(read), SocketFlags.None, cancellationToken);
+                if (cancellationToken != default)
+                    cancellationToken.ThrowIfCancellationRequested();
             }
             return buffer;
         }
@@ -56,6 +58,8 @@ namespace MinecraftProtocol.Utils
                     }
                 }
                 send += await socket.SendAsync(data.Slice(send), SocketFlags.None, cancellationToken);
+                if (cancellationToken != default)
+                    cancellationToken.ThrowIfCancellationRequested();
             }
         } 
 
