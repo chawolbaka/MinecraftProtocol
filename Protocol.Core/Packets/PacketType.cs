@@ -57,7 +57,7 @@ namespace MinecraftProtocol.Packets
             /// <summary>从服务端发送到客户端Packet</summary>
             public static class Server
             {
-                public static readonly PacketType Response = new PacketType(nameof(PingResponsePacket), (ver) => PingResponsePacket.GetPacketID());
+                public static readonly PacketType Response = new PacketType(nameof(PingResponsePacket), (ver) => PingResponsePacket.GetPacketId());
                 public static readonly PacketType Pong     = new PacketType(nameof(PongPacket), (ver) => PongPacket.GetPacketId());
             }
 
