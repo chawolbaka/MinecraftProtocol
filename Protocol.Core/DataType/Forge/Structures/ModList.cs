@@ -79,7 +79,9 @@ namespace MinecraftProtocol.DataType.Forge
                 throw new InvalidCastException($"Invalid Discriminator {data[0]}");
 
             ModList ML = new ModList();
-            data.Slice(1).ReadVarInt(out int ModCount).ReadStringArray(out string[] array, ModCount * 2);
+            ByteReader reader = new ByteReader(data.Slice(1));
+            int ModCount = reader.ReadVarInt();
+            string[] array = reader.ReadStringArray(ModCount * 2);
             for (int i = 0; i < ModCount; i++)
                 ML.Add(new ModInfo(array[i + i], array[i + i + 1]));
 

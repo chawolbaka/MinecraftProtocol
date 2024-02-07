@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
 using MinecraftProtocol.Utils;
@@ -54,13 +55,14 @@ namespace MinecraftProtocol.DataType.Forge
                 throw new InvalidCastException($"Invalid Discriminator {data[0]}");
 
             ModIdData MID = new ModIdData();
-            ReadOnlySpan<byte> buffer = data.ToArray();
-            
-            int MapLength = buffer.Slice(1).AsVarInt(out buffer);
-            for (int i = 0; i < MapLength; i++)
-                MID.Mapping.Add(buffer.AsString(out buffer), buffer.AsVarInt(out buffer));
 
-            buffer.ReadStringArray(out MID.BlockSubstitutions).ReadStringArray(out MID.ItemSubstitutions);
+            ByteReader reader = new ByteReader(CollectionsMarshal.AsSpan(data).Slice(1));
+            int MapLength = reader.ReadVarInt();
+            for (int i = 0; i < MapLength; i++)
+                MID.Mapping.Add(reader.ReadString(), reader.ReadVarInt());
+
+            MID.BlockSubstitutions = new List<string>(reader.ReadStringArray());
+            MID.ItemSubstitutions = new List<string>(reader.ReadStringArray());
             return MID;
         }
 

@@ -12,6 +12,8 @@ using MinecraftProtocol.Chat;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading;
+using MinecraftProtocol.IO;
+using System.Buffers.Binary;
 
 namespace MinecraftProtocol.Utils
 {
@@ -230,7 +232,7 @@ namespace MinecraftProtocol.Utils
                 //校验
                 if (ResponesPacket.Length != 9 || ResponesPacket[0] != 0x01)
                     return null;
-                if (new ReadOnlySpan<byte>(ResponesPacket).Slice(1).AsLong() != code)
+                if (BinaryPrimitives.ReadInt64BigEndian(ResponesPacket.AsSpan(1)) != code)
                     return null;
             }
             catch

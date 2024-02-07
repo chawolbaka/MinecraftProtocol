@@ -70,23 +70,22 @@ namespace MinecraftProtocol.DataType.Forge
             if (data[0] != Discriminator)
                 throw new InvalidCastException($"Invalid Discriminator {data[0]}");
 
-            RegistryData RD = new RegistryData();            
-            data = data.Slice(1)
-                .ReadBoolean(out RD.HasMore)
-                .ReadString(out RD.Name)
-                .ReadVarInt(out int IdsCount);
-
+            RegistryData RD = new RegistryData();
+            ByteReader reader = new ByteReader(data.Slice(1));
+            RD.HasMore = reader.ReadBoolean();
+            RD.Name = reader.ReadString();
+            int IdsCount = reader.ReadVarInt();
+            
             for (int i = 0; i < IdsCount; i++)
             {
-                data = data.ReadString(out string name).ReadVarInt(out int id);
-                RD.Ids.Add(name, id);
+                RD.Ids.Add(reader.ReadString(), reader.ReadVarInt());
             }
-            data = data.ReadStringArray(out string[] substitutions);
-            RD.Substitutions.AddRange(substitutions);
-            if (data.Length > 0)
+            
+            RD.Substitutions.AddRange(reader.ReadStringArray());
+            
+            if (!reader.IsReadToEnd)
             {
-                data.ReadStringArray(out string[] dummies);
-                RD.Dummies = new List<string>(dummies);
+                RD.Dummies = new List<string>(reader.ReadStringArray());
             }  
             return RD;
         }

@@ -31,15 +31,14 @@ namespace MinecraftProtocol.Packets.Client
 
         protected override void Read(ref CompatibleByteReader reader)
         {
-            ReadOnlySpan<byte> buffer = reader.AsSpan();
-            _channel = buffer.AsString(out buffer);
+            _channel = reader.ReadString();
 
             if (ProtocolVersion <= ProtocolVersions.V14w31a && _isForge)
-                _messageData = buffer[VarShort.GetLength(buffer)..].ToArray();
+                reader.Position += VarShort.GetLength(reader.AsSpan());
             else if (ProtocolVersion <= ProtocolVersions.V14w31a)
-                _messageData = buffer[2..].ToArray();
-            else
-                _messageData = buffer.ToArray();
+                reader.Position += 2;
+
+            reader.AsSpan().CopyTo(_messageData);
             reader.SetToEnd();
         }
 

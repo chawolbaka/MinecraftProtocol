@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using System.IO.Compression;
 using System.Drawing;
 using MinecraftProtocol.IO.Extensions;
+using MinecraftProtocol.IO;
+using System.Buffers.Binary;
 
 namespace MinecraftProtocol.Compression
 {
@@ -66,7 +68,7 @@ namespace MinecraftProtocol.Compression
             }
 
 #if DEBUG
-            if (Adler32(output) != (uint)input.Slice(input.Length - 4).AsInt())
+            if (Adler32(output) != BinaryPrimitives.ReadUInt32BigEndian(input.Slice(input.Length - 4)))
                 throw new InvalidDataException("adler32 verify failed");
 #endif       
             return read;
@@ -102,7 +104,7 @@ namespace MinecraftProtocol.Compression
             }
 
 #if DEBUG
-            if (Adler32(output) != (uint)input.Span.Slice(input.Length - 4).AsInt())
+            if (Adler32(output) != BinaryPrimitives.ReadUInt32BigEndian(input.Span.Slice(input.Length - 4)))
                 throw new InvalidDataException("adler32 verify failed");
 #endif       
             return read;

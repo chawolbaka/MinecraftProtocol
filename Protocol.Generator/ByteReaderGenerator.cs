@@ -198,7 +198,15 @@ namespace {item.Namespace}
             _offset += ArrayLength;
             return result;
         }}
-
+        public string[] ReadStringArray(int length)
+        {{
+            string[] list = new string[length];
+            for (int i = 0; i < list.Length; i++)
+            {{
+                list[i] = ReadString();
+            }}
+            return list;
+        }}
 
         public string[] ReadStringArray()
         {{

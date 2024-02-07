@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using MinecraftProtocol.IO;
 using MinecraftProtocol.IO.Extensions;
@@ -46,7 +47,7 @@ namespace MinecraftProtocol.DataType.Forge
 
             int version = data[1];
             if (version > 1)
-                return new ServerHello(data[1], data.Slice(2, 4).AsInt());
+                return new ServerHello(data[1], BinaryPrimitives.ReadInt32BigEndian(data.Slice(2, 4)));
             else
                 return new ServerHello(data[1], null);
         }
