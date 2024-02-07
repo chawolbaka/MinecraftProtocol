@@ -254,11 +254,6 @@ namespace {item.Namespace}
             return ReadBoolean() ? ReadByteArray(protocolVersion) : null;
         }}
 
-        public byte[] ReadAll()
-        {{
-            SetToEnd();
-            return _data.ToArray();
-        }}
 
         public ReadOnlySpan<byte> AsSpan()
         {{
