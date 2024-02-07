@@ -63,9 +63,9 @@ namespace MinecraftProtocol.Packets
             _size = compatiblePacket.Count;
 
         }
-        public Packet(IPacket packet) : this(packet.Id, packet.ToArray()) { }
+        public Packet(IPacket packet) : this(packet.Id, packet is ByteWriter bw ? bw.AsSpan() : packet.ToArray()) { }
 
-        
+
 
         /// <summary>
         /// 生成发送给服务端的包
@@ -77,10 +77,11 @@ namespace MinecraftProtocol.Packets
         /// <exception cref="PacketException"/>
         public virtual byte[] Pack(int compressionThreshold)
         {
+            ThrowIfDisposed();
+
             if (IsEmpty)
                 throw new PacketException("Packet is empty");
 
-            ThrowIfDisposed();
 
             byte[] packedData;
             int uncompressLength = VarInt.GetLength(Id) + _size;
@@ -201,21 +202,17 @@ namespace MinecraftProtocol.Packets
 
         public virtual Packet Clone() => ThrowIfDisposed(new Packet(Id, AsSpan()));
 
-        object ICloneable.Clone() => ThrowIfDisposed(Clone());
+        object ICloneable.Clone() => Clone();
 
-        public override bool Equals(object obj) => ThrowIfDisposed(Equals(obj as Packet));
+        public override bool Equals(object obj) => Equals(obj as Packet);
         
         public virtual bool Equals(Packet packet)
         {
             ThrowIfDisposed();
-            if (packet is null || Id != packet.Id || _size != packet._size) return false;
-            if (ReferenceEquals(this, packet) || ReferenceEquals(this._data, packet._data)) return true;
-            for (int i = 0; i < packet._size; i++)
-            {
-                if (this[_start + i] != packet[packet._start + i])
-                    return false;
-            }
-            return true;
+            if (packet is null || Id != packet.Id || _size != packet._size) 
+                return false;
+
+            return ReferenceEquals(this, packet) || ReferenceEquals(_data, packet._data) || MemoryExtensions.SequenceEqual(AsSpan(), packet.AsSpan());
         }
 
         public override string ToString()
@@ -238,12 +235,8 @@ namespace MinecraftProtocol.Packets
             HashCode code = new HashCode();
             code.Add(Id);
             if (_size > 0)
-            {
-                for (int i = 0; i < _size; i++)
-                {
-                    code.Add(_data[_start + i]);
-                }
-            }
+                code.AddBytes(AsSpan());
+            
             return code.ToHashCode();
         }
 

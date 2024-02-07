@@ -9,15 +9,15 @@ namespace MinecraftProtocol.Utils
     public static class CollectionUtils
     {
         /// <summary>
-        /// 拼接Byte数组
+        /// 拼接数组
         /// </summary>
-        public static byte[] ConcatBytes(params ICollection<byte>[] bytes)
+        public static T[] ConcatBytes<T>(params ICollection<T>[] bytes)
         {
             
             int length = 0, offset = 0;
             foreach (var array in bytes)
                 length += array.Count;
-            byte[] buffer = new byte[length];
+            T[] buffer = new T[length];
             foreach (var array in bytes)
             {
                 if (array != null)
@@ -80,10 +80,8 @@ namespace MinecraftProtocol.Utils
                 return false;
             if (ReferenceEquals(b1, b2) || (b1.Length == 0 && b2.Length == 0))
                 return true;
-            for (int i = 0; i < b1.Length; i++)
-                if (b1[i] != b2[i])
-                    return false;
-            return true;
+
+            return MemoryExtensions.SequenceEqual(new ReadOnlySpan<byte>(b1), new ReadOnlySpan<byte>(b2));
         }
 
     }
