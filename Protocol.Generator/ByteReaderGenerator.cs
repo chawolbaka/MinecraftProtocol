@@ -54,6 +54,7 @@ namespace {item.Namespace}
         public byte this[int index] => _data[index];
 
         public bool IsReadToEnd => _offset >= _data.Length;
+
         public int Position
         {{
             get => _offset;
@@ -254,17 +255,17 @@ namespace {item.Namespace}
             return ReadBoolean() ? ReadByteArray(protocolVersion) : null;
         }}
 
-
+        /// <summary> 提取所有未被读取到的数据 </summary>
         public ReadOnlySpan<byte> AsSpan()
         {{
             return _data.Slice(_offset);
         }}
-
+        /// <summary> 设置为已读取所有数据的状态 </summary>
         public void SetToEnd()
         {{
             _offset = _data.Length;
         }}
-
+        /// <summary> 重置为未读取过任何数据的状态 </summary>
         public void Reset()
         {{
             _offset = 0;
@@ -272,7 +273,7 @@ namespace {item.Namespace}
     }}
 }}");
         }
-
+ 
         private class SyntaxReceiver : ISyntaxContextReceiver
         {
             public List<(string Namespace, string ClassName)> MatchList = new List<(string Namespace, string ClassName)>();
