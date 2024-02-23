@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 
 namespace MinecraftProtocol.Compression
 {
@@ -14,15 +15,10 @@ namespace MinecraftProtocol.Compression
 
         public static long Convert(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
         public static long Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes, out length);
-        public static long Convert(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
-        public static long Convert(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
-        public static long Convert(byte[] bytes, int offset, out int end) => Read(bytes as IList<byte>, offset, out end);
-        public static long Convert(IList<byte> bytes) => Read(bytes, 0, out _);
+      
         public static long Convert(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
         public static long Convert(IList<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
         public static byte[] Convert(long value) => GetBytes(value);
-
-
 
         public static long Read(Stream stream) => Read(() => (byte)stream.ReadByte(), out _);
         public static long Read(Stream stream, out int readCount) => Read(() => { int read = stream.ReadByte(); return read >= 0 ? (byte)read : throw new InvalidDataException("negative"); }, out readCount);
@@ -48,10 +44,6 @@ namespace MinecraftProtocol.Compression
             throw new OverflowException("VarLong too big");
         }
 
-        public static long Read(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
-        public static long Read(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
-        public static long Read(byte[] bytes, int offset, out int length) => Read(bytes as IList<byte>, offset, out length);
-        public static long Read(IList<byte> bytes) => Read(bytes, 0, out _);
         public static long Read(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
         public static long Read(IList<byte> bytes, int offset, out int length)
         {
@@ -67,6 +59,7 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarLong too big");
         }
+
         public static long Read(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
         public static long Read(ReadOnlySpan<byte> bytes, out int length)
         {
@@ -82,6 +75,7 @@ namespace MinecraftProtocol.Compression
             }
             throw new OverflowException("VarLong too big");
         }
+
         public static Span<byte> GetSpan(long value)
         {
             int offset = 0;
@@ -99,26 +93,13 @@ namespace MinecraftProtocol.Compression
             } while (Value!=0);
             return bytes.AsSpan().Slice(0, offset);
         }
+
         public static byte[] GetBytes(long value)
         {
             return GetSpan(value).ToArray();
         }
 
-
-        public static int WriteTo(long value, byte[] dest)
-        {
-            ulong Value = (ulong)value;
-            int offset = 0;
-            do
-            {
-                byte temp = (byte)(Value & MaskValue);
-                Value >>= 7;
-                if (Value != 0) temp |= MaskByteSigned;
-                dest[offset++] = temp;
-
-            } while (Value != 0);
-            return offset;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int WriteTo(long value, Span<byte> dest)
         {
             ulong Value = (ulong)value;
@@ -133,22 +114,8 @@ namespace MinecraftProtocol.Compression
             } while (Value != 0);
             return offset;
         }
-        public static int WriteTo(long value, List<byte> dest)
-        {
-            ulong Value = (ulong)value;
-            int offset = 0;
-            do
-            {
-                byte temp = (byte)(Value & MaskValue);
-                Value >>= 7;
-                if (Value != 0) temp |= MaskByteSigned;
-                dest[offset++] = temp;
 
-            } while (Value != 0);
-            return offset;
-        }
-
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetLength(long value)
         {
             ulong temp = (ulong)value;

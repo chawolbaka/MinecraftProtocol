@@ -34,7 +34,7 @@ namespace MinecraftProtocol.Packets.Client
             _channel = reader.ReadString();
 
             if (ProtocolVersion <= ProtocolVersions.V14w31a && _isForge)
-                reader.Position += VarShort.GetLength(reader.AsSpan());
+                reader.ReadVarShort();
             else if (ProtocolVersion <= ProtocolVersions.V14w31a)
                 reader.Position += 2;
 

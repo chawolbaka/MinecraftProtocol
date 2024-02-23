@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 
 namespace MinecraftProtocol.Compression
 {
@@ -16,10 +17,7 @@ namespace MinecraftProtocol.Compression
 
         public static int Convert(ReadOnlySpan<byte> bytes) => Read(bytes,out _);
         public static int Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes,out length);
-        public static int Convert(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
-        public static int Convert(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
-        public static int Convert(byte[] bytes, int offset, out int end) => Read(bytes as IList<byte>, offset, out end);
-        public static int Convert(IList<byte> bytes) => Read(bytes, 0, out _);
+        
         public static int Convert(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
         public static int Convert(IList<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
         public static byte[] Convert(int value) => GetBytes(value);
@@ -55,10 +53,6 @@ namespace MinecraftProtocol.Compression
             return ((high & 0xFF) << 15) | low;
         }
 
-        public static int Read(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
-        public static int Read(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
-        public static int Read(byte[] bytes, int offset, out int length) => Read(bytes as IList<byte>, offset, out length);
-        public static int Read(IList<byte> bytes) => Read(bytes, 0, out _);
         public static int Read(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
         public static int Read(IList<byte> bytes, int offset, out int length)
         {
@@ -73,6 +67,7 @@ namespace MinecraftProtocol.Compression
             }
             return ((high & 0xFF) << 15) | low;
         }
+
         public static int Read(ReadOnlySpan<byte> bytes) => Read(bytes, out _);
         public static int Read(ReadOnlySpan<byte> bytes, out int length)
         {
@@ -114,21 +109,7 @@ namespace MinecraftProtocol.Compression
         }
 
 
-        public static int GetLength(byte[] bytes, int offset = 0) => GetLength(bytes as IList<byte>, offset);
-        public static int GetLength(IList<byte> bytes, int offset = 0)
-        {
-            if (bytes.Count >= offset + 3 && ((bytes[offset] << 8 | bytes[offset + 1]) & 0x8000) != 0)
-                return 3;
-            else
-                return bytes.Count >= offset + 2 ? 2 : throw new OverflowException("VarShort too small");
-        }
-        public static int GetLength(ReadOnlySpan<byte> bytes)
-        {
-            if (bytes.Length >= 3 && ((bytes[0] << 8 | bytes[1]) & 0x8000) != 0)
-                return 3;
-            else
-                return bytes.Length >= 2 ? 2 : throw new OverflowException("VarShort too short");
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetLength(int value)
         {
             if ((value & 0x7F8000) >> 15 != 0)

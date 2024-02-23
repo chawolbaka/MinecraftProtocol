@@ -66,7 +66,7 @@ namespace MinecraftProtocol.IO
         public virtual Memory<byte> AsMemory() { ThrowIfDisposed(); return _data.AsMemory(_start, _size); }
 
         //mc大部分都是小包所以使用这种形状的数组池可能更适合？
-        internal static SawtoothArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(4096, 2048, 1024, 256, 256, 256, 256, 256, 256, 256, 128, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 16);
+        internal static SawtoothArrayPool<byte> _dataPool = new SawtoothArrayPool<byte>(1024, 512, 256, 64, 32, 16);
         protected const int DEFUALT_CAPACITY = 16;
         internal protected bool _returnToPool;
 

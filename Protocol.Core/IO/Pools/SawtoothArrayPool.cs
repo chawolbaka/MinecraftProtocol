@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.Diagnostics;
 using System.Numerics;
-using System.Runtime.InteropServices;
 
 namespace MinecraftProtocol.IO.Pools
 {

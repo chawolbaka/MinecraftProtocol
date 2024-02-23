@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using MinecraftProtocol.Compression;
 using MinecraftProtocol.IO.Pools;
@@ -21,17 +22,20 @@ namespace MinecraftProtocol.IO
         /// <summary>
         /// 接收到的Packet
         /// </summary>
-        public LazyCompatiblePacket Packet { get; private set; }
-        
+        public LazyCompatiblePacket Packet => _packet;
+
         /// <summary>
         /// 完整的数据包
         /// </summary>
-        public ReadOnlyMemory<Memory<byte>> RawData { get; private set; }
+        public ReadOnlySpan<Memory<byte>> RawData => new ReadOnlySpan<Memory<byte>>(_packet._dataBlock, 0, _packet._dataBlockLength);
 
 
+        /// <summary>
+        /// 数据包的原始长度
+        /// </summary>
         public int PacketLength { get; private set; }
-        
-        private Memory<byte>[] _dataBlock;
+
+        private PREAPacket _packet;
         private byte[][] _bufferBlock;
         private byte _bufferBlockLength;
         
@@ -39,16 +43,15 @@ namespace MinecraftProtocol.IO
         private bool _disposed;
         private SpinLock _lock = new SpinLock();
 
-        internal PacketReceivedEventArgs Setup(Memory<byte>[] dataBlock, byte dataBlockLength, byte[][] bufferBlock, byte bufferBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
+        internal PacketReceivedEventArgs Setup(ref Memory<byte>[] dataBlock, ref byte dataBlockLength, ref byte[][] bufferBlock, ref byte bufferBlockLength, ref int packetDataStartBlockIndex, ref int packetDataStartIndex, ref int packetLength, PacketListener listener)
         {
-            Packet = (listener._usePool ? PREAPacketPool.Rent() : new PREAPacket()).Setup(dataBlock, dataBlockLength, packetDataStartBlockIndex, packetDataStartIndex, packetLength, listener);
-            RawData = new ReadOnlyMemory<Memory<byte>>(dataBlock, 0, dataBlockLength);
+            _packet = (listener._usePool ? PREAPacketPool.Rent() : new PREAPacket()).Setup(ref dataBlock, ref dataBlockLength, ref packetDataStartBlockIndex, ref packetDataStartIndex, ref packetLength, ref listener);
+            
             ReceivedTime = DateTime.Now;
-            PacketLength = packetLength;
+            PacketLength = VarInt.GetLength(PacketLength) + packetLength;
             _usePool = listener._usePool;
             _disposed = false;
             _isCancelled = false;
-            _dataBlock = dataBlock;
             _bufferBlock = bufferBlock;
             _bufferBlockLength = bufferBlockLength;
             return this;
@@ -84,21 +87,22 @@ namespace MinecraftProtocol.IO
             {
                 if (_usePool)
                 {
-                    PREAPacket packet = Packet as PREAPacket;
-                    Packet = null; RawData = null;
+                    PREAPacket packet = _packet;
+                    _packet = null;
                     if (packet.IsCreated)
                         CompatiblePacketPool.Return(packet.Get());
                    
-                    packet.Reset();
-                    PREAPacketPool.Return(packet);
 
                     for (int i = 0; i < _bufferBlockLength; i++)
                         NetworkListener._bufferPool.Return(_bufferBlock[i]);
                     
                     //虽然一般buffer会从上面返回数组池，但有极少部分不会回去，因此为了防止那极少数的buffer被block长期占着导致无法被GC回收，所以这边需要每次都清空block
-                    PacketListener._dataBlockPool.Return(_dataBlock, true);
+                    PacketListener._dataBlockPool.Return(packet._dataBlock, true);
                     PacketListener._bufferBlockPool.Return(_bufferBlock, true);
-                    _bufferBlock = null; _dataBlock = null; 
+                    _bufferBlock = null; packet.Reset();
+
+
+                    PREAPacketPool.Return(packet);
                     PacketListener.PREAPool.Return(this); //这个必须在最后，只有当所有资源回收完成才能送回池内，否则在极端情况下会存在线程安全问题
                 }
             }
@@ -122,14 +126,14 @@ namespace MinecraftProtocol.IO
 
         private class PREAPacket : LazyCompatiblePacket
         {
-            private Memory<byte>[] _dataBlock;
-            private byte _dataBlockLength;
+            internal Memory<byte>[] _dataBlock;
+            internal byte _dataBlockLength;
             private int _packetLength;
             private int _blockX, _blockY;
             private int _idOffset;
             private bool _usePool;
 
-            public PREAPacket Setup(Memory<byte>[] dataBlock, byte dataBlockLength, int packetDataStartBlockIndex, int packetDataStartIndex, int packetLength, PacketListener listener)
+            public PREAPacket Setup(ref Memory<byte>[] dataBlock, ref byte dataBlockLength, ref int packetDataStartBlockIndex, ref int packetDataStartIndex, ref int packetLength, ref PacketListener listener)
             {
                 _dataBlock = dataBlock;
                 _dataBlockLength = dataBlockLength;
@@ -182,8 +186,19 @@ namespace MinecraftProtocol.IO
 
             public void Reset()
             {
-                _isCreated = false;
-                _packet = null;
+                bool lockTaken = false;
+                try
+                {
+                    _getLock.Enter(ref lockTaken);
+                    _isCreated = false;
+                    _dataBlock = null;
+                    _packet = null;
+                }
+                finally
+                {
+                    if (lockTaken)
+                        _getLock.Exit();
+                }
 #if DEBUG
                 _getLock = new SpinLock(Debugger.IsAttached);
 #else
@@ -222,6 +237,14 @@ namespace MinecraftProtocol.IO
                 return packet;
             }
 
+            byte ReadByte()
+            {
+                CheckBounds();
+                return _dataBlock[_blockY].Span[_blockX++];
+            }
+
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void CheckBounds()
             {
                 if (_blockX >= _dataBlock[_blockY].Length)
@@ -231,11 +254,6 @@ namespace MinecraftProtocol.IO
                 }
             }
 
-            byte ReadByte()
-            {
-                CheckBounds();
-                return _dataBlock[_blockY].Span[_blockX++];
-            }
         }
     }
 }

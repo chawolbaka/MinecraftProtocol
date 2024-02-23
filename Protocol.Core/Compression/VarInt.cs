@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 
 namespace MinecraftProtocol.Compression
 {
@@ -16,10 +17,7 @@ namespace MinecraftProtocol.Compression
 
         public static int Convert(ReadOnlySpan<byte> bytes) => Read(bytes,out _);
         public static int Convert(ReadOnlySpan<byte> bytes, out int length) => Read(bytes, out length);
-        public static int Convert(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
-        public static int Convert(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
-        public static int Convert(byte[] bytes, int offset, out int end) => Read(bytes as IList<byte>, offset, out end);
-        public static int Convert(IList<byte> bytes) => Read(bytes, 0, out _);
+     
         public static int Convert(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
         public static int Convert(IList<byte> bytes, int offset, out int end) => Read(bytes, offset, out end);
         public static byte[] Convert(int value) => GetBytes(value);
@@ -49,12 +47,9 @@ namespace MinecraftProtocol.Compression
             throw new OverflowException("VarInt too big");
         }
 
-        //不这样子会导致和ReadOnlySpan的重载冲突
-        public static int Read(byte[] bytes) => Read(bytes as IList<byte>, 0, out _);
         public static int Read(byte[] bytes, int offset) => Read(bytes as IList<byte>, offset, out _);
         public static int Read(byte[] bytes, int offset, out int length) => Read(bytes as IList<byte>, offset, out length);
 
-        public static int Read(IList<byte> bytes) => Read(bytes, 0, out _);
         public static int Read(IList<byte> bytes, int offset) => Read(bytes, offset, out _);
         public static int Read(IList<byte> bytes, int offset, out int length)
         {
@@ -107,19 +102,8 @@ namespace MinecraftProtocol.Compression
         {
             return GetSpan(value).ToArray();
         }
-        
 
-        public static int WriteTo(int value, byte[] dest)
-        {
-            int offset = 0;
-            while ((value & -128) != 0)
-            {
-                dest[offset++] = ((byte)(value & 127 | 128));
-                value = (int)(((uint)value) >> 7);
-            }
-            dest[offset++] = (byte)value;
-            return offset;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int WriteTo(int value, Span<byte> dest)
         {
             int offset = 0;
@@ -131,18 +115,8 @@ namespace MinecraftProtocol.Compression
             dest[offset++] = (byte)value;
             return offset;
         }
-        public static int WriteTo(int value, IList<byte> dest)
-        {
-            int offset = 0;
-            while ((value & -128) != 0)
-            {
-                dest[offset++] = ((byte)(value & 127 | 128));
-                value = (int)(((uint)value) >> 7);
-            }
-            dest[offset++] = (byte)value;
-            return offset;
-        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int GetLength(int value)
         {
             uint temp = (uint)value;

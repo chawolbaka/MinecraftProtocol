@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using MinecraftProtocol.Compatible;
@@ -29,8 +30,8 @@ namespace MinecraftProtocol.IO
         public event CommonEventHandler<object, PacketReceivedEventArgs> PacketReceived;
         
         internal static IPool<PacketReceivedEventArgs> PREAPool = new ObjectPool<PacketReceivedEventArgs>();
-        internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(1024 * 8, 2048);
-        internal static ArrayPool<byte[]> _bufferBlockPool = new SawtoothArrayPool<byte[]>(1024 * 8, 512);
+        internal static ArrayPool<Memory<byte>> _dataBlockPool = new SawtoothArrayPool<Memory<byte>>(2048, 1024);
+        internal static ArrayPool<byte[]> _bufferBlockPool = new SawtoothArrayPool<byte[]>(512, 256);
 
         private Memory<byte>[] _dataBlock;
         private byte[][] _bufferBlock;
@@ -192,7 +193,7 @@ namespace MinecraftProtocol.IO
                 try
                 {
                     PacketReceivedEventArgs prea = _usePool ? PREAPool.Rent() : new PacketReceivedEventArgs();
-                    prea.Setup(_dataBlock, _dataBlockIndex, _bufferBlock, _bufferBlockIndex, _packetDataBlockIndex, _packetLengthOffset, _packetLength, this);
+                    prea.Setup(ref _dataBlock, ref _dataBlockIndex, ref _bufferBlock, ref _bufferBlockIndex, ref _packetDataBlockIndex, ref _packetLengthOffset, ref _packetLength, this);
                     ResetToPacketLengthRead();
                     EventUtils.InvokeCancelEvent(PacketReceived, this, prea);
                 }
@@ -210,6 +211,7 @@ namespace MinecraftProtocol.IO
 
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ResetToPacketLengthRead()
         {
             _state = ReadState.PacketLength;
