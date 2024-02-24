@@ -196,8 +196,7 @@ namespace MinecraftProtocol.Packets
 
         public virtual ByteReader AsByteReader()
         {
-            ReadOnlySpan<byte> span = AsSpan();
-            return new ByteReader(ref span);
+            return new ByteReader(AsSpan());
         }
 
         public virtual Packet Clone() => ThrowIfDisposed(new Packet(Id, AsSpan()));
